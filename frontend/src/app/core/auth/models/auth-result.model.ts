@@ -1,3 +1,12 @@
+export interface NotificationPreferencesDto {
+  emailOnDeadlineApproaching: boolean;
+  emailOnDeadlineMissed: boolean;
+  emailOnResultRecorded: boolean;
+  emailOnApprovalRequired: boolean;
+  emailOnNewComment: boolean;
+  emailOnDocumentUploaded: boolean;
+}
+
 export interface UserProfileDto {
   id: string;
   email: string;
@@ -5,6 +14,7 @@ export interface UserProfileDto {
   pictureUrl?: string;
   role: string;
   lastLoginAt?: string;
+  notificationPreferences?: NotificationPreferencesDto;
 }
 
 export interface AuthResultDto {

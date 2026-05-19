@@ -6,4 +6,5 @@ public sealed record UserProfileDto(
     string FullName,
     string? PictureUrl,
     string Role,
-    DateTimeOffset? LastLoginAt);
+    DateTimeOffset? LastLoginAt,
+    NotificationPreferencesDto NotificationPreferences);

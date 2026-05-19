@@ -6,6 +6,7 @@
 
 .gm-profile-card {
   max-width: 560px;
+  margin-bottom: 24px;
 }
 
 .gm-profile-header {
@@ -67,4 +68,16 @@
   dd {
     margin: 0;
   }
+}
+
+.gm-notif-card {
+  mat-card-header {
+    margin-bottom: 16px;
+  }
+}
+
+.gm-notif-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }

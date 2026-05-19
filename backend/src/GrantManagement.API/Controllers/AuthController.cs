@@ -1,6 +1,7 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.Auth.Commands.GoogleLogin;
 using GrantManagement.Application.Auth.Commands.Logout;
+using GrantManagement.Application.Auth.Commands.UpdateNotificationPreferences;
 using GrantManagement.Application.Auth.DTOs;
 using GrantManagement.Application.Auth.Queries.GetCurrentUser;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GrantManagement.API.Controllers;
 
 /// <summary>
-/// Authentication endpoints for Google OAuth 2.0 login.
+/// Authentication and current-user endpoints.
 /// </summary>
 public class AuthController : ApiControllerBase
 {
@@ -39,13 +40,7 @@ public class AuthController : ApiControllerBase
     }
 
     /// <summary>
-    /// Logs out the currently authenticated user and records the logout timestamp.
-    /// Token invalidation is client-side; the server records LastLogoutAt.
-    /// </summary>
-    /// <response code="204">Logout successful.</response>
-    /// <response code="401">Not authenticated.</response>
-    /// <summary>
-    /// Returns the current authenticated user's profile data.
+    /// Returns the current authenticated user's profile data including notification preferences.
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The current user's profile.</returns>
@@ -62,9 +57,30 @@ public class AuthController : ApiControllerBase
     }
 
     /// <summary>
+    /// Updates the current user's email notification preferences.
+    /// </summary>
+    /// <param name="command">The new notification preference values.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The updated notification preferences.</returns>
+    /// <response code="200">Preferences updated successfully.</response>
+    /// <response code="401">Not authenticated.</response>
+    [HttpPut("me/notification-preferences")]
+    [Authorize]
+    [ProducesResponseType(typeof(NotificationPreferencesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<NotificationPreferencesDto>> UpdateNotificationPreferences(
+        [FromBody] UpdateNotificationPreferencesCommand command,
+        CancellationToken ct = default)
+    {
+        var result = await Sender.Send(command, ct);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Logs out the currently authenticated user and records the logout timestamp.
     /// Token invalidation is client-side; the server records LastLogoutAt.
     /// </summary>
+    /// <param name="ct">Cancellation token.</param>
     /// <response code="204">Logout successful.</response>
     /// <response code="401">Not authenticated.</response>
     [HttpPost("logout")]

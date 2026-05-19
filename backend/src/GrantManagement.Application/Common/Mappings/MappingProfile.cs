@@ -33,6 +33,13 @@ public class MappingProfile : Profile
                 src.Name,
                 src.ProfilePictureUrl,
                 src.Role.ToString(),
-                src.LastLoginAt));
+                src.LastLoginAt,
+                new NotificationPreferencesDto(
+                    src.NotificationPrefs.EmailOnDeadlineApproaching,
+                    src.NotificationPrefs.EmailOnDeadlineMissed,
+                    src.NotificationPrefs.EmailOnResultRecorded,
+                    src.NotificationPrefs.EmailOnApprovalRequired,
+                    src.NotificationPrefs.EmailOnNewComment,
+                    src.NotificationPrefs.EmailOnDocumentUploaded)));
     }
 }

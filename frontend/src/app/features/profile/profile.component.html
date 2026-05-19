@@ -36,5 +36,48 @@
         </dl>
       </mat-card-content>
     </mat-card>
+
+    <mat-card class="gm-profile-card gm-notif-card">
+      <mat-card-header>
+        <mat-card-title>Értesítési beállítások</mat-card-title>
+        <mat-card-subtitle>Válaszd ki, milyen e-mail értesítéseket szeretnél kapni.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="prefsForm" class="gm-notif-form">
+          <mat-slide-toggle formControlName="emailOnDeadlineApproaching">
+            Határidő közeledési értesítés
+          </mat-slide-toggle>
+          <mat-slide-toggle formControlName="emailOnDeadlineMissed">
+            Elmulasztott határidő értesítés
+          </mat-slide-toggle>
+          <mat-slide-toggle formControlName="emailOnResultRecorded">
+            Eredmény rögzítési értesítés
+          </mat-slide-toggle>
+          <mat-slide-toggle formControlName="emailOnApprovalRequired">
+            Jóváhagyási kérés értesítés
+          </mat-slide-toggle>
+          <mat-slide-toggle formControlName="emailOnNewComment">
+            Új hozzászólás értesítés
+          </mat-slide-toggle>
+          <mat-slide-toggle formControlName="emailOnDocumentUploaded">
+            Dokumentum feltöltési értesítés
+          </mat-slide-toggle>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="saving()"
+          (click)="savePreferences()"
+        >
+          @if (saving()) {
+            <mat-progress-spinner diameter="20" mode="indeterminate" />
+          } @else {
+            Mentés
+          }
+        </button>
+      </mat-card-actions>
+    </mat-card>
   }
 </div>

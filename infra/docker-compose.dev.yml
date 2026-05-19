@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=grantmgmt
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=dev_password
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+
+volumes:
+  pgdata_dev:

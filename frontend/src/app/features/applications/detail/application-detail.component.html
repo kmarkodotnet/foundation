@@ -1,0 +1,59 @@
+<div class="gm-page-container">
+  <div style="display:flex; align-items:center; margin-bottom:16px; gap:12px">
+    <button mat-icon-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    @if (application()) {
+      <h1 style="margin:0">{{ application()!.title }}</h1>
+      <gm-status-badge [status]="application()!.status" />
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="gm-loading-overlay">
+      <mat-spinner diameter="48" />
+    </div>
+  }
+
+  @if (application(); as app) {
+    <mat-card class="gm-card-gap">
+      <mat-card-content>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px">
+          <div>
+            <small>Pályáztató</small>
+            <p><strong>{{ app.granterName }}</strong></p>
+          </div>
+          <div>
+            <small>Beadási határidő</small>
+            <p><strong>{{ app.submissionDeadline | dateHu }}</strong></p>
+          </div>
+          <div>
+            <small>Elköltési határidő</small>
+            <p><strong>{{ app.spendingDeadline | dateHu }}</strong></p>
+          </div>
+          <div>
+            <small>Nyert összeg</small>
+            <p><strong>{{ app.awardedAmount | currencyHu }}</strong></p>
+          </div>
+          <div>
+            <small>Rögzítette</small>
+            <p><strong>{{ app.createdByUserName }}</strong></p>
+          </div>
+          <div>
+            <small>Létrehozva</small>
+            <p><strong>{{ app.createdAt | dateHu }}</strong></p>
+          </div>
+        </div>
+        @if (app.description) {
+          <p>{{ app.description }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-tab-group>
+      <mat-tab label="Munkafolyamat">
+        <gm-workflow-tab [applicationId]="app.id" [steps]="app.workflowSteps" (stepChanged)="load()" />
+      </mat-tab>
+    </mat-tab-group>
+  }
+</div>

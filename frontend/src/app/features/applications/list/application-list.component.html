@@ -1,0 +1,104 @@
+<div class="gm-page-container">
+  <div style="display:flex; align-items:center; margin-bottom:16px">
+    <h1 style="margin:0">Pályázatok</h1>
+    <span class="gm-spacer"></span>
+    <button mat-flat-button color="primary" *hasRole="['Admin', 'PalyazatiMunkatars']" (click)="createNew()">
+      <mat-icon>add</mat-icon>
+      Új pályázat
+    </button>
+  </div>
+
+  <mat-card class="gm-card-gap">
+    <mat-card-content>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end">
+        <mat-form-field appearance="outline">
+          <mat-label>Keresés</mat-label>
+          <input matInput [(ngModel)]="searchText" (keyup.enter)="onSearch()" placeholder="Cím, azonosító...">
+          <mat-icon matSuffix (click)="onSearch()" style="cursor:pointer">search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Státusz</mat-label>
+          <mat-select [(ngModel)]="filter.status" multiple (selectionChange)="load()">
+            @for (opt of statusOptions; track opt.value) {
+              <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  @if (loading()) {
+    <div class="gm-loading-overlay">
+      <mat-spinner diameter="48" />
+    </div>
+  } @else {
+    <mat-card>
+      <mat-card-content>
+        <table mat-table [dataSource]="result()?.items ?? []" style="width:100%">
+          <ng-container matColumnDef="title">
+            <th mat-header-cell *matHeaderCellDef>Pályázat neve</th>
+            <td mat-cell *matCellDef="let row">
+              <strong>{{ row.title }}</strong>
+              @if (row.identifier) {
+                <br><small>{{ row.identifier }}</small>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Státusz</th>
+            <td mat-cell *matCellDef="let row">
+              <gm-status-badge [status]="row.status" />
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="granterName">
+            <th mat-header-cell *matHeaderCellDef>Pályáztató</th>
+            <td mat-cell *matCellDef="let row">{{ row.granterName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="submissionDeadline">
+            <th mat-header-cell *matHeaderCellDef>Beadási határidő</th>
+            <td mat-cell *matCellDef="let row">{{ row.submissionDeadline | dateHu }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="awardedAmount">
+            <th mat-header-cell *matHeaderCellDef>Nyert összeg</th>
+            <td mat-cell *matCellDef="let row">{{ row.awardedAmount | currencyHu }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row">
+              <button mat-icon-button matTooltip="Megnyitás" (click)="openDetail(row.id)">
+                <mat-icon>open_in_new</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns" style="cursor:pointer" (click)="openDetail(row.id)"></tr>
+        </table>
+
+        @if (!result()?.items?.length) {
+          <div class="gm-empty-state">
+            <mat-icon>folder_open</mat-icon>
+            <p>Nincs pályázat a szűrési feltételeknek megfelelően.</p>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    @if (result()) {
+      <mat-paginator
+        [length]="result()!.totalCount"
+        [pageSize]="filter.pageSize"
+        [pageIndex]="filter.page - 1"
+        [pageSizeOptions]="[10, 20, 50]"
+        (page)="onPage($event)"
+      />
+    }
+  }
+</div>

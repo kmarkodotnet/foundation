@@ -2,6 +2,7 @@ using GrantManagement.API.Common;
 using GrantManagement.Application.Auth.Commands.GoogleLogin;
 using GrantManagement.Application.Auth.Commands.Logout;
 using GrantManagement.Application.Auth.DTOs;
+using GrantManagement.Application.Auth.Queries.GetCurrentUser;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,6 +35,29 @@ public class AuthController : ApiControllerBase
         CancellationToken ct = default)
     {
         var result = await Sender.Send(command, ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Logs out the currently authenticated user and records the logout timestamp.
+    /// Token invalidation is client-side; the server records LastLogoutAt.
+    /// </summary>
+    /// <response code="204">Logout successful.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <summary>
+    /// Returns the current authenticated user's profile data.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The current user's profile.</returns>
+    /// <response code="200">Profile returned successfully.</response>
+    /// <response code="401">Not authenticated.</response>
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserProfileDto>> GetCurrentUser(CancellationToken ct = default)
+    {
+        var result = await Sender.Send(new GetCurrentUserQuery(), ct);
         return Ok(result);
     }
 

@@ -11,3 +11,5 @@ export interface CurrentUser {
   name: string;
   role: UserRole;
 }
+
+export type { UserProfileDto } from './auth-result.model';

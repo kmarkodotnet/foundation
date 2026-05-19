@@ -2,9 +2,14 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
 import { OidcCallbackComponent } from './core/auth/oidc-callback.component';
+import { LoginComponent } from './core/auth/login/login.component';
 import { LayoutComponent } from './layout/layout.component';
 
 export const routes: Routes = [
+  {
+    path: 'login',
+    component: LoginComponent,
+  },
   {
     path: 'auth/callback',
     component: OidcCallbackComponent,

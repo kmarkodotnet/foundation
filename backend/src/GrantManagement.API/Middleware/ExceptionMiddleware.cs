@@ -47,6 +47,12 @@ public class ExceptionMiddleware
                 Title = "Validációs hiba",
                 Type = "https://tools.ietf.org/html/rfc4918#section-11.2"
             },
+            InactiveUserException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Forbidden,
+                Title = "Inaktív felhasználó.",
+                Detail = exception.Message
+            },
             NotFoundException => new ProblemDetails
             {
                 Status = (int)HttpStatusCode.NotFound,
@@ -63,6 +69,12 @@ public class ExceptionMiddleware
             {
                 Status = (int)HttpStatusCode.BadRequest,
                 Title = "Üzleti szabály megsértve.",
+                Detail = exception.Message
+            },
+            UnauthorizedAccessException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Unauthorized,
+                Title = "Hitelesítési hiba.",
                 Detail = exception.Message
             },
             _ => new ProblemDetails

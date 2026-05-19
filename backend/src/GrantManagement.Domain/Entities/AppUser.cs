@@ -17,6 +17,7 @@ public class AppUser : AggregateRoot<Guid>
     public UserStatus Status { get; private set; }
     public NotificationPreferences NotificationPrefs { get; private set; } = null!;
     public DateTimeOffset? LastLoginAt { get; private set; }
+    public DateTimeOffset? LastLogoutAt { get; private set; }
 
     private AppUser() { }
 
@@ -76,6 +77,12 @@ public class AppUser : AggregateRoot<Guid>
     public void UpdateNotificationPreferences(NotificationPreferences prefs)
     {
         NotificationPrefs = prefs;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void RecordLogout(DateTimeOffset logoutAt)
+    {
+        LastLogoutAt = logoutAt;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

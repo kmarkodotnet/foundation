@@ -1,5 +1,6 @@
 using AutoMapper;
 using GrantManagement.Application.Applications.DTOs;
+using GrantManagement.Application.Auth.DTOs;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 using GrantManagement.Domain.Entities;
 
@@ -24,5 +25,14 @@ public class MappingProfile : Profile
             .ForMember(d => d.GranterName, opt => opt.Ignore());
 
         CreateMap<WorkflowStep, WorkflowStepDto>();
+
+        CreateMap<AppUser, UserProfileDto>()
+            .ConstructUsing(src => new UserProfileDto(
+                src.Id,
+                src.Email,
+                src.Name,
+                src.ProfilePictureUrl,
+                src.Role.ToString(),
+                src.LastLoginAt));
     }
 }

@@ -1,32 +1,67 @@
-import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
 
 @Component({
   selector: 'gm-navbar',
-  imports: [MatToolbarModule, MatButtonModule, MatIconModule, NotificationBellComponent],
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MatDividerModule,
+    NotificationBellComponent,
+  ],
   template: `
     <mat-toolbar color="primary">
       <span>Pályázatkezelő</span>
       <span class="gm-spacer"></span>
       <gm-notification-bell />
-      <span>{{ authService.currentUser()?.name }}</span>
-      <button mat-icon-button (click)="logout()">
-        <mat-icon>logout</mat-icon>
+      <button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Profil menü">
+        <mat-icon>account_circle</mat-icon>
       </button>
     </mat-toolbar>
+
+    <mat-menu #profileMenu="matMenu" xPosition="before">
+      <div class="gm-profile-header">
+        <mat-icon class="gm-profile-avatar">account_circle</mat-icon>
+        <div>
+          <div class="gm-profile-name">{{ authService.currentUser()?.name }}</div>
+          <div class="gm-profile-email">{{ authService.currentUser()?.email }}</div>
+        </div>
+      </div>
+      <mat-divider />
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Kijelentkezés</span>
+      </button>
+    </mat-menu>
   `,
-  styles: [`.gm-spacer { flex: 1 1 auto; }`],
+  styles: [`
+    .gm-spacer { flex: 1 1 auto; }
+    .gm-profile-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      min-width: 220px;
+    }
+    .gm-profile-avatar { font-size: 40px; width: 40px; height: 40px; color: var(--mat-sys-primary); }
+    .gm-profile-name { font-weight: 600; font-size: 14px; }
+    .gm-profile-email { font-size: 12px; color: var(--mat-sys-on-surface-variant); }
+  `],
 })
 export class NavbarComponent {
   readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
 
   logout(): void {
-    this.authService.logout().subscribe();
+    this.authService.logout();
   }
 }

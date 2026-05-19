@@ -1,0 +1,33 @@
+<div class="gm-login-container">
+  <mat-card class="gm-login-card">
+    <mat-card-header>
+      <mat-card-title>Pályázatkezelő</mat-card-title>
+      <mat-card-subtitle>Bejelentkezés szükséges</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (errorMessage()) {
+        <div class="gm-login-error" role="alert">
+          {{ errorMessage() }}
+        </div>
+      }
+    </mat-card-content>
+
+    <mat-card-actions>
+      @if (isRedirecting()) {
+        <div class="gm-login-spinner">
+          <mat-spinner diameter="36" />
+        </div>
+      } @else {
+        <button
+          mat-raised-button
+          color="primary"
+          class="gm-login-btn"
+          (click)="login()"
+        >
+          Bejelentkezés Google-fiókkal
+        </button>
+      }
+    </mat-card-actions>
+  </mat-card>
+</div>

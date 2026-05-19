@@ -1,5 +1,7 @@
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Domain.Interfaces;
+using GrantManagement.Domain.Interfaces.Services;
+using GrantManagement.Infrastructure.Auth;
 using GrantManagement.Infrastructure.BackgroundJobs;
 using GrantManagement.Infrastructure.Email;
 using GrantManagement.Infrastructure.FileStorage;
@@ -45,6 +47,10 @@ public static class DependencyInjection
 
         services.AddHangfireServer();
         services.AddScoped<DeadlineCheckJob>();
+
+        services.AddHttpClient();
+        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+        services.AddScoped<IJwtService, JwtService>();
 
         return services;
     }

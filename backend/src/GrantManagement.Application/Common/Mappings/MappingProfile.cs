@@ -22,7 +22,9 @@ public class MappingProfile : Profile
                     : (decimal?)null));
 
         CreateMap<GrantApp, ApplicationDetailDto>()
-            .ForMember(d => d.GranterName, opt => opt.Ignore());
+            .ForMember(d => d.GranterName, opt => opt.MapFrom(
+                (src, dest, member, ctx) =>
+                    ctx.Items.TryGetValue("GranterName", out var name) ? (string?)name : string.Empty));
 
         CreateMap<WorkflowStep, WorkflowStepDto>();
 

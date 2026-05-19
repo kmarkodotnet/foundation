@@ -61,6 +61,8 @@ public class CreateApplicationCommandHandler
         _context.Applications.Add(application);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ApplicationDetailDto>(application);
+        return _mapper.Map<ApplicationDetailDto>(
+            application,
+            opts => opts.Items["GranterName"] = granter.Name);
     }
 }

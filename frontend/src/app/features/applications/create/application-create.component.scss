@@ -1,0 +1,39 @@
+.gm-create-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.gm-create-card {
+  max-width: 800px;
+}
+
+.gm-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gm-section-title {
+  margin: 16px 0 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  padding-bottom: 8px;
+}
+
+.gm-full-width {
+  width: 100%;
+}
+
+.gm-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}

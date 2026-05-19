@@ -26,7 +26,7 @@ public class AppUser : AggregateRoot<Guid>
         string email,
         string name,
         string? pictureUrl,
-        UserRole defaultRole = UserRole.Megtekinto)
+        UserRole defaultRole = UserRole.Admin)
     {
         return new AppUser
         {

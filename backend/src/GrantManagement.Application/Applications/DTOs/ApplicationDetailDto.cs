@@ -1,0 +1,30 @@
+using GrantManagement.Domain.Enums;
+
+namespace GrantManagement.Application.Applications.DTOs;
+
+public class ApplicationDetailDto
+{
+    public Guid Id { get; init; }
+    public string Title { get; init; } = null!;
+    public string? Identifier { get; init; }
+    public string? Description { get; init; }
+    public ApplicationStatus Status { get; init; }
+    public Guid GranterId { get; init; }
+    public string GranterName { get; init; } = null!;
+    public bool IsArchived { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+    public IReadOnlyList<WorkflowStepDto> WorkflowSteps { get; init; } = [];
+}
+
+public class WorkflowStepDto
+{
+    public Guid Id { get; init; }
+    public WorkflowStepType StepType { get; init; }
+    public WorkflowStepStatus Status { get; init; }
+    public int Order { get; init; }
+    public bool IsSkippable { get; init; }
+    public DateTimeOffset? CompletedAt { get; init; }
+    public DateTimeOffset? ApprovedAt { get; init; }
+    public string? RejectionNote { get; init; }
+}

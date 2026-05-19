@@ -1,0 +1,28 @@
+using AutoMapper;
+using GrantManagement.Application.Applications.DTOs;
+using GrantApp = GrantManagement.Domain.Entities.Application;
+using GrantManagement.Domain.Entities;
+
+namespace GrantManagement.Application.Common.Mappings;
+
+public class MappingProfile : Profile
+{
+    public MappingProfile()
+    {
+        CreateMap<GrantApp, ApplicationListItemDto>()
+            .ForMember(d => d.GranterName, opt => opt.Ignore())
+            .ForMember(d => d.SubmissionDeadline, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.SubmissionDeadline : default))
+            .ForMember(d => d.SpendingDeadline, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.SpendingDeadline : null))
+            .ForMember(d => d.AwardedAmount, opt => opt.MapFrom(
+                s => s.Result != null && s.Result.AwardedAmount != null
+                    ? s.Result.AwardedAmount.Amount
+                    : (decimal?)null));
+
+        CreateMap<GrantApp, ApplicationDetailDto>()
+            .ForMember(d => d.GranterName, opt => opt.Ignore());
+
+        CreateMap<WorkflowStep, WorkflowStepDto>();
+    }
+}

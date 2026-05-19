@@ -1,0 +1,21 @@
+# Normalize line endings
+* text=auto
+
+# Force LF for source files
+*.cs text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.xml text eol=lf
+*.csproj text eol=lf
+*.sln text eol=lf
+*.props text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary

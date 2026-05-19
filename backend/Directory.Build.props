@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <!-- Pin EF Core to match Npgsql.EntityFrameworkCore.PostgreSQL 8.0.8 dependency -->
+    <PackageReference Update="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="8.0.8" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.8" />
+  </ItemGroup>
+</Project>

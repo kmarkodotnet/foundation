@@ -1,3 +1,4 @@
+using GrantManagement.API.Common;
 using GrantManagement.API.Hubs;
 using GrantManagement.API.Middleware;
 using GrantManagement.Application;
@@ -56,16 +57,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("CanCreateApplication", policy =>
-        policy.RequireRole("Admin", "PalyazatiMunkatars"));
-    options.AddPolicy("CanApproveApplication", policy =>
-        policy.RequireRole("Admin", "Elnok"));
-    options.AddPolicy("CanManageInvoices", policy =>
-        policy.RequireRole("Admin", "Penzugyes"));
-    options.AddPolicy("CanManageUsers", policy =>
-        policy.RequireRole("Admin"));
-    options.AddPolicy("CanViewAuditLog", policy =>
-        policy.RequireRole("Admin"));
+    options.AddPolicy(Policies.CanCreateApplication,  p => p.RequireRole("Admin", "PalyazatiMunkatars"));
+    options.AddPolicy(Policies.CanApproveApplication, p => p.RequireRole("Admin", "Elnok"));
+    options.AddPolicy(Policies.CanManageInvoices,     p => p.RequireRole("Admin", "Penzugyes"));
+    options.AddPolicy(Policies.CanManageUsers,        p => p.RequireRole("Admin"));
+    options.AddPolicy(Policies.CanViewAuditLog,       p => p.RequireRole("Admin", "Elnok"));
+    options.AddPolicy(Policies.CanManageCodelists,    p => p.RequireRole("Admin"));
+    options.AddPolicy(Policies.CanManageGranters,     p => p.RequireRole("Admin", "PalyazatiMunkatars"));
+    options.AddPolicy(Policies.CanManageVendors,      p => p.RequireRole("Admin", "PalyazatiMunkatars", "Penzugyes"));
 });
 
 builder.Services.AddSignalR();

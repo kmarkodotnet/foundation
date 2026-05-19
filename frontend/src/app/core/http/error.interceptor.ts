@@ -9,7 +9,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error) => {
       if (error.status === 403) {
-        snackBar.open('Nincs jogosultság a művelet elvégzéséhez.', 'Bezár', {
+        snackBar.open('Nincs jogosultságod ehhez a művelethez.', 'Bezár', {
           duration: 5000,
           panelClass: ['gm-snack-error'],
         });

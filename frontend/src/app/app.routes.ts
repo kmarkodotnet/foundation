@@ -4,6 +4,7 @@ import { roleGuard } from './core/auth/role.guard';
 import { OidcCallbackComponent } from './core/auth/oidc-callback.component';
 import { LoginComponent } from './core/auth/login/login.component';
 import { LayoutComponent } from './layout/layout.component';
+import { ForbiddenComponent } from './features/error/forbidden/forbidden.component';
 
 export const routes: Routes = [
   {
@@ -13,6 +14,10 @@ export const routes: Routes = [
   {
     path: 'auth/callback',
     component: OidcCallbackComponent,
+  },
+  {
+    path: '403',
+    component: ForbiddenComponent,
   },
   {
     path: '',

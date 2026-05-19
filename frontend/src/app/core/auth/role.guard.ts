@@ -17,5 +17,5 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return true;
   }
 
-  return router.createUrlTree(['/applications']);
+  return router.createUrlTree(['/403']);
 };

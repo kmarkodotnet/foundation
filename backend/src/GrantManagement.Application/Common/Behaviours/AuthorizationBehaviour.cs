@@ -1,3 +1,5 @@
+using System.Reflection;
+using GrantManagement.Application.Common.Attributes;
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Exceptions;
@@ -26,6 +28,12 @@ public class AuthorizationBehaviour<TRequest, TResponse>
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
+        // 1. RequireRole attribute check
+        var requireRole = typeof(TRequest).GetCustomAttribute<RequireRoleAttribute>();
+        if (requireRole is not null && !requireRole.AllowedRoles.Contains(_currentUser.Role))
+            throw new ForbiddenException("Nincs jogosultságod ehhez a művelethez.");
+
+        // 2. Locked-application guard for IApplicationCommand
         if (request is IApplicationCommand cmd)
         {
             var application = await _context.Applications

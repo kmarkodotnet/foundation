@@ -10,8 +10,8 @@ export class HasRoleDirective implements OnInit {
 
   private roles: UserRole[] = [];
 
-  @Input() set hasRole(roles: UserRole | UserRole[]) {
-    this.roles = Array.isArray(roles) ? roles : [roles];
+  @Input() set hasRole(roles: string | string[]) {
+    this.roles = (Array.isArray(roles) ? roles : [roles]) as UserRole[];
     this.updateView();
   }
 

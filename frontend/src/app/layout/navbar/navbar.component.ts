@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +13,7 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    RouterLink,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
@@ -38,6 +40,10 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
         </div>
       </div>
       <mat-divider />
+      <a mat-menu-item routerLink="/profile">
+        <mat-icon>account_circle</mat-icon>
+        <span>Profil</span>
+      </a>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>
         <span>Kijelentkezés</span>

@@ -1,31 +1,57 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService } from '../../core/auth/auth.service';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ProfileService } from './profile.service';
+import { DateHuPipe } from '../../shared/pipes/date-hu.pipe';
+
+const ROLE_LABELS: Record<string, string> = {
+  Admin:              'Adminisztrátor',
+  Elnok:              'Elnök',
+  PalyazatiMunkatars: 'Pályázati munkatárs',
+  Penzugyes:          'Pénzügyes',
+  Megtekinto:         'Megtekintő',
+};
 
 @Component({
   selector: 'gm-profile',
-  imports: [MatCardModule, MatIconModule],
-  template: `
-    <div class="gm-page-container">
-      <h1>Profil</h1>
-      @if (authService.currentUser(); as user) {
-        <mat-card style="max-width:480px">
-          <mat-card-content>
-            <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px">
-              <mat-icon style="font-size:64px;width:64px;height:64px">account_circle</mat-icon>
-              <div>
-                <h2 style="margin:0">{{ user.name }}</h2>
-                <p style="margin:0; color:rgba(0,0,0,0.54)">{{ user.email }}</p>
-              </div>
-            </div>
-            <p><strong>Szerepkör:</strong> {{ user.role }}</p>
-          </mat-card-content>
-        </mat-card>
-      }
-    </div>
-  `,
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    MatCardModule,
+    MatChipsModule,
+    MatDividerModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    DateHuPipe,
+  ],
+  templateUrl: './profile.component.html',
+  styleUrl: './profile.component.scss',
 })
 export class ProfileComponent {
-  readonly authService = inject(AuthService);
+  private readonly profileService = inject(ProfileService);
+  private readonly snackBar = inject(MatSnackBar);
+
+  readonly profile = toSignal(
+    this.profileService.getProfile().pipe(
+      catchError(() => {
+        this.snackBar.open('Nem sikerült betölteni a profil adatokat.', 'Bezár', {
+          duration: 5000,
+          panelClass: ['gm-snack-error'],
+        });
+        return of(null);
+      })
+    )
+  );
+
+  readonly loading = computed(() => this.profile() === undefined);
+
+  roleLabel(role: string): string {
+    return ROLE_LABELS[role] ?? role;
+  }
 }

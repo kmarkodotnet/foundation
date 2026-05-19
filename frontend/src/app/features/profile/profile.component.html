@@ -1,0 +1,40 @@
+<div class="gm-page-container">
+  <h1>Profil</h1>
+
+  @if (loading()) {
+    <div class="gm-spinner-center">
+      <mat-progress-spinner mode="indeterminate" diameter="48" />
+    </div>
+  } @else if (profile(); as user) {
+    <mat-card class="gm-profile-card">
+      <mat-card-content>
+        <div class="gm-profile-header">
+          @if (user.pictureUrl) {
+            <img
+              [src]="user.pictureUrl"
+              alt="Profilkép"
+              class="gm-profile-picture"
+              referrerpolicy="no-referrer"
+            />
+          } @else {
+            <mat-icon class="gm-profile-avatar">person</mat-icon>
+          }
+          <div class="gm-profile-meta">
+            <h2 class="gm-profile-name">{{ user.fullName }}</h2>
+            <p class="gm-profile-email">{{ user.email }}</p>
+            <mat-chip-set>
+              <mat-chip color="primary" highlighted>{{ roleLabel(user.role) }}</mat-chip>
+            </mat-chip-set>
+          </div>
+        </div>
+
+        <mat-divider class="gm-divider" />
+
+        <dl class="gm-profile-dl">
+          <dt>Utolsó bejelentkezés</dt>
+          <dd>{{ user.lastLoginAt | dateHu: 'datetime' }}</dd>
+        </dl>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

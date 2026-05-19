@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +8,7 @@ import { DateHuPipe } from '../../shared/pipes/date-hu.pipe';
 
 @Component({
   selector: 'gm-notification-bell',
-  imports: [RouterLink, MatBadgeModule, MatButtonModule, MatIconModule, MatMenuModule, DateHuPipe],
+  imports: [MatBadgeModule, MatButtonModule, MatIconModule, MatMenuModule, DateHuPipe],
   template: `
     <button
       mat-icon-button

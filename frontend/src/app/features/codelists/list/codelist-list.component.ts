@@ -6,13 +6,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { CodelistService } from '../services/codelist.service';
 import { CodeList } from '../models/codelist.model';
-import { HasRoleDirective } from '../../../shared/directives/has-role.directive';
-
 @Component({
   selector: 'gm-codelist-list',
   imports: [
     MatCardModule, MatExpansionModule, MatIconModule,
-    MatProgressSpinnerModule, MatTableModule, HasRoleDirective,
+    MatProgressSpinnerModule, MatTableModule,
   ],
   template: `
     <div class="gm-page-container">

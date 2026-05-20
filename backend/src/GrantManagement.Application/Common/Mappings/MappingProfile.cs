@@ -1,6 +1,7 @@
 using AutoMapper;
 using GrantManagement.Application.Applications.DTOs;
 using GrantManagement.Application.Auth.DTOs;
+using GrantManagement.Application.Granters.DTOs;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 using GrantManagement.Domain.Entities;
 
@@ -27,6 +28,11 @@ public class MappingProfile : Profile
                     ctx.Items.TryGetValue("GranterName", out var name) ? (string?)name : string.Empty));
 
         CreateMap<WorkflowStep, WorkflowStepDto>();
+
+        CreateMap<Granter, GranterDto>()
+            .ForMember(d => d.PhoneNumber, opt => opt.MapFrom(s => s.Contact.PhoneNumber))
+            .ForMember(d => d.Email, opt => opt.MapFrom(s => s.Contact.Email))
+            .ForMember(d => d.Status, opt => opt.MapFrom(s => s.Status.ToString()));
 
         CreateMap<AppUser, UserProfileDto>()
             .ConstructUsing(src => new UserProfileDto(

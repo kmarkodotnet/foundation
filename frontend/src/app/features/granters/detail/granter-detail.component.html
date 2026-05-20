@@ -1,0 +1,123 @@
+<div class="gm-page-container">
+  <div class="gm-detail-header">
+    <button mat-icon-button (click)="goBack()" aria-label="Vissza">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    @if (granter()) {
+      <h1>{{ granter()!.name }}</h1>
+      <mat-chip [highlighted]="isActive()" [color]="isActive() ? 'primary' : undefined">
+        {{ isActive() ? 'Aktív' : 'Inaktív' }}
+      </mat-chip>
+    }
+    <span class="gm-spacer"></span>
+    @if (canEdit() && granter()) {
+      <button mat-stroked-button [routerLink]="['/granters', id(), 'edit']">
+        <mat-icon>edit</mat-icon>
+        Szerkesztés
+      </button>
+    }
+    @if (isAdmin() && isActive()) {
+      <button
+        mat-stroked-button
+        color="warn"
+        [disabled]="deactivating()"
+        (click)="openDeactivateConfirm()"
+      >
+        @if (deactivating()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          <ng-container>
+            <mat-icon>block</mat-icon>
+            Inaktiválás
+          </ng-container>
+        }
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="gm-loading-overlay">
+      <mat-spinner diameter="48" />
+    </div>
+  }
+
+  @if (granter(); as g) {
+    <mat-card class="gm-info-card">
+      <mat-card-content>
+        <div class="gm-info-grid">
+          @if (g.email) {
+            <div>
+              <small>E-mail</small>
+              <p><a [href]="'mailto:' + g.email">{{ g.email }}</a></p>
+            </div>
+          }
+          @if (g.phoneNumber) {
+            <div>
+              <small>Telefon</small>
+              <p>{{ g.phoneNumber }}</p>
+            </div>
+          }
+          <div>
+            <small>Létrehozva</small>
+            <p>{{ g.createdAt | date:'yyyy.MM.dd' }}</p>
+          </div>
+          <div>
+            <small>Módosítva</small>
+            <p>{{ g.updatedAt | date:'yyyy.MM.dd' }}</p>
+          </div>
+        </div>
+        @if (g.description) {
+          <p class="gm-description">{{ g.description }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <h2 class="gm-section-title">Kapcsolt pályázatok ({{ g.applications.length }})</h2>
+
+    <mat-card>
+      <mat-card-content>
+        @if (g.applications.length === 0) {
+          <div class="gm-empty-state">
+            <mat-icon>description</mat-icon>
+            <p>Nincs kapcsolt pályázat.</p>
+          </div>
+        } @else {
+          <table mat-table [dataSource]="g.applications" style="width:100%">
+
+            <ng-container matColumnDef="title">
+              <th mat-header-cell *matHeaderCellDef>Pályázat neve</th>
+              <td mat-cell *matCellDef="let row">
+                <a [routerLink]="['/applications', row.id]" style="text-decoration:none; color:inherit">
+                  {{ row.title }}
+                  @if (row.identifier) {
+                    <small style="color: var(--mat-sys-on-surface-variant); margin-left:4px">
+                      ({{ row.identifier }})
+                    </small>
+                  }
+                </a>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Állapot</th>
+              <td mat-cell *matCellDef="let row">{{ row.status }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="awardedAmount">
+              <th mat-header-cell *matHeaderCellDef>Nyert összeg</th>
+              <td mat-cell *matCellDef="let row">{{ row.awardedAmount | currencyHu }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="appColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: appColumns"
+              style="cursor:pointer"
+              [routerLink]="['/applications', row.id]"
+            ></tr>
+          </table>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

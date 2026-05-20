@@ -83,7 +83,7 @@ export class ApplicationCreateComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.granterService.getAll().subscribe({
+    this.granterService.getAll(true).subscribe({
       next: (list) => this.granters.set(list),
     });
   }

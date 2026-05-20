@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Granter, CreateGranterRequest, UpdateGranterRequest } from '../models/granter.model';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Granter, GranterDetail, CreateGranterRequest, UpdateGranterRequest } from '../models/granter.model';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -8,12 +8,13 @@ export class GranterService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/granters`;
 
-  getAll() {
-    return this.http.get<Granter[]>(this.base);
+  getAll(activeOnly = false) {
+    const params = activeOnly ? new HttpParams().set('activeOnly', 'true') : undefined;
+    return this.http.get<Granter[]>(this.base, { params });
   }
 
   getById(id: string) {
-    return this.http.get<Granter>(`${this.base}/${id}`);
+    return this.http.get<GranterDetail>(`${this.base}/${id}`);
   }
 
   create(request: CreateGranterRequest) {
@@ -24,7 +25,7 @@ export class GranterService {
     return this.http.put<Granter>(`${this.base}/${id}`, request);
   }
 
-  delete(id: string) {
-    return this.http.delete(`${this.base}/${id}`);
+  deactivate(id: string) {
+    return this.http.patch(`${this.base}/${id}/deactivate`, {});
   }
 }

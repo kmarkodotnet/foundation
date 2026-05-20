@@ -8,6 +8,7 @@ import { StepSubmissionComponent } from './step-submission/step-submission.compo
 import { ApprovalPanelComponent } from '../../../../shared/components/approval-panel/approval-panel.component';
 import { StepResultComponent } from './step-result/step-result.component';
 import { StepContractGranterComponent } from './step-contract-granter/step-contract-granter.component';
+import { StepBudgetPlanComponent } from './step-budget-plan/step-budget-plan.component';
 import { SkipStepButtonComponent } from '../../../../shared/components/skip-step-button/skip-step-button.component';
 
 const STEP_LABELS: Record<WorkflowStepType, string> = {
@@ -42,6 +43,7 @@ const STEP_STATUS_ICONS: Record<string, string> = {
     ApprovalPanelComponent,
     StepResultComponent,
     StepContractGranterComponent,
+    StepBudgetPlanComponent,
     SkipStepButtonComponent,
   ],
   template: `
@@ -95,6 +97,31 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                   [step]="step"
                   [isLocked]="isLocked()"
                   (stepUpdated)="onStepUpdated($event)"
+                />
+              }
+              @if (!isLocked() && step.isSkippable) {
+                <gm-skip-step-button
+                  [applicationId]="applicationId()"
+                  [stepType]="step.stepType"
+                  [stepStatus]="step.status"
+                  [skippedReason]="step.skippedReason"
+                  (stepUpdated)="onStepUpdated($event)"
+                />
+              }
+            } @else if (step.stepType === 'BudgetPlan') {
+              <gm-step-budget-plan
+                [applicationId]="applicationId()"
+                [step]="step"
+                [isLocked]="isLocked()"
+                (stepUpdated)="onStepUpdated($event)"
+              />
+              @if (step.status === 'Active') {
+                <gm-approval-panel
+                  [applicationId]="applicationId()"
+                  stepType="BudgetPlan"
+                  approveSuccessMessage="Költési terv jóváhagyva."
+                  rejectSuccessMessage="Költési terv visszautasítva."
+                  (stepApproved)="onStepUpdated($event)"
                 />
               }
               @if (!isLocked() && step.isSkippable) {

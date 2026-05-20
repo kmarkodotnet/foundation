@@ -27,6 +27,8 @@ public class ApproveStepCommandHandler
     {
         var application = await _context.Applications
             .Include(a => a.WorkflowSteps)
+            .Include(a => a.BudgetPlan)
+            .ThenInclude(bp => bp!.Items)
             .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
             ?? throw new NotFoundException("Application", request.ApplicationId);
 
@@ -38,6 +40,8 @@ public class ApproveStepCommandHandler
         {
             if (request.StepType == WorkflowStepType.Submission)
                 application.ApproveSubmission(_currentUser.UserId);
+            else if (request.StepType == WorkflowStepType.BudgetPlan)
+                application.ApproveBudgetPlan(_currentUser.UserId);
             else
                 throw new DomainException($"A(z) {request.StepType} lépés jóváhagyása nem támogatott.");
         }

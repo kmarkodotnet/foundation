@@ -1,6 +1,7 @@
 using GrantManagement.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using GrantApp = GrantManagement.Domain.Entities.Application;
+using BudgetPlanEntity = GrantManagement.Domain.Entities.BudgetPlan;
 
 namespace GrantManagement.Application.Common.Interfaces;
 
@@ -11,7 +12,7 @@ public interface IApplicationDbContext
     DbSet<Document> Documents { get; }
     DbSet<Comment> Comments { get; }
     DbSet<EmailAttachment> EmailAttachments { get; }
-    DbSet<BudgetPlan> BudgetPlans { get; }
+    DbSet<BudgetPlanEntity> BudgetPlans { get; }
     DbSet<BudgetItem> BudgetItems { get; }
     DbSet<VendorContract> VendorContracts { get; }
     DbSet<Invoice> Invoices { get; }

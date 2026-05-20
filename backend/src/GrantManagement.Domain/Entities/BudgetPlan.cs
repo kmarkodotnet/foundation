@@ -1,20 +1,21 @@
 using GrantManagement.Domain.Common;
-using GrantManagement.Domain.ValueObjects;
+using GrantManagement.Domain.Enums;
 
 namespace GrantManagement.Domain.Entities;
 
 public class BudgetPlan : BaseEntity<Guid>
 {
     public Guid ApplicationId { get; private set; }
+    public string? Notes { get; private set; }
     public DateTimeOffset? ApprovedAt { get; private set; }
     public Guid? ApprovedByUserId { get; private set; }
 
     private readonly List<BudgetItem> _items = [];
     public IReadOnlyList<BudgetItem> Items => _items.AsReadOnly();
 
-    public Money TotalPlanned => _items
+    public decimal TotalPlanned => _items
         .Where(i => !i.IsDeleted)
-        .Aggregate(Money.Zero, (acc, i) => acc.Add(i.Amount));
+        .Sum(i => i.PlannedAmount);
 
     private BudgetPlan() { }
 
@@ -25,29 +26,41 @@ public class BudgetPlan : BaseEntity<Guid>
             Id = Guid.NewGuid(),
             ApplicationId = applicationId,
             CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
     }
 
-    public BudgetItem AddItem(string name, string? category, Money amount)
+    public void UpdateNotes(string? notes)
     {
-        var order = _items.Count + 1;
-        var item = BudgetItem.Create(Id, name, category, amount, order);
+        Notes = notes;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public BudgetItem AddItem(
+        string name,
+        BudgetItemType type,
+        decimal plannedAmount,
+        string? description,
+        int sortOrder)
+    {
+        var item = BudgetItem.Create(Id, name, type, plannedAmount, description, sortOrder);
         _items.Add(item);
         UpdatedAt = DateTimeOffset.UtcNow;
         return item;
     }
 
-    public void UpdateItem(Guid itemId, string name, string? category, Money amount)
+    public void UpdateItem(Guid itemId, string name, BudgetItemType type, decimal plannedAmount, string? description, int sortOrder)
     {
-        var item = _items.First(i => i.Id == itemId);
-        item.Update(name, category, amount);
+        var item = _items.FirstOrDefault(i => i.Id == itemId && !i.IsDeleted)
+            ?? throw new InvalidOperationException($"Budget item {itemId} not found.");
+        item.Update(name, type, plannedAmount, description, sortOrder);
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void RemoveItem(Guid itemId)
     {
-        var item = _items.First(i => i.Id == itemId);
+        var item = _items.FirstOrDefault(i => i.Id == itemId && !i.IsDeleted)
+            ?? throw new InvalidOperationException($"Budget item {itemId} not found.");
         item.Delete();
         UpdatedAt = DateTimeOffset.UtcNow;
     }

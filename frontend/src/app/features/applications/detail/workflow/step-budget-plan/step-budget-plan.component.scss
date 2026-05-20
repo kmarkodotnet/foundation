@@ -1,0 +1,62 @@
+.budget-plan-container {
+  padding: 8px 0;
+}
+
+.approval-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #388e3c;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.summary-panel {
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+
+  &.over-budget {
+    background: #fff3e0;
+    border-left: 4px solid #f57c00;
+  }
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.over-budget-warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #d32f2f;
+  margin: 8px 0 0 0;
+  font-size: 14px;
+}
+
+.item-form-panel {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+.item-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.action-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}

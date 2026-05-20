@@ -104,6 +104,43 @@ export interface SkipStepRequest {
   skipReason?: string;
 }
 
+export type BudgetItemType = 'Event' | 'Asset' | 'Other';
+
+export interface BudgetItem {
+  id: string;
+  name: string;
+  type: BudgetItemType;
+  description: string | null;
+  plannedAmount: number;
+  sortOrder: number;
+}
+
+export interface BudgetPlan {
+  id: string;
+  applicationId: string;
+  notes: string | null;
+  totalPlanned: number;
+  awardedAmount: number | null;
+  difference: number | null;
+  approvedAt: string | null;
+  approvedByUserId: string | null;
+  items: BudgetItem[];
+}
+
+export interface UpsertBudgetItemRequest {
+  id?: string;
+  name: string;
+  type: BudgetItemType;
+  plannedAmount: number;
+  description?: string;
+  sortOrder: number;
+}
+
+export interface UpsertBudgetPlanRequest {
+  notes?: string;
+  items: UpsertBudgetItemRequest[];
+}
+
 export interface ApplicationListItem {
   id: string;
   title: string;

@@ -12,7 +12,6 @@ public class Granter : AggregateRoot<Guid>
     public string? Description { get; private set; }
     public ContactInfo Contact { get; private set; } = null!;
     public GranterStatus Status { get; private set; }
-    public byte[]? RowVersion { get; private set; }
 
     private Granter() { }
 

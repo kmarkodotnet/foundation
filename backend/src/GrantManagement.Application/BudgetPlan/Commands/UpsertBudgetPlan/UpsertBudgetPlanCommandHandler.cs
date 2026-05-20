@@ -39,7 +39,8 @@ public class UpsertBudgetPlanCommandHandler : IRequestHandler<UpsertBudgetPlanCo
             throw new DomainException("A Költési terv lépés nem szerkeszthető ebben az állapotban.");
 
         // Create BudgetPlan if it doesn't exist yet
-        if (application.BudgetPlan == null)
+        bool isNew = application.BudgetPlan == null;
+        if (isNew)
             application.CreateBudgetPlan();
 
         var bp = application.BudgetPlan!;
@@ -61,6 +62,7 @@ public class UpsertBudgetPlanCommandHandler : IRequestHandler<UpsertBudgetPlanCo
         }
 
         // Add or update incoming items
+        var addedItems = new List<Domain.Entities.BudgetItem>();
         foreach (var dto in request.Items)
         {
             if (dto.Id.HasValue && existingItems.Any(e => e.Id == dto.Id.Value))
@@ -69,9 +71,17 @@ public class UpsertBudgetPlanCommandHandler : IRequestHandler<UpsertBudgetPlanCo
             }
             else
             {
-                bp.AddItem(dto.Name, dto.Type, dto.PlannedAmount, dto.Description, dto.SortOrder);
+                addedItems.Add(bp.AddItem(dto.Name, dto.Type, dto.PlannedAmount, dto.Description, dto.SortOrder));
             }
         }
+
+        // EF Core tracks entities discovered via navigation with non-default Guid keys as Unchanged.
+        // Explicitly mark new entities as Added to ensure INSERTs are generated.
+        if (isNew)
+            _context.BudgetPlans.Add(bp);
+        else
+            foreach (var item in addedItems)
+                _context.BudgetItems.Add(item);
 
         await _context.SaveChangesAsync(cancellationToken);
 

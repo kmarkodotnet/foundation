@@ -47,7 +47,7 @@ public sealed class JwtService : IJwtService
             new Claim(JwtRegisteredClaimNames.Sub, user.GoogleId),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Name, user.Name),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("role", user.Role.ToString()),
             new Claim(ClaimTypeUserId, user.Id.ToString())
         ];
     }

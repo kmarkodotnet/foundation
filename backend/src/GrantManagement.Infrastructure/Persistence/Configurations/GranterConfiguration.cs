@@ -14,7 +14,7 @@ public class GranterConfiguration : IEntityTypeConfiguration<Granter>
         builder.Property(g => g.Name).HasMaxLength(300).IsRequired();
         builder.Property(g => g.Description).HasColumnType("text");
         builder.Property(g => g.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
-        builder.Property(g => g.RowVersion).IsRowVersion();
+        builder.Property<uint>("xmin").HasColumnType("xid").IsRowVersion();
 
         builder.HasIndex(g => g.Name).IsUnique();
 

@@ -15,7 +15,6 @@ public class Application : AggregateRoot<Guid>
     public Guid GranterId { get; private set; }
     public Guid CreatedByUserId { get; private set; }
     public bool IsArchived { get; private set; }
-    public byte[]? RowVersion { get; private set; }
 
     public CallStepData? CallData { get; private set; }
     public SubmissionStepData? SubmissionData { get; private set; }
@@ -267,7 +266,6 @@ public class Application : AggregateRoot<Guid>
             throw new DomainException("Már létezik költési terv ehhez a pályázathoz.");
 
         BudgetPlan = BudgetPlan.Create(Id);
-        UpdatedAt = DateTimeOffset.UtcNow;
         return BudgetPlan;
     }
 

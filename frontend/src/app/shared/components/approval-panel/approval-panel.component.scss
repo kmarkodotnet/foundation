@@ -1,0 +1,22 @@
+.gm-approval-panel {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.gm-approval-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.gm-rejection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gm-rejection-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

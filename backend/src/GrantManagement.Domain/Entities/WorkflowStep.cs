@@ -73,6 +73,12 @@ public class WorkflowStep : BaseEntity<Guid>
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void NotApply()
+    {
+        Status = WorkflowStepStatus.NotApplicable;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public void Skip(string? reason, Guid skippedByUserId)
     {
         Status = WorkflowStepStatus.Skipped;

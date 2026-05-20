@@ -1,0 +1,109 @@
+<div class="step-result-container">
+
+  @if (isEditable || correctionMode()) {
+    <form [formGroup]="form" class="result-form">
+      <mat-radio-group formControlName="isWon" class="result-radio-group">
+        <mat-radio-button [value]="true">Nyert</mat-radio-button>
+        <mat-radio-button [value]="false">Nem nyert</mat-radio-button>
+      </mat-radio-group>
+
+      @if (isWonSelected()) {
+        <div class="result-fields">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Elnyert összeg (HUF)</mat-label>
+            <input matInput type="number" formControlName="awardedAmount" min="1" />
+            @if (form.controls.awardedAmount.hasError('required')) {
+              <mat-error>Az elnyert összeg megadása kötelező.</mat-error>
+            }
+            @if (form.controls.awardedAmount.hasError('min')) {
+              <mat-error>Az összegnek pozitívnak kell lennie.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Eredmény dátuma</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="resultDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="picker" />
+            <mat-datepicker #picker />
+            @if (form.controls.resultDate.hasError('required')) {
+              <mat-error>Az eredmény dátumának megadása kötelező.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Azonosító / iktatószám</mat-label>
+        <input matInput formControlName="resultIdentifier" />
+      </mat-form-field>
+
+      <div class="result-actions">
+        <button
+          mat-raised-button
+          color="primary"
+          [disabled]="form.invalid || saving() || correcting()"
+          (click)="save()"
+          *hasRole="['Admin', 'PalyazatiMunkatars']"
+        >
+          @if (saving() || correcting()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate" />
+          } @else {
+            {{ correctionMode() ? 'Módosítás mentése' : 'Rögzítés' }}
+          }
+        </button>
+        @if (correctionMode()) {
+          <button mat-stroked-button (click)="cancelCorrection()">Mégsem</button>
+        }
+      </div>
+    </form>
+  } @else {
+    <div class="result-summary">
+      @if (application().status === 'Won' || application().status === 'ClosedWon') {
+        <div class="result-badge result-badge--won">
+          <mat-icon>emoji_events</mat-icon>
+          <span>Nyert</span>
+        </div>
+        @if (application().awardedAmount != null) {
+          <p><strong>Elnyert összeg:</strong> {{ application().awardedAmount | currencyHu }}</p>
+        }
+        @if (application().resultDate) {
+          <p><strong>Eredmény dátuma:</strong> {{ application().resultDate | dateHu }}</p>
+        }
+      }
+      @if (application().status === 'Lost' || application().status === 'ClosedLost') {
+        <div class="result-badge result-badge--lost">
+          <mat-icon>cancel</mat-icon>
+          <span>Nem nyert</span>
+        </div>
+        @if (application().resultDate) {
+          <p><strong>Eredmény dátuma:</strong> {{ application().resultDate | dateHu }}</p>
+        }
+      }
+      @if (application().resultIdentifier) {
+        <p><strong>Azonosító:</strong> {{ application().resultIdentifier }}</p>
+      }
+
+      <div class="result-actions">
+        @if (canCorrect) {
+          <button mat-stroked-button (click)="openCorrectionMode()">
+            <mat-icon>edit</mat-icon>
+            Eredmény korrekciója
+          </button>
+        }
+        @if (canCloseLost) {
+          <button mat-raised-button color="warn" [disabled]="closing()" (click)="openCloseLostConfirm()">
+            @if (closing()) {
+              <mat-progress-spinner diameter="18" mode="indeterminate" />
+            } @else {
+              <ng-container>
+                <mat-icon>lock</mat-icon>
+                Pályázat lezárása
+              </ng-container>
+            }
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+</div>

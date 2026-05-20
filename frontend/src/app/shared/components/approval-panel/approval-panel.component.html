@@ -1,0 +1,56 @@
+<div class="gm-approval-panel" *hasRole="['Admin', 'Elnok']">
+  @if (!showRejectionForm()) {
+    <div class="gm-approval-actions">
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="approving()"
+        (click)="approve()"
+      >
+        @if (approving()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          <ng-container>
+            <mat-icon>check_circle</mat-icon>
+            Jóváhagyás
+          </ng-container>
+        }
+      </button>
+
+      <button mat-stroked-button color="warn" (click)="openRejectionForm()">
+        <mat-icon>cancel</mat-icon>
+        Visszautasítás
+      </button>
+    </div>
+  } @else {
+    <div class="gm-rejection-form">
+      <mat-form-field appearance="outline" style="width: 100%">
+        <mat-label>Visszautasítás oka *</mat-label>
+        <textarea matInput [formControl]="rejectionNoteControl" rows="3"></textarea>
+        @if (rejectionNoteControl.hasError('required')) {
+          <mat-error>Visszautasítás esetén meg kell adni az okát.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="gm-rejection-actions">
+        <button
+          mat-flat-button
+          color="warn"
+          [disabled]="rejectionNoteControl.invalid || rejecting()"
+          (click)="submitRejection()"
+        >
+          @if (rejecting()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate" />
+          } @else {
+            <ng-container>
+              <mat-icon>cancel</mat-icon>
+              Visszautasítás megerősítése
+            </ng-container>
+          }
+        </button>
+
+        <button mat-button type="button" (click)="cancelRejection()">Mégsem</button>
+      </div>
+    </div>
+  }
+</div>

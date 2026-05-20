@@ -1,0 +1,85 @@
+<div style="padding: 8px 0">
+  @if (step().status === 'Completed') {
+    <div class="gm-submission-info">
+      <mat-icon color="primary">check_circle</mat-icon>
+      <span>A beadás jóváhagyva.</span>
+    </div>
+  }
+
+  @if (step().rejectionNote) {
+    <div class="gm-rejection-note">
+      <mat-icon color="warn">warning</mat-icon>
+      <span>Visszautasítva: {{ step().rejectionNote }}</span>
+    </div>
+  }
+
+  @if (isEditable) {
+    <form [formGroup]="form" (ngSubmit)="save()" class="gm-step-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Beadás időpontja *</mat-label>
+        <input matInput [matDatepicker]="picker" formControlName="submittedAt" />
+        <mat-datepicker-toggle matIconSuffix [for]="picker" />
+        <mat-datepicker #picker />
+        @if (form.controls.submittedAt.hasError('required')) {
+          <mat-error>A beadás időpontja kötelező.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Beadás módja</mat-label>
+        <mat-select formControlName="submissionMethodId">
+          <mat-option [value]="null">–</mat-option>
+          @for (method of submissionMethods(); track method.id) {
+            <mat-option [value]="method.id">{{ method.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Azonosító</mat-label>
+        <input matInput formControlName="externalIdentifier" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Megjegyzés</mat-label>
+        <textarea matInput formControlName="notes" rows="3"></textarea>
+      </mat-form-field>
+
+      <div class="gm-step-actions" *hasRole="['Admin', 'PalyazatiMunkatars']">
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="form.invalid || saving()"
+        >
+          @if (saving()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate" />
+          } @else {
+            <ng-container>
+              <mat-icon>save</mat-icon>
+              Mentés
+            </ng-container>
+          }
+        </button>
+
+        @if (savedDetail() != null) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="requestingApproval()"
+            (click)="requestApproval()"
+          >
+            @if (requestingApproval()) {
+              <mat-progress-spinner diameter="18" mode="indeterminate" />
+            } @else {
+              <ng-container>
+                <mat-icon>send</mat-icon>
+                Jóváhagyásra küldés
+              </ng-container>
+            }
+          </button>
+        }
+      </div>
+    </form>
+  }
+</div>

@@ -12,7 +12,7 @@ export type WorkflowStepType =
   | 'Call'
   | 'Submission'
   | 'Result'
-  | 'ContractGranter'
+  | 'Contract'
   | 'BudgetPlan'
   | 'VendorContracts'
   | 'Invoices'
@@ -38,6 +38,51 @@ export interface WorkflowStep {
   completedByUserName: string | null;
   approvedAt: string | null;
   approvedByUserName: string | null;
+  rejectionNote: string | null;
+}
+
+export interface WorkflowStepDetail {
+  id: string;
+  stepType: string;
+  status: WorkflowStepStatus;
+  order: number;
+  isSkippable: boolean;
+  completedAt: string | null;
+  completedByUserId: string | null;
+  approvedAt: string | null;
+  approvedByUserId: string | null;
+  rejectionNote: string | null;
+  submittedAt: string | null;
+  submissionMethodId: string | null;
+  submissionMethodName: string | null;
+  externalIdentifier: string | null;
+  notes: string | null;
+}
+
+export interface UpdateSubmissionRequest {
+  submittedAt: string;
+  submissionMethodId?: string;
+  externalIdentifier?: string;
+  notes?: string;
+}
+
+export interface ApproveStepRequest {
+  isApproved: boolean;
+  rejectionNote?: string;
+}
+
+export interface RecordResultRequest {
+  isWon: boolean;
+  awardedAmount?: number;
+  resultDate?: string;
+  resultIdentifier?: string;
+}
+
+export interface CorrectResultRequest {
+  isWon: boolean;
+  awardedAmount?: number;
+  resultDate?: string;
+  resultIdentifier?: string;
 }
 
 export interface ApplicationListItem {

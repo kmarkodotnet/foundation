@@ -6,5 +6,6 @@ public enum WorkflowStepStatus
     Active,
     Completed,
     Skipped,
+    NotApplicable,
     Locked
 }

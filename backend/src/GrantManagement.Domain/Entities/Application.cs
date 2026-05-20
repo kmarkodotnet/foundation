@@ -35,6 +35,12 @@ public class Application : AggregateRoot<Guid>
     public BudgetPlan? BudgetPlan { get; private set; }
     public Settlement? Settlement { get; private set; }
 
+    private static readonly WorkflowStepType[] LaterStepTypes =
+    [
+        WorkflowStepType.Contract, WorkflowStepType.BudgetPlan, WorkflowStepType.VendorContracts,
+        WorkflowStepType.Invoices, WorkflowStepType.Proof, WorkflowStepType.Settlement,
+    ];
+
     public bool IsLocked => Status is ApplicationStatus.ClosedWon
         or ApplicationStatus.ClosedLost
         or ApplicationStatus.Archived;
@@ -78,6 +84,7 @@ public class Application : AggregateRoot<Guid>
         };
 
         app.InitializeWorkflowSteps();
+        app.CompleteCallStep(createdByUserId);
 
         app.RaiseDomainEvent(new ApplicationCreated(
             app.Id,
@@ -87,6 +94,15 @@ public class Application : AggregateRoot<Guid>
             createdByUserId));
 
         return app;
+    }
+
+    private void CompleteCallStep(Guid byUserId)
+    {
+        var callStep = _workflowSteps.First(s => s.StepType == WorkflowStepType.Call);
+        callStep.Complete(byUserId);
+
+        var submissionStep = _workflowSteps.First(s => s.StepType == WorkflowStepType.Submission);
+        submissionStep.Activate();
     }
 
     private void InitializeWorkflowSteps()
@@ -143,27 +159,64 @@ public class Application : AggregateRoot<Guid>
         EnsureNotLocked();
         var step = GetStep(WorkflowStepType.Submission);
         step.Approve(approverUserId);
+        step.Complete(approverUserId);
         Status = ApplicationStatus.Submitted;
+        GetStep(WorkflowStepType.Result).Activate();
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void RecordResult(ApplicationResult result, Guid byUserId)
     {
         EnsureNotLocked();
+
+        var resultStep = GetStep(WorkflowStepType.Result);
+        if (resultStep.Status != WorkflowStepStatus.Active)
+            throw new DomainException("Az eredmény lépés nem rögzíthető ebben az állapotban.");
+
         Result = result;
+        resultStep.Complete(byUserId);
 
         if (result.Outcome == ValueObjects.ApplicationOutcome.Won)
         {
             Status = ApplicationStatus.Won;
-            RaiseDomainEvent(new ApplicationWon(
-                Id,
-                result.AwardedAmount!,
-                result.ResultDate,
-                byUserId));
+            foreach (var type in LaterStepTypes)
+                GetStep(type).Activate();
+            RaiseDomainEvent(new ApplicationWon(Id, result.AwardedAmount!, result.ResultDate, byUserId));
         }
         else
         {
             Status = ApplicationStatus.Lost;
+            foreach (var type in LaterStepTypes)
+                GetStep(type).NotApply();
+            RaiseDomainEvent(new ApplicationLost(Id, result.ResultDate, byUserId));
+        }
+
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void CorrectResult(ApplicationResult result, Guid byUserId)
+    {
+        if (Status is ApplicationStatus.ClosedWon or ApplicationStatus.ClosedLost or ApplicationStatus.Archived)
+            throw new DomainException("Lezárt vagy archivált pályázat eredménye nem módosítható.");
+
+        Result = result;
+
+        var resultStep = GetStep(WorkflowStepType.Result);
+        resultStep.Reactivate();
+        resultStep.Complete(byUserId);
+
+        if (result.Outcome == ValueObjects.ApplicationOutcome.Won)
+        {
+            Status = ApplicationStatus.Won;
+            foreach (var type in LaterStepTypes)
+                GetStep(type).Activate();
+            RaiseDomainEvent(new ApplicationWon(Id, result.AwardedAmount!, result.ResultDate, byUserId));
+        }
+        else
+        {
+            Status = ApplicationStatus.Lost;
+            foreach (var type in LaterStepTypes)
+                GetStep(type).NotApply();
             RaiseDomainEvent(new ApplicationLost(Id, result.ResultDate, byUserId));
         }
 

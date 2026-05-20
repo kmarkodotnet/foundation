@@ -46,6 +46,7 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<GrantApp>
             sub.Property(s => s.SubmittedAt).HasColumnName("SubmittedAt");
             sub.Property(s => s.SubmittedByUserId).HasColumnName("SubmittedByUserId");
             sub.Property(s => s.SubmissionMethodId).HasColumnName("SubmissionMethodId");
+            sub.Property(s => s.ExternalIdentifier).HasColumnName("SubmissionExternalIdentifier").HasMaxLength(200);
             sub.Property(s => s.Description).HasColumnName("SubmissionDescription").HasColumnType("text");
         });
 

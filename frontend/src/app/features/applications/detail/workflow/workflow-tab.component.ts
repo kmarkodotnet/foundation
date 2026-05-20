@@ -2,14 +2,17 @@ import { Component, input, output } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { WorkflowStep, WorkflowStepType } from '../../models/application.model';
+import { ApplicationDetail, WorkflowStep, WorkflowStepDetail, WorkflowStepType } from '../../models/application.model';
 import { DateHuPipe } from '../../../../shared/pipes/date-hu.pipe';
+import { StepSubmissionComponent } from './step-submission/step-submission.component';
+import { ApprovalPanelComponent } from '../../../../shared/components/approval-panel/approval-panel.component';
+import { StepResultComponent } from './step-result/step-result.component';
 
 const STEP_LABELS: Record<WorkflowStepType, string> = {
   Call: '[1] Pályázati felhívás',
   Submission: '[2] Beadás',
   Result: '[3] Eredmény',
-  ContractGranter: '[4] Szerz./Pályáztató',
+  Contract: '[4] Szerz./Pályáztató',
   BudgetPlan: '[5] Költési terv',
   VendorContracts: '[6] Alvállalkozói szerz.',
   Invoices: '[7] Számlák',
@@ -28,7 +31,15 @@ const STEP_STATUS_ICONS: Record<string, string> = {
 
 @Component({
   selector: 'gm-workflow-tab',
-  imports: [MatExpansionModule, MatIconModule, MatChipsModule, DateHuPipe],
+  imports: [
+    MatExpansionModule,
+    MatIconModule,
+    MatChipsModule,
+    DateHuPipe,
+    StepSubmissionComponent,
+    ApprovalPanelComponent,
+    StepResultComponent,
+  ],
   template: `
     <div style="padding:16px">
       <mat-accordion multi>
@@ -45,9 +56,38 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                 {{ step.status === 'Completed' ? 'Lezárva: ' + (step.completedAt | dateHu) : '' }}
               </mat-panel-description>
             </mat-expansion-panel-header>
-            <p style="color:rgba(0,0,0,0.54)">
-              A lépés tartalma itt jelenik majd meg.
-            </p>
+
+            @if (step.stepType === 'Submission') {
+              <gm-step-submission
+                [applicationId]="applicationId()"
+                [step]="step"
+                [isLocked]="isLocked()"
+                (stepUpdated)="onStepUpdated($event)"
+              />
+              @if (step.status === 'Active') {
+                <gm-approval-panel
+                  [applicationId]="applicationId()"
+                  stepType="submission"
+                  approveSuccessMessage="Beadás jóváhagyva."
+                  rejectSuccessMessage="Beadás visszautasítva."
+                  (stepApproved)="onStepUpdated($event)"
+                />
+              }
+            } @else if (step.stepType === 'Result') {
+              @if (application()) {
+                <gm-step-result
+                  [applicationId]="applicationId()"
+                  [application]="application()!"
+                  [step]="step"
+                  [isLocked]="isLocked()"
+                  (applicationUpdated)="onApplicationUpdated($event)"
+                />
+              }
+            } @else {
+              <p style="color:rgba(0,0,0,0.54)">
+                A lépés tartalma itt jelenik majd meg.
+              </p>
+            }
           </mat-expansion-panel>
         }
       </mat-accordion>
@@ -56,8 +96,11 @@ const STEP_STATUS_ICONS: Record<string, string> = {
 })
 export class WorkflowTabComponent {
   readonly applicationId = input.required<string>();
+  readonly application = input<ApplicationDetail | null>(null);
   readonly steps = input<WorkflowStep[]>([]);
+  readonly isLocked = input(false);
   readonly stepChanged = output<void>();
+  readonly applicationUpdated = output<ApplicationDetail>();
 
   stepLabel(type: WorkflowStepType): string {
     return STEP_LABELS[type] ?? type;
@@ -77,5 +120,13 @@ export class WorkflowTabComponent {
       Locked: '#9e9e9e',
     };
     return colors[status] ?? '#bdbdbd';
+  }
+
+  onStepUpdated(_detail: WorkflowStepDetail): void {
+    this.stepChanged.emit();
+  }
+
+  onApplicationUpdated(app: ApplicationDetail): void {
+    this.applicationUpdated.emit(app);
   }
 }

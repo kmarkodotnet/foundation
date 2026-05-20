@@ -95,8 +95,10 @@
         @if (saving()) {
           <mat-progress-spinner diameter="20" mode="indeterminate" />
         } @else {
-          <mat-icon>save</mat-icon>
-          Mentés
+          <ng-container>
+            <mat-icon>save</mat-icon>
+            Mentés
+          </ng-container>
         }
       </button>
     </mat-card-actions>

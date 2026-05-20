@@ -1,11 +1,40 @@
 <div class="gm-page-container">
-  <div style="display:flex; align-items:center; margin-bottom:16px; gap:12px">
-    <button mat-icon-button (click)="goBack()">
+  <div class="gm-detail-header">
+    <button mat-icon-button (click)="goBack()" aria-label="Vissza">
       <mat-icon>arrow_back</mat-icon>
     </button>
     @if (application()) {
-      <h1 style="margin:0">{{ application()!.title }}</h1>
+      <h1>{{ application()!.title }}</h1>
       <gm-status-badge [status]="application()!.status" />
+    }
+    <span class="gm-spacer"></span>
+    @if (application() && !isLocked() && canEdit()) {
+      <button
+        mat-stroked-button
+        [routerLink]="['/applications', id(), 'edit']"
+        aria-label="Szerkesztés"
+      >
+        <mat-icon>edit</mat-icon>
+        Szerkesztés
+      </button>
+    }
+    @if (canArchive()) {
+      <button
+        mat-stroked-button
+        color="warn"
+        [disabled]="archiving()"
+        (click)="openArchiveConfirm()"
+        aria-label="Archiválás"
+      >
+        @if (archiving()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          <ng-container>
+            <mat-icon>archive</mat-icon>
+            Archiválás
+          </ng-container>
+        }
+      </button>
     }
   </div>
 
@@ -18,7 +47,7 @@
   @if (application(); as app) {
     <mat-card class="gm-card-gap">
       <mat-card-content>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px">
+        <div class="gm-info-grid">
           <div>
             <small>Pályáztató</small>
             <p><strong>{{ app.granterName }}</strong></p>
@@ -27,14 +56,32 @@
             <small>Beadási határidő</small>
             <p><strong>{{ app.submissionDeadline | dateHu }}</strong></p>
           </div>
-          <div>
-            <small>Elköltési határidő</small>
-            <p><strong>{{ app.spendingDeadline | dateHu }}</strong></p>
-          </div>
-          <div>
-            <small>Nyert összeg</small>
-            <p><strong>{{ app.awardedAmount | currencyHu }}</strong></p>
-          </div>
+          @if (app.spendingDeadline) {
+            <div>
+              <small>Elköltési határidő</small>
+              <p><strong>{{ app.spendingDeadline | dateHu }}</strong></p>
+            </div>
+          }
+          @if (app.minAmount != null || app.maxAmount != null) {
+            <div>
+              <small>Összeghatár</small>
+              <p><strong>
+                {{ app.minAmount | currencyHu }} – {{ app.maxAmount | currencyHu }}
+              </strong></p>
+            </div>
+          }
+          @if (app.awardedAmount != null) {
+            <div>
+              <small>Nyert összeg</small>
+              <p><strong>{{ app.awardedAmount | currencyHu }}</strong></p>
+            </div>
+          }
+          @if (app.identifier) {
+            <div>
+              <small>Azonosító</small>
+              <p><strong>{{ app.identifier }}</strong></p>
+            </div>
+          }
           <div>
             <small>Rögzítette</small>
             <p><strong>{{ app.createdByUserName }}</strong></p>
@@ -43,9 +90,13 @@
             <small>Létrehozva</small>
             <p><strong>{{ app.createdAt | dateHu }}</strong></p>
           </div>
+          <div>
+            <small>Módosítva</small>
+            <p><strong>{{ app.updatedAt | dateHu }}</strong></p>
+          </div>
         </div>
         @if (app.description) {
-          <p>{{ app.description }}</p>
+          <p class="gm-description">{{ app.description }}</p>
         }
       </mat-card-content>
     </mat-card>

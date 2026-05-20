@@ -19,6 +19,15 @@ export const applicationRoutes: Routes = [
     data: { roles: ['Admin', 'PalyazatiMunkatars'] },
   },
   {
+    path: ':id/edit',
+    loadComponent: () =>
+      import('./edit/application-edit.component').then(
+        (m) => m.ApplicationEditComponent
+      ),
+    canActivate: [roleGuard],
+    data: { roles: ['Admin', 'Elnok', 'PalyazatiMunkatars'] },
+  },
+  {
     path: ':id',
     loadComponent: () =>
       import('./detail/application-detail.component').then(

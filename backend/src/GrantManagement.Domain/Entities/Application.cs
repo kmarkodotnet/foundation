@@ -110,6 +110,17 @@ public class Application : AggregateRoot<Guid>
         }
     }
 
+    public void UpdateBasicInfo(string title, string? identifier, string? description)
+    {
+        EnsureNotLocked();
+        if (string.IsNullOrWhiteSpace(title))
+            throw new DomainException("A pályázat neve kötelező.");
+        Title = title.Trim();
+        Identifier = identifier?.Trim();
+        Description = description?.Trim();
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public void UpdateCallData(CallStepData data)
     {
         EnsureNotLocked();

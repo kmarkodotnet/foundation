@@ -102,7 +102,6 @@ export interface CreateApplicationRequest {
 
 export interface UpdateApplicationRequest {
   title: string;
-  granterId: string;
   submissionDeadline: string;
   description?: string;
   identifier?: string;

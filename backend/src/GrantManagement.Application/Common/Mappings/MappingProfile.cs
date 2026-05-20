@@ -25,7 +25,15 @@ public class MappingProfile : Profile
         CreateMap<GrantApp, ApplicationDetailDto>()
             .ForMember(d => d.GranterName, opt => opt.MapFrom(
                 (src, dest, member, ctx) =>
-                    ctx.Items.TryGetValue("GranterName", out var name) ? (string?)name : string.Empty));
+                    ctx.Items.TryGetValue("GranterName", out var name) ? (string?)name : string.Empty))
+            .ForMember(d => d.GranterContractIdentifier, opt => opt.MapFrom(
+                s => s.GranterContractData != null ? s.GranterContractData.ContractIdentifier : null))
+            .ForMember(d => d.GranterContractDate, opt => opt.MapFrom(
+                s => s.GranterContractData != null ? s.GranterContractData.ContractDate : null))
+            .ForMember(d => d.GranterNotificationReceived, opt => opt.MapFrom(
+                s => s.GranterContractData != null ? (bool?)s.GranterContractData.NotificationReceived : null))
+            .ForMember(d => d.GranterNotificationDate, opt => opt.MapFrom(
+                s => s.GranterContractData != null ? s.GranterContractData.NotificationDate : null));
 
         CreateMap<WorkflowStep, WorkflowStepDto>();
 

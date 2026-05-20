@@ -1,0 +1,77 @@
+<div class="step-contract-container">
+
+  @if (isEditable) {
+    <form [formGroup]="form" class="contract-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Szerződés azonosítója</mat-label>
+        <input matInput formControlName="contractIdentifier" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Szerződés dátuma</mat-label>
+        <input matInput [matDatepicker]="contractPicker" formControlName="contractDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="contractPicker" />
+        <mat-datepicker #contractPicker />
+      </mat-form-field>
+
+      <div class="checkbox-row">
+        <mat-checkbox formControlName="notificationReceived">
+          Értesítő érkezett
+        </mat-checkbox>
+      </div>
+
+      @if (form.controls.notificationReceived.value) {
+        <mat-form-field appearance="outline">
+          <mat-label>Értesítő dátuma</mat-label>
+          <input matInput [matDatepicker]="notifPicker" formControlName="notificationDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="notifPicker" />
+          <mat-datepicker #notifPicker />
+          @if (form.controls.notificationDate.hasError('required')) {
+            <mat-error>Értesítő dátuma kötelező, ha értesítő érkezett.</mat-error>
+          }
+        </mat-form-field>
+      }
+
+      <div class="checkbox-row">
+        <mat-checkbox formControlName="complete">
+          Lépés lezárása (Completed)
+        </mat-checkbox>
+      </div>
+
+      <div class="contract-actions">
+        <button
+          mat-raised-button
+          color="primary"
+          [disabled]="form.invalid || saving()"
+          (click)="save()"
+          *hasRole="['Admin', 'PalyazatiMunkatars']"
+        >
+          @if (saving()) {
+            <mat-progress-spinner diameter="18" mode="indeterminate" />
+          } @else {
+            Mentés
+          }
+        </button>
+      </div>
+    </form>
+  } @else {
+    <div class="contract-summary">
+      @if (application().granterContractIdentifier) {
+        <p><strong>Szerződés azonosítója:</strong> {{ application().granterContractIdentifier }}</p>
+      }
+      @if (application().granterContractDate) {
+        <p><strong>Szerződés dátuma:</strong> {{ application().granterContractDate }}</p>
+      }
+      @if (application().granterNotificationReceived != null) {
+        <p><strong>Értesítő érkezett:</strong> {{ application().granterNotificationReceived ? 'Igen' : 'Nem' }}</p>
+      }
+      @if (application().granterNotificationDate) {
+        <p><strong>Értesítő dátuma:</strong> {{ application().granterNotificationDate }}</p>
+      }
+      @if (!application().granterContractIdentifier && !application().granterContractDate && application().granterNotificationReceived == null) {
+        <p style="color:rgba(0,0,0,0.54)">Még nem rögzítettek adatot ehhez a lépéshez.</p>
+      }
+    </div>
+  }
+
+</div>

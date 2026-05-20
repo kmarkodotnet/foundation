@@ -52,11 +52,18 @@ export interface WorkflowStepDetail {
   approvedAt: string | null;
   approvedByUserId: string | null;
   rejectionNote: string | null;
+  skippedReason: string | null;
+  // Submission step fields
   submittedAt: string | null;
   submissionMethodId: string | null;
   submissionMethodName: string | null;
   externalIdentifier: string | null;
   notes: string | null;
+  // ContractGranter step fields
+  contractIdentifier: string | null;
+  contractDate: string | null;
+  notificationReceived: boolean | null;
+  notificationDate: string | null;
 }
 
 export interface UpdateSubmissionRequest {
@@ -83,6 +90,18 @@ export interface CorrectResultRequest {
   awardedAmount?: number;
   resultDate?: string;
   resultIdentifier?: string;
+}
+
+export interface UpdateContractStepRequest {
+  contractIdentifier?: string;
+  contractDate?: string;
+  notificationReceived: boolean;
+  notificationDate?: string;
+  complete: boolean;
+}
+
+export interface SkipStepRequest {
+  skipReason?: string;
 }
 
 export interface ApplicationListItem {
@@ -119,6 +138,11 @@ export interface ApplicationDetail {
   createdAt: string;
   updatedAt: string;
   workflowSteps: WorkflowStep[];
+  // GranterContractData
+  granterContractIdentifier: string | null;
+  granterContractDate: string | null;
+  granterNotificationReceived: boolean | null;
+  granterNotificationDate: string | null;
 }
 
 export interface ApplicationFilter {

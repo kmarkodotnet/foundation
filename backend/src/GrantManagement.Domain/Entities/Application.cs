@@ -248,6 +248,16 @@ public class Application : AggregateRoot<Guid>
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void CompleteStep(WorkflowStepType stepType, Guid byUserId)
+    {
+        EnsureNotLocked();
+        var step = GetStep(stepType);
+        if (step.Status != WorkflowStepStatus.Active)
+            throw new DomainException($"A(z) {stepType} lépés nem zárható le ebben az állapotban.");
+        step.Complete(byUserId);
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public BudgetPlan CreateBudgetPlan()
     {
         EnsureNotLocked();

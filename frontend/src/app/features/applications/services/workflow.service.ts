@@ -6,6 +6,8 @@ import {
   ApproveStepRequest,
   CorrectResultRequest,
   RecordResultRequest,
+  SkipStepRequest,
+  UpdateContractStepRequest,
   UpdateSubmissionRequest,
   WorkflowStepDetail,
 } from '../models/application.model';
@@ -38,5 +40,17 @@ export class WorkflowService {
 
   correctResult(appId: string, data: CorrectResultRequest): Observable<ApplicationDetail> {
     return this.http.put<ApplicationDetail>(`${this.base}/${appId}/workflow/result/correct`, data);
+  }
+
+  updateContractStep(appId: string, data: UpdateContractStepRequest): Observable<WorkflowStepDetail> {
+    return this.http.put<WorkflowStepDetail>(`${this.base}/${appId}/workflow/contract-granter`, data);
+  }
+
+  skipStep(appId: string, stepType: string, data: SkipStepRequest): Observable<WorkflowStepDetail> {
+    return this.http.post<WorkflowStepDetail>(`${this.base}/${appId}/workflow/${stepType}/skip`, data);
+  }
+
+  restoreStep(appId: string, stepType: string): Observable<WorkflowStepDetail> {
+    return this.http.post<WorkflowStepDetail>(`${this.base}/${appId}/workflow/${stepType}/restore`, {});
   }
 }

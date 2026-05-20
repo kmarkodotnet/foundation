@@ -7,6 +7,8 @@ import { DateHuPipe } from '../../../../shared/pipes/date-hu.pipe';
 import { StepSubmissionComponent } from './step-submission/step-submission.component';
 import { ApprovalPanelComponent } from '../../../../shared/components/approval-panel/approval-panel.component';
 import { StepResultComponent } from './step-result/step-result.component';
+import { StepContractGranterComponent } from './step-contract-granter/step-contract-granter.component';
+import { SkipStepButtonComponent } from '../../../../shared/components/skip-step-button/skip-step-button.component';
 
 const STEP_LABELS: Record<WorkflowStepType, string> = {
   Call: '[1] Pályázati felhívás',
@@ -39,6 +41,8 @@ const STEP_STATUS_ICONS: Record<string, string> = {
     StepSubmissionComponent,
     ApprovalPanelComponent,
     StepResultComponent,
+    StepContractGranterComponent,
+    SkipStepButtonComponent,
   ],
   template: `
     <div style="padding:16px">
@@ -83,10 +87,38 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                   (applicationUpdated)="onApplicationUpdated($event)"
                 />
               }
+            } @else if (step.stepType === 'Contract') {
+              @if (application()) {
+                <gm-step-contract-granter
+                  [applicationId]="applicationId()"
+                  [application]="application()!"
+                  [step]="step"
+                  [isLocked]="isLocked()"
+                  (stepUpdated)="onStepUpdated($event)"
+                />
+              }
+              @if (!isLocked() && step.isSkippable) {
+                <gm-skip-step-button
+                  [applicationId]="applicationId()"
+                  [stepType]="step.stepType"
+                  [stepStatus]="step.status"
+                  [skippedReason]="step.skippedReason"
+                  (stepUpdated)="onStepUpdated($event)"
+                />
+              }
             } @else {
               <p style="color:rgba(0,0,0,0.54)">
                 A lépés tartalma itt jelenik majd meg.
               </p>
+              @if (!isLocked() && step.isSkippable) {
+                <gm-skip-step-button
+                  [applicationId]="applicationId()"
+                  [stepType]="step.stepType"
+                  [stepStatus]="step.status"
+                  [skippedReason]="step.skippedReason"
+                  (stepUpdated)="onStepUpdated($event)"
+                />
+              }
             }
           </mat-expansion-panel>
         }

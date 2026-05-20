@@ -72,8 +72,10 @@ export class StepResultComponent implements OnInit {
   readonly correctionMode = signal(false);
 
   readonly isAdmin = computed(() => this.auth.currentUser()?.role === 'Admin');
-  readonly isWonSelected = computed(() => this.form.controls.isWon.value === true);
-  readonly isLostSelected = computed(() => this.form.controls.isWon.value === false);
+
+  private readonly _isWonValue = signal<boolean | null>(null);
+  readonly isWonSelected = computed(() => this._isWonValue() === true);
+  readonly isLostSelected = computed(() => this._isWonValue() === false);
 
   readonly form = new FormGroup({
     isWon: new FormControl<boolean | null>(null, [Validators.required]),
@@ -105,6 +107,7 @@ export class StepResultComponent implements OnInit {
 
   ngOnInit(): void {
     this.form.controls.isWon.valueChanges.subscribe((v) => {
+      this._isWonValue.set(v);
       this.updateConditionalValidators(v);
     });
 

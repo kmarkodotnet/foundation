@@ -5,6 +5,9 @@ using GrantManagement.Application.Workflow.Commands.CloseApplication;
 using GrantManagement.Application.Workflow.Commands.CorrectResult;
 using GrantManagement.Application.Workflow.Commands.RecordResult;
 using GrantManagement.Application.Workflow.Commands.RequestApproval;
+using GrantManagement.Application.Workflow.Commands.RestoreStep;
+using GrantManagement.Application.Workflow.Commands.SkipStep;
+using GrantManagement.Application.Workflow.Commands.UpdateContractStep;
 using GrantManagement.Application.Workflow.Commands.UpdateSubmissionStep;
 using GrantManagement.Application.Workflow.DTOs;
 using GrantManagement.Domain.Enums;
@@ -134,6 +137,77 @@ public class WorkflowController : ApiControllerBase
         CancellationToken ct = default)
     {
         return Ok(await Sender.Send(command with { ApplicationId = applicationId }, ct));
+    }
+
+    /// <summary>
+    /// Records contract and notification data for the ContractGranter step.
+    /// Requires Admin or PalyazatiMunkatars role.
+    /// </summary>
+    /// <response code="200">Step data saved.</response>
+    /// <response code="400">Step not Active or domain validation error.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <response code="403">Insufficient role.</response>
+    /// <response code="404">Application not found.</response>
+    /// <response code="422">Validation error.</response>
+    [HttpPut("contract-granter")]
+    [ProducesResponseType(typeof(WorkflowStepDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<WorkflowStepDetailDto>> UpdateContractStep(
+        Guid applicationId,
+        [FromBody] UpdateContractStepCommand command,
+        CancellationToken ct = default)
+    {
+        return Ok(await Sender.Send(command with { ApplicationId = applicationId }, ct));
+    }
+
+    /// <summary>
+    /// Skips a skippable workflow step with an optional reason.
+    /// Requires Admin or PalyazatiMunkatars role.
+    /// </summary>
+    /// <response code="200">Step skipped.</response>
+    /// <response code="400">Step is not skippable or domain error.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <response code="403">Insufficient role.</response>
+    /// <response code="404">Application not found.</response>
+    [HttpPost("{stepType}/skip")]
+    [ProducesResponseType(typeof(WorkflowStepDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<WorkflowStepDetailDto>> SkipStep(
+        Guid applicationId,
+        WorkflowStepType stepType,
+        [FromBody] SkipStepCommand command,
+        CancellationToken ct = default)
+    {
+        return Ok(await Sender.Send(command with { ApplicationId = applicationId, StepType = stepType }, ct));
+    }
+
+    /// <summary>
+    /// Restores a skipped step back to Active. Requires Admin or Elnok role.
+    /// </summary>
+    /// <response code="200">Step restored.</response>
+    /// <response code="400">Domain error.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <response code="403">Insufficient role.</response>
+    /// <response code="404">Application not found.</response>
+    [HttpPost("{stepType}/restore")]
+    [ProducesResponseType(typeof(WorkflowStepDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<WorkflowStepDetailDto>> RestoreStep(
+        Guid applicationId,
+        WorkflowStepType stepType,
+        CancellationToken ct = default)
+    {
+        return Ok(await Sender.Send(new RestoreStepCommand(applicationId, stepType), ct));
     }
 
     [HttpPost("{stepType}/approve")]

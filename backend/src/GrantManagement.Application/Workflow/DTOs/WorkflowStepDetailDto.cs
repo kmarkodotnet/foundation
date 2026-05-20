@@ -12,10 +12,18 @@ public class WorkflowStepDetailDto
     public DateTimeOffset? ApprovedAt { get; init; }
     public Guid? ApprovedByUserId { get; init; }
     public string? RejectionNote { get; init; }
+    public string? SkippedReason { get; init; }
 
+    // Submission step fields
     public DateTimeOffset? SubmittedAt { get; init; }
     public Guid? SubmissionMethodId { get; init; }
     public string? SubmissionMethodName { get; init; }
     public string? ExternalIdentifier { get; init; }
     public string? Notes { get; init; }
+
+    // ContractGranter step fields
+    public string? ContractIdentifier { get; init; }
+    public DateOnly? ContractDate { get; init; }
+    public bool? NotificationReceived { get; init; }
+    public DateOnly? NotificationDate { get; init; }
 }

@@ -15,6 +15,12 @@ public class ApplicationDetailDto
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
     public IReadOnlyList<WorkflowStepDto> WorkflowSteps { get; init; } = [];
+
+    // Granter contract data
+    public string? GranterContractIdentifier { get; init; }
+    public DateOnly? GranterContractDate { get; init; }
+    public bool? GranterNotificationReceived { get; init; }
+    public DateOnly? GranterNotificationDate { get; init; }
 }
 
 public class WorkflowStepDto
@@ -27,4 +33,5 @@ public class WorkflowStepDto
     public DateTimeOffset? CompletedAt { get; init; }
     public DateTimeOffset? ApprovedAt { get; init; }
     public string? RejectionNote { get; init; }
+    public string? SkippedReason { get; init; }
 }

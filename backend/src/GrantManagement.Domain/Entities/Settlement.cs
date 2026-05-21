@@ -8,7 +8,8 @@ public class Settlement : BaseEntity<Guid>
     public Guid ApplicationId { get; private set; }
     public DateOnly SettlementDate { get; private set; }
     public Guid? SettlementMethodId { get; private set; }
-    public string? Summary { get; private set; }
+    public string? Description { get; private set; }
+    public string? Notes { get; private set; }
     public DateTimeOffset? ApprovedAt { get; private set; }
     public Guid? ApprovedByUserId { get; private set; }
     public Guid CreatedByUserId { get; private set; }
@@ -26,7 +27,8 @@ public class Settlement : BaseEntity<Guid>
             ApplicationId = applicationId,
             SettlementDate = p.SettlementDate,
             SettlementMethodId = p.SettlementMethodId,
-            Summary = p.Summary,
+            Description = p.Description,
+            Notes = p.Notes,
             CreatedByUserId = createdByUserId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
@@ -44,7 +46,8 @@ public class Settlement : BaseEntity<Guid>
     {
         SettlementDate = p.SettlementDate;
         SettlementMethodId = p.SettlementMethodId;
-        Summary = p.Summary;
+        Description = p.Description;
+        Notes = p.Notes;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

@@ -2,6 +2,7 @@ using GrantManagement.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 using BudgetPlanEntity = GrantManagement.Domain.Entities.BudgetPlan;
+using SettlementEntity = GrantManagement.Domain.Entities.Settlement;
 
 namespace GrantManagement.Application.Common.Interfaces;
 
@@ -18,7 +19,7 @@ public interface IApplicationDbContext
     DbSet<Invoice> Invoices { get; }
     DbSet<ProofRecord> ProofRecords { get; }
     DbSet<ProofPhoto> ProofPhotos { get; }
-    DbSet<Settlement> Settlements { get; }
+    DbSet<SettlementEntity> Settlements { get; }
     DbSet<Granter> Granters { get; }
     DbSet<Vendor> Vendors { get; }
     DbSet<CodeList> CodeLists { get; }

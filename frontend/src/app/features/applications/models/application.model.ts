@@ -306,3 +306,25 @@ export interface ProofRecordDto {
   createdAt: string;
   photos: ProofPhotoDto[];
 }
+
+export interface SettlementDto {
+  id: string;
+  applicationId: string;
+  settlementDate: string;
+  settlementMethodId: string | null;
+  description: string | null;
+  notes: string | null;
+  invoiceCoveragePercent: number;
+  hasLowCoverageWarning: boolean;
+  approvedAt: string | null;
+  approvedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordSettlementRequest {
+  settlementDate: string;
+  settlementMethodId?: string;
+  description?: string;
+  notes?: string;
+}

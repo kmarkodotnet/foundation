@@ -1,0 +1,171 @@
+@if (loading()) {
+  <div class="loading-container">
+    <mat-spinner diameter="40" />
+  </div>
+} @else {
+  <form [formGroup]="settlementForm" class="settlement-form">
+
+    <!-- Elszámolás dátuma -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Elszámolás dátuma *</mat-label>
+      <input
+        matInput
+        [matDatepicker]="settlementDatePicker"
+        formControlName="settlementDate"
+        [readonly]="!isEditable() || !canModify()"
+      />
+      @if (isEditable() && canModify()) {
+        <mat-datepicker-toggle matIconSuffix [for]="settlementDatePicker" />
+      }
+      <mat-datepicker #settlementDatePicker />
+      @if (settlementForm.get('settlementDate')?.hasError('required')) {
+        <mat-error>Az elszámolás dátuma kötelező.</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Leírás -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Leírás</mat-label>
+      <textarea
+        matInput
+        formControlName="description"
+        rows="3"
+        [readonly]="!isEditable() || !canModify()"
+      ></textarea>
+      @if (settlementForm.get('description')?.hasError('maxlength')) {
+        <mat-error>A leírás maximum 2000 karakter lehet.</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Megjegyzések -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Megjegyzések</mat-label>
+      <textarea
+        matInput
+        formControlName="notes"
+        rows="3"
+        [readonly]="!isEditable() || !canModify()"
+      ></textarea>
+      @if (settlementForm.get('notes')?.hasError('maxlength')) {
+        <mat-error>A megjegyzés maximum 2000 karakter lehet.</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Alacsony fedezet figyelmeztetés -->
+    @if (settlement()?.hasLowCoverageWarning) {
+      <div class="coverage-warning">
+        <mat-icon>warning</mat-icon>
+        <span>
+          A rögzített számlák összege {{ settlement()?.invoiceCoveragePercent }}%,
+          ami nem éri el az elnyert összeg 80%-át.
+        </span>
+      </div>
+    }
+
+    <!-- Mentés gomb -->
+    @if (canModify() && isEditable()) {
+      <div class="action-row">
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="settlementForm.invalid || saving()"
+          (click)="saveSettlement()"
+        >
+          @if (saving()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            Mentés
+          }
+        </button>
+
+        <!-- Jóváhagyásra küldés gomb -->
+        @if (settlement()) {
+          <button
+            mat-stroked-button
+            [disabled]="requestingApproval()"
+            (click)="requestApproval()"
+          >
+            @if (requestingApproval()) {
+              <mat-spinner diameter="18" />
+            } @else {
+              Jóváhagyásra küldés
+            }
+          </button>
+        }
+      </div>
+    }
+
+  </form>
+
+  <!-- Visszautasítás megjegyzése -->
+  @if (step().status === 'Active' && step().rejectionNote) {
+    <div class="rejection-note">
+      <mat-icon>cancel</mat-icon>
+      <span>Visszautasítva: {{ step().rejectionNote }}</span>
+    </div>
+  }
+
+  <!-- Jóváhagyás panel (csak Elnök/Admin, amikor a lépés Active és van elszámolás) -->
+  @if (canApprove() && step().status === 'Active' && settlement()) {
+    <mat-divider style="margin: 16px 0" />
+    <div class="approval-section">
+      <h4>Jóváhagyás</h4>
+
+      @if (!showRejectionForm()) {
+        <div class="approval-actions">
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="approving()"
+            (click)="openApprovalConfirm()"
+          >
+            @if (approving()) {
+              <mat-spinner diameter="18" />
+            } @else {
+              Jóváhagyás és lezárás
+            }
+          </button>
+          <button
+            mat-stroked-button
+            color="warn"
+            (click)="openRejectionForm()"
+          >
+            Visszautasítás
+          </button>
+        </div>
+      } @else {
+        <div class="rejection-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Visszautasítás oka *</mat-label>
+            <textarea
+              matInput
+              [formControl]="rejectionNoteControl"
+              rows="3"
+            ></textarea>
+            @if (rejectionNoteControl.hasError('required') && rejectionNoteControl.touched) {
+              <mat-error>A visszautasítás oka kötelező.</mat-error>
+            }
+            @if (rejectionNoteControl.hasError('maxlength')) {
+              <mat-error>Maximum 2000 karakter engedélyezett.</mat-error>
+            }
+          </mat-form-field>
+          <div class="rejection-actions">
+            <button
+              mat-flat-button
+              color="warn"
+              [disabled]="rejectionNoteControl.invalid || rejecting()"
+              (click)="submitRejection()"
+            >
+              @if (rejecting()) {
+                <mat-spinner diameter="18" />
+              } @else {
+                Visszautasítás küldése
+              }
+            </button>
+            <button mat-button (click)="cancelRejection()">Mégse</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

@@ -12,6 +12,7 @@ import { StepBudgetPlanComponent } from './step-budget-plan/step-budget-plan.com
 import { StepVendorContractsComponent } from './step-vendor-contracts/step-vendor-contracts.component';
 import { StepInvoicesComponent } from './step-invoices/step-invoices.component';
 import { StepProofRecordsComponent } from './step-proof-records/step-proof-records.component';
+import { StepSettlementComponent } from './step-settlement/step-settlement.component';
 import { SkipStepButtonComponent } from '../../../../shared/components/skip-step-button/skip-step-button.component';
 
 const STEP_LABELS: Record<WorkflowStepType, string> = {
@@ -50,6 +51,7 @@ const STEP_STATUS_ICONS: Record<string, string> = {
     StepVendorContractsComponent,
     StepInvoicesComponent,
     StepProofRecordsComponent,
+    StepSettlementComponent,
     SkipStepButtonComponent,
   ],
   template: `
@@ -187,6 +189,14 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                   (stepUpdated)="onStepUpdated($event)"
                 />
               }
+            } @else if (step.stepType === 'Settlement') {
+              <gm-step-settlement
+                [applicationId]="applicationId()"
+                [step]="step"
+                [isLocked]="isLocked()"
+                (stepUpdated)="onStepUpdated($event)"
+                (applicationUpdated)="onApplicationUpdated($event)"
+              />
             } @else {
               <p style="color:rgba(0,0,0,0.54)">
                 A lépés tartalma itt jelenik majd meg.

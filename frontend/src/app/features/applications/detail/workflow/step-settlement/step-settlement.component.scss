@@ -1,0 +1,98 @@
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+}
+
+.settlement-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.action-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.coverage-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fff3e0;
+  border-left: 4px solid #f57c00;
+  border-radius: 4px;
+  padding: 12px 16px;
+  color: #e65100;
+
+  mat-icon {
+    color: #f57c00;
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+}
+
+.rejection-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fce4ec;
+  border-left: 4px solid #e53935;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-top: 12px;
+  color: #b71c1c;
+
+  mat-icon {
+    color: #e53935;
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+}
+
+.approval-section {
+  padding-top: 8px;
+
+  h4 {
+    margin: 0 0 12px;
+    font-weight: 500;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+.approval-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rejection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rejection-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}

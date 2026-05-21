@@ -220,6 +220,51 @@ export interface CreateVendorContractRequest {
   notes?: string;
 }
 
+export interface Invoice {
+  id: string;
+  applicationId: string;
+  supplierName: string;
+  invoiceNumber: string;
+  issueDate: string;
+  amount: number;
+  isPaid: boolean;
+  paymentDate: string | null;
+  vendorContractId: string | null;
+  budgetItemId: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface InvoiceSummaryDto {
+  awardedAmount: number | null;
+  totalPlanned: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  totalUnpaid: number;
+  balance: number | null;
+}
+
+export interface InvoiceListDto {
+  summary: InvoiceSummaryDto;
+  items: Invoice[];
+}
+
+export interface CreateInvoiceRequest {
+  supplierName: string;
+  invoiceNumber: string;
+  issueDate: string;
+  amount: number;
+  isPaid: boolean;
+  paymentDate?: string;
+  vendorContractId?: string;
+  budgetItemId?: string;
+  notes?: string;
+}
+
+export interface MarkInvoicePaidRequest {
+  paymentDate: string;
+}
+
 export interface CreateApplicationRequest {
   title: string;
   granterId: string;

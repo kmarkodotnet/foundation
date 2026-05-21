@@ -134,14 +134,17 @@ public class ApplicationTests
             Guid.NewGuid());
 
         var invoice = app.AddInvoice(
-            "INV-001",
-            Money.FromHuf(100_000),
-            DateOnly.FromDateTime(DateTime.UtcNow),
-            Guid.NewGuid());
+            supplierName: "Acme Kft.",
+            invoiceNumber: "INV-001",
+            issueDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            amount: 100_000m,
+            isPaid: false,
+            paymentDate: null,
+            byUserId: Guid.NewGuid());
 
         app.Invoices.Should().HaveCount(1);
         invoice.InvoiceNumber.Should().Be("INV-001");
-        invoice.Amount.Amount.Should().Be(100_000);
+        invoice.Amount.Should().Be(100_000m);
     }
 
     [Fact]
@@ -164,11 +167,13 @@ public class ApplicationTests
         var vendorId = Guid.NewGuid();
         var contract = app.AddVendorContract(vendorId, Money.FromHuf(500_000), Guid.NewGuid());
         app.AddInvoice(
-            "INV-001",
-            Money.FromHuf(100_000),
-            DateOnly.FromDateTime(DateTime.UtcNow),
-            Guid.NewGuid(),
-            vendorId: vendorId,
+            supplierName: "Acme Kft.",
+            invoiceNumber: "INV-001",
+            issueDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            amount: 100_000m,
+            isPaid: false,
+            paymentDate: null,
+            byUserId: Guid.NewGuid(),
             vendorContractId: contract.Id);
 
         var act = () => app.RemoveVendorContract(contract.Id);

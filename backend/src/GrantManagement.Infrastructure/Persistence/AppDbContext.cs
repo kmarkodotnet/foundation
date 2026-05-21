@@ -38,6 +38,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Comment>().HasQueryFilter(c => !c.IsDeleted);
         modelBuilder.Entity<Document>().HasQueryFilter(d => !d.IsArchived);
         modelBuilder.Entity<GrantApp>().HasQueryFilter(a => !a.IsArchived);
+        modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

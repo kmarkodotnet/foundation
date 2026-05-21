@@ -1,0 +1,239 @@
+@if (loading()) {
+  <div style="display:flex;justify-content:center;padding:24px">
+    <mat-spinner diameter="36" />
+  </div>
+} @else {
+  <div class="inv-container">
+
+    <!-- Financial summary panel -->
+    @if (summary(); as s) {
+      <div class="summary-panel">
+        <div class="summary-row">
+          <span>Megítélt összeg:</span>
+          <strong>{{ s.awardedAmount | currencyHu }}</strong>
+        </div>
+        <mat-divider />
+        <div class="summary-row">
+          <span>Tervezett összeg:</span>
+          <strong>{{ s.totalPlanned | currencyHu }}</strong>
+        </div>
+        <mat-divider />
+        <div class="summary-row">
+          <span>Rögzített számlák összege:</span>
+          <strong [class.over-budget]="isOverBudget()">{{ s.totalInvoiced | currencyHu }}</strong>
+        </div>
+        <mat-divider />
+        <div class="summary-row">
+          <span>Fizetve:</span>
+          <strong>{{ s.totalPaid | currencyHu }}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Fizetetlen:</span>
+          <strong>{{ s.totalUnpaid | currencyHu }}</strong>
+        </div>
+        @if (s.balance !== null) {
+          <mat-divider />
+          <div class="summary-row">
+            <span>Egyenleg:</span>
+            <strong [class.over-budget]="isOverBudget()">{{ s.balance | currencyHu }}</strong>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Invoices table -->
+    @if (invoices().length > 0) {
+      <table mat-table [dataSource]="invoices()" style="width:100%;margin-bottom:12px">
+
+        <ng-container matColumnDef="supplier">
+          <th mat-header-cell *matHeaderCellDef>Szállító</th>
+          <td mat-cell *matCellDef="let inv">{{ inv.supplierName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="invoiceNumber">
+          <th mat-header-cell *matHeaderCellDef>Sorszám</th>
+          <td mat-cell *matCellDef="let inv">{{ inv.invoiceNumber }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="issueDate">
+          <th mat-header-cell *matHeaderCellDef>Kiállítás dátuma</th>
+          <td mat-cell *matCellDef="let inv">{{ inv.issueDate | dateHu }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef style="text-align:right">Összeg</th>
+          <td mat-cell *matCellDef="let inv" style="text-align:right">
+            {{ inv.amount | currencyHu }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Státusz</th>
+          <td mat-cell *matCellDef="let inv">
+            @if (inv.isPaid) {
+              <span class="badge badge-paid">Fizetve</span>
+            } @else {
+              <span class="badge badge-unpaid">Fizetetlen</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let inv">
+            <div style="display:flex;gap:4px;justify-content:flex-end">
+              @if (isEditable() && canModify() && !inv.isPaid) {
+                <button
+                  mat-icon-button
+                  color="primary"
+                  [disabled]="markingPaid() === inv.id"
+                  (click)="openMarkPaid(inv)"
+                  matTooltip="Megjelölés fizetettnek"
+                >
+                  @if (markingPaid() === inv.id) {
+                    <mat-spinner diameter="18" />
+                  } @else {
+                    <mat-icon>paid</mat-icon>
+                  }
+                </button>
+              }
+              @if (isEditable() && canModify()) {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  [disabled]="deleting() === inv.id"
+                  (click)="confirmDelete(inv)"
+                  matTooltip="Törlés"
+                >
+                  @if (deleting() === inv.id) {
+                    <mat-spinner diameter="18" />
+                  } @else {
+                    <mat-icon>delete</mat-icon>
+                  }
+                </button>
+              }
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
+      </table>
+    } @else {
+      <p style="color:rgba(0,0,0,0.54);margin-bottom:12px">
+        Még nincs rögzített számla.
+      </p>
+    }
+
+    <!-- Add invoice form -->
+    @if (showAddForm()) {
+      <div class="form-panel">
+        <h4 style="margin:0 0 12px 0">Új számla rögzítése</h4>
+        <div class="form-row" [formGroup]="invoiceForm">
+
+          <mat-form-field style="flex:2">
+            <mat-label>Szállító neve *</mat-label>
+            <input matInput formControlName="supplierName" maxlength="300" />
+            @if (invoiceForm.controls.supplierName.hasError('required')) {
+              <mat-error>A szállító neve kötelező.</mat-error>
+            }
+            @if (invoiceForm.controls.supplierName.hasError('maxlength')) {
+              <mat-error>Legfeljebb 300 karakter.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field style="flex:2">
+            <mat-label>Számla sorszáma *</mat-label>
+            <input matInput formControlName="invoiceNumber" maxlength="100" />
+            @if (invoiceForm.controls.invoiceNumber.hasError('required')) {
+              <mat-error>A számla sorszáma kötelező.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field style="flex:1">
+            <mat-label>Kiállítás dátuma *</mat-label>
+            <input matInput [matDatepicker]="issuePicker" formControlName="issueDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="issuePicker" />
+            <mat-datepicker #issuePicker />
+            @if (invoiceForm.controls.issueDate.hasError('required')) {
+              <mat-error>A kiállítás dátuma kötelező.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field style="flex:1">
+            <mat-label>Összeg (Ft) *</mat-label>
+            <input matInput type="number" formControlName="amount" min="0.01" />
+            @if (invoiceForm.controls.amount.hasError('required')) {
+              <mat-error>Az összeg kötelező.</mat-error>
+            }
+            @if (invoiceForm.controls.amount.hasError('min')) {
+              <mat-error>Az összegnek pozitívnak kell lennie.</mat-error>
+            }
+          </mat-form-field>
+
+          <div class="checkbox-row">
+            <mat-checkbox formControlName="isPaid">Fizetve</mat-checkbox>
+          </div>
+
+          @if (invoiceForm.controls.isPaid.value) {
+            <mat-form-field style="flex:1">
+              <mat-label>Fizetés dátuma *</mat-label>
+              <input matInput [matDatepicker]="paymentPicker" formControlName="paymentDate" />
+              <mat-datepicker-toggle matIconSuffix [for]="paymentPicker" />
+              <mat-datepicker #paymentPicker />
+              @if (invoiceForm.controls.paymentDate.hasError('required')) {
+                <mat-error>Fizetés dátuma kötelező, ha a számla fizetve van.</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          @if (budgetItems().length > 0) {
+            <mat-form-field style="flex:2">
+              <mat-label>Kapcsolt költési terv tétel</mat-label>
+              <mat-select formControlName="budgetItemId">
+                <mat-option [value]="null">– Nincs kapcsolt tétel –</mat-option>
+                @for (item of budgetItems(); track item.id) {
+                  <mat-option [value]="item.id">{{ item.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+
+          <mat-form-field style="flex:2">
+            <mat-label>Megjegyzés</mat-label>
+            <textarea matInput formControlName="notes" rows="2" maxlength="2000"></textarea>
+          </mat-form-field>
+
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button mat-button (click)="cancelAddForm()">Mégse</button>
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="invoiceForm.invalid || saving()"
+            (click)="submitInvoice()"
+          >
+            @if (saving()) {
+              <mat-spinner diameter="18" style="display:inline-block;margin-right:4px" />
+            } @else {
+              <mat-icon>save</mat-icon>
+            }
+            Mentés
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Action buttons -->
+    @if (isEditable() && canModify() && !showAddForm()) {
+      <div class="action-row">
+        <button mat-stroked-button (click)="openAddForm()">
+          <mat-icon>add</mat-icon>
+          Számla hozzáadása
+        </button>
+      </div>
+    }
+
+  </div>
+}

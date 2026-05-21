@@ -44,12 +44,13 @@ public class Application : AggregateRoot<Guid>
         or ApplicationStatus.ClosedLost
         or ApplicationStatus.Archived;
 
-    public Money TotalInvoicedAmount => _invoices
-        .Aggregate(Money.Zero, (acc, i) => acc.Add(i.Amount));
+    public decimal TotalInvoicedAmount => _invoices
+        .Where(i => !i.IsDeleted)
+        .Sum(i => i.Amount);
 
-    public Money TotalPaidAmount => _invoices
-        .Where(i => i.IsPaid)
-        .Aggregate(Money.Zero, (acc, i) => acc.Add(i.Amount));
+    public decimal TotalPaidAmount => _invoices
+        .Where(i => i.IsPaid && !i.IsDeleted)
+        .Sum(i => i.Amount);
 
     public WorkflowStep? CurrentActiveStep =>
         _workflowSteps.FirstOrDefault(s => s.Status == WorkflowStepStatus.Active);
@@ -327,18 +328,21 @@ public class Application : AggregateRoot<Guid>
     }
 
     public Invoice AddInvoice(
+        string supplierName,
         string invoiceNumber,
-        Money amount,
-        DateOnly invoiceDate,
+        DateOnly issueDate,
+        decimal amount,
+        bool isPaid,
+        DateOnly? paymentDate,
         Guid byUserId,
-        Guid? vendorId = null,
         Guid? vendorContractId = null,
+        Guid? budgetItemId = null,
         string? notes = null)
     {
         EnsureNotLocked();
         var invoice = Invoice.Create(
-            Id, invoiceNumber, amount, invoiceDate, byUserId,
-            vendorId, vendorContractId, notes);
+            Id, supplierName, invoiceNumber, issueDate, amount,
+            isPaid, paymentDate, byUserId, vendorContractId, budgetItemId, notes);
         _invoices.Add(invoice);
         UpdatedAt = DateTimeOffset.UtcNow;
         return invoice;
@@ -346,26 +350,41 @@ public class Application : AggregateRoot<Guid>
 
     public void UpdateInvoice(
         Guid invoiceId,
+        string supplierName,
         string invoiceNumber,
-        Money amount,
-        DateOnly invoiceDate,
-        Guid? vendorId,
+        DateOnly issueDate,
+        decimal amount,
+        bool isPaid,
+        DateOnly? paymentDate,
         Guid? vendorContractId,
+        Guid? budgetItemId,
         string? notes)
     {
         EnsureNotLocked();
         var invoice = _invoices.FirstOrDefault(i => i.Id == invoiceId)
             ?? throw new NotFoundException(nameof(Invoice), invoiceId);
-        invoice.Update(invoiceNumber, amount, invoiceDate, vendorId, vendorContractId, notes);
+        invoice.Update(supplierName, invoiceNumber, issueDate, amount, isPaid, paymentDate,
+            vendorContractId, budgetItemId, notes);
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void MarkInvoicePaid(Guid invoiceId, DateOnly paidAt)
+    public void MarkInvoicePaid(Guid invoiceId, DateOnly paymentDate)
     {
         EnsureNotLocked();
         var invoice = _invoices.FirstOrDefault(i => i.Id == invoiceId)
             ?? throw new NotFoundException(nameof(Invoice), invoiceId);
-        invoice.MarkPaid(paidAt);
+        if (invoice.IsPaid)
+            throw new DomainException("A számla már fizetve van.");
+        invoice.MarkPaid(paymentDate);
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SoftDeleteInvoice(Guid invoiceId)
+    {
+        EnsureNotLocked();
+        var invoice = _invoices.FirstOrDefault(i => i.Id == invoiceId)
+            ?? throw new NotFoundException(nameof(Invoice), invoiceId);
+        invoice.SoftDelete();
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

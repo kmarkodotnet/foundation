@@ -1,75 +1,93 @@
 using GrantManagement.Domain.Common;
-using GrantManagement.Domain.ValueObjects;
 
 namespace GrantManagement.Domain.Entities;
 
 public class Invoice : BaseEntity<Guid>
 {
     public Guid ApplicationId { get; private set; }
-    public Guid? VendorId { get; private set; }
-    public Guid? VendorContractId { get; private set; }
+    public string SupplierName { get; private set; } = null!;
     public string InvoiceNumber { get; private set; } = null!;
-    public decimal AmountValue { get; private set; }
-    public string Currency { get; private set; } = "HUF";
-    public Money Amount => new(AmountValue, Currency);
-    public DateOnly InvoiceDate { get; private set; }
+    public DateOnly IssueDate { get; private set; }
+    public decimal Amount { get; private set; }
     public bool IsPaid { get; private set; }
-    public DateOnly? PaidAt { get; private set; }
+    public DateOnly? PaymentDate { get; private set; }
+    public Guid? VendorContractId { get; private set; }
+    public Guid? BudgetItemId { get; private set; }
     public string? Notes { get; private set; }
+    public bool IsDeleted { get; private set; }
     public Guid CreatedByUserId { get; private set; }
+
+    // Navigation property
+    public Application? Application { get; private set; }
 
     private Invoice() { }
 
     public static Invoice Create(
         Guid applicationId,
+        string supplierName,
         string invoiceNumber,
-        Money amount,
-        DateOnly invoiceDate,
+        DateOnly issueDate,
+        decimal amount,
+        bool isPaid,
+        DateOnly? paymentDate,
         Guid createdByUserId,
-        Guid? vendorId = null,
         Guid? vendorContractId = null,
+        Guid? budgetItemId = null,
         string? notes = null)
     {
         return new Invoice
         {
             Id = Guid.NewGuid(),
             ApplicationId = applicationId,
+            SupplierName = supplierName,
             InvoiceNumber = invoiceNumber,
-            AmountValue = amount.Amount,
-            Currency = amount.Currency,
-            InvoiceDate = invoiceDate,
-            IsPaid = false,
+            IssueDate = issueDate,
+            Amount = amount,
+            IsPaid = isPaid,
+            PaymentDate = paymentDate,
             CreatedByUserId = createdByUserId,
-            VendorId = vendorId,
             VendorContractId = vendorContractId,
+            BudgetItemId = budgetItemId,
             Notes = notes,
+            IsDeleted = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
     }
 
     public void Update(
+        string supplierName,
         string invoiceNumber,
-        Money amount,
-        DateOnly invoiceDate,
-        Guid? vendorId,
+        DateOnly issueDate,
+        decimal amount,
+        bool isPaid,
+        DateOnly? paymentDate,
         Guid? vendorContractId,
+        Guid? budgetItemId,
         string? notes)
     {
+        SupplierName = supplierName;
         InvoiceNumber = invoiceNumber;
-        AmountValue = amount.Amount;
-        Currency = amount.Currency;
-        InvoiceDate = invoiceDate;
-        VendorId = vendorId;
+        IssueDate = issueDate;
+        Amount = amount;
+        IsPaid = isPaid;
+        PaymentDate = paymentDate;
         VendorContractId = vendorContractId;
+        BudgetItemId = budgetItemId;
         Notes = notes;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void MarkPaid(DateOnly paidAt)
+    public void MarkPaid(DateOnly paymentDate)
     {
         IsPaid = true;
-        PaidAt = paidAt;
+        PaymentDate = paymentDate;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SoftDelete()
+    {
+        IsDeleted = true;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

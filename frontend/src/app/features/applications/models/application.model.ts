@@ -288,3 +288,21 @@ export interface UpdateApplicationRequest {
   spendingDeadline?: string;
   otherMetadata?: string;
 }
+
+export interface ProofPhotoDto {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+}
+
+export interface ProofRecordDto {
+  id: string;
+  applicationId: string;
+  proofType: string;
+  eventDate: string;
+  description: string | null;
+  createdByUserId: string;
+  createdAt: string;
+  photos: ProofPhotoDto[];
+}

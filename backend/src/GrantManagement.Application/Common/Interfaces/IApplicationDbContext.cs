@@ -17,6 +17,7 @@ public interface IApplicationDbContext
     DbSet<VendorContract> VendorContracts { get; }
     DbSet<Invoice> Invoices { get; }
     DbSet<ProofRecord> ProofRecords { get; }
+    DbSet<ProofPhoto> ProofPhotos { get; }
     DbSet<Settlement> Settlements { get; }
     DbSet<Granter> Granters { get; }
     DbSet<Vendor> Vendors { get; }

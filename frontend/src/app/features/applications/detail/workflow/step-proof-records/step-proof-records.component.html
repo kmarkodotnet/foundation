@@ -1,0 +1,105 @@
+@if (loading()) {
+  <div style="display:flex;justify-content:center;padding:24px">
+    <mat-spinner diameter="36" />
+  </div>
+} @else {
+  <div class="pr-container">
+
+    <!-- Empty state -->
+    @if (records().length === 0) {
+      <p style="color:rgba(0,0,0,0.54);margin-bottom:12px">
+        Még nem rögzítettünk igazolást.
+      </p>
+    }
+
+    <!-- Record cards -->
+    @for (record of records(); track record.id) {
+      <mat-card class="record-card">
+        <mat-card-header>
+          <mat-card-title>{{ proofTypeLabel(record.proofType) }}</mat-card-title>
+          <mat-card-subtitle>{{ record.eventDate | dateHu }}</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          @if (record.description) {
+            <p class="record-description">{{ record.description }}</p>
+          }
+
+          @if (record.photos.length > 0) {
+            <div class="thumbnails-grid">
+              @for (photo of record.photos; track photo.id; let i = $index) {
+                <div class="thumbnail-wrapper" (click)="openLightbox(record, i)">
+                  @if (thumbnailUrls().get(photo.id); as thumbUrl) {
+                    <img
+                      [src]="thumbUrl"
+                      [alt]="photo.fileName"
+                      class="thumbnail-img"
+                      [matTooltip]="photo.fileName"
+                    />
+                  } @else {
+                    <div class="thumbnail-placeholder">
+                      <mat-spinner diameter="24" />
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="photos-actions">
+              <span class="photo-count">{{ record.photos.length }} fotó</span>
+              <button
+                mat-stroked-button
+                [disabled]="downloadingAll() === record.id"
+                (click)="downloadAll(record)"
+                matTooltip="Összes fotó letöltése ZIP-ben"
+              >
+                @if (downloadingAll() === record.id) {
+                  <mat-spinner diameter="18" style="display:inline-block;margin-right:4px" />
+                } @else {
+                  <mat-icon>download</mat-icon>
+                }
+                Összes letöltése
+              </button>
+            </div>
+          } @else {
+            <p style="color:rgba(0,0,0,0.38);font-size:13px">Nincs feltöltött fotó.</p>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <!-- Add button -->
+    @if (canModify() && isEditable()) {
+      <div class="action-row">
+        <button mat-stroked-button (click)="openAddForm()">
+          <mat-icon>add_a_photo</mat-icon>
+          Igazolás hozzáadása
+        </button>
+      </div>
+    }
+
+  </div>
+}
+
+<!-- Lightbox overlay -->
+@if (lightboxPhoto(); as lb) {
+  <div class="lightbox-overlay" (click)="closeLightbox()">
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+      <img [src]="lb.url" class="lightbox-img" alt="Fotó" />
+      <div class="lightbox-controls">
+        <button mat-icon-button (click)="prevPhoto()" matTooltip="Előző">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button mat-icon-button (click)="downloadCurrentPhoto()" matTooltip="Letöltés">
+          <mat-icon>download</mat-icon>
+        </button>
+        <button mat-icon-button (click)="nextPhoto()" matTooltip="Következő">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+        <button mat-icon-button (click)="closeLightbox()" matTooltip="Bezárás">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+}

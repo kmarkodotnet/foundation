@@ -9,9 +9,10 @@ public class ProofRecord : BaseEntity<Guid>
     public DateOnly EventDate { get; private set; }
     public string? Description { get; private set; }
     public Guid CreatedByUserId { get; private set; }
+    public bool IsDeleted { get; private set; }
 
-    private readonly List<Document> _photos = [];
-    public IReadOnlyList<Document> Photos => _photos.AsReadOnly();
+    private readonly List<ProofPhoto> _photos = [];
+    public IReadOnlyList<ProofPhoto> Photos => _photos.AsReadOnly();
 
     private ProofRecord() { }
 
@@ -30,10 +31,11 @@ public class ProofRecord : BaseEntity<Guid>
             EventDate = eventDate,
             CreatedByUserId = createdByUserId,
             Description = description,
+            IsDeleted = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
     }
 
-    internal void AddPhoto(Document photo) => _photos.Add(photo);
+    internal void AddPhoto(ProofPhoto photo) => _photos.Add(photo);
 }

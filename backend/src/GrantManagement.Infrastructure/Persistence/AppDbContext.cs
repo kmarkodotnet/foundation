@@ -20,6 +20,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<VendorContract> VendorContracts => Set<VendorContract>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<ProofRecord> ProofRecords => Set<ProofRecord>();
+    public DbSet<ProofPhoto> ProofPhotos => Set<ProofPhoto>();
     public DbSet<Settlement> Settlements => Set<Settlement>();
     public DbSet<Granter> Granters => Set<Granter>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
@@ -39,6 +40,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Document>().HasQueryFilter(d => !d.IsArchived);
         modelBuilder.Entity<GrantApp>().HasQueryFilter(a => !a.IsArchived);
         modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
+        modelBuilder.Entity<ProofRecord>().HasQueryFilter(p => !p.IsDeleted);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

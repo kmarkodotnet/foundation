@@ -11,6 +11,7 @@ import { StepContractGranterComponent } from './step-contract-granter/step-contr
 import { StepBudgetPlanComponent } from './step-budget-plan/step-budget-plan.component';
 import { StepVendorContractsComponent } from './step-vendor-contracts/step-vendor-contracts.component';
 import { StepInvoicesComponent } from './step-invoices/step-invoices.component';
+import { StepProofRecordsComponent } from './step-proof-records/step-proof-records.component';
 import { SkipStepButtonComponent } from '../../../../shared/components/skip-step-button/skip-step-button.component';
 
 const STEP_LABELS: Record<WorkflowStepType, string> = {
@@ -48,6 +49,7 @@ const STEP_STATUS_ICONS: Record<string, string> = {
     StepBudgetPlanComponent,
     StepVendorContractsComponent,
     StepInvoicesComponent,
+    StepProofRecordsComponent,
     SkipStepButtonComponent,
   ],
   template: `
@@ -155,6 +157,22 @@ const STEP_STATUS_ICONS: Record<string, string> = {
               }
             } @else if (step.stepType === 'Invoices') {
               <gm-step-invoices
+                [applicationId]="applicationId()"
+                [step]="step"
+                [isLocked]="isLocked()"
+                (stepUpdated)="onStepUpdated($event)"
+              />
+              @if (!isLocked() && step.isSkippable) {
+                <gm-skip-step-button
+                  [applicationId]="applicationId()"
+                  [stepType]="step.stepType"
+                  [stepStatus]="step.status"
+                  [skippedReason]="step.skippedReason"
+                  (stepUpdated)="onStepUpdated($event)"
+                />
+              }
+            } @else if (step.stepType === 'Proof') {
+              <gm-step-proof-records
                 [applicationId]="applicationId()"
                 [step]="step"
                 [isLocked]="isLocked()"

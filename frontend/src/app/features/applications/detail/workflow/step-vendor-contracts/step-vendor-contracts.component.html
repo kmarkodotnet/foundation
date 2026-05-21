@@ -1,0 +1,184 @@
+@if (loading()) {
+  <div style="display:flex;justify-content:center;padding:24px">
+    <mat-spinner diameter="36" />
+  </div>
+} @else {
+  <div class="vc-container">
+
+    <!-- Summary -->
+    @if (contracts().length > 0) {
+      <div class="summary-panel">
+        <div class="summary-row">
+          <span>Szerződések száma:</span>
+          <strong>{{ contracts().length }} db</strong>
+        </div>
+        <mat-divider />
+        <div class="summary-row">
+          <span>Összes szerződéses összeg:</span>
+          <strong>{{ totalAmount() | currencyHu }}</strong>
+        </div>
+      </div>
+    }
+
+    <!-- Contracts table -->
+    @if (contracts().length > 0) {
+      <table mat-table [dataSource]="contracts()" style="width:100%;margin-bottom:12px">
+
+        <ng-container matColumnDef="vendor">
+          <th mat-header-cell *matHeaderCellDef>Szállító</th>
+          <td mat-cell *matCellDef="let c">{{ c.vendorName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="identifier">
+          <th mat-header-cell *matHeaderCellDef>Szerz. azonosító</th>
+          <td mat-cell *matCellDef="let c">{{ c.contractIdentifier ?? '–' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="contractDate">
+          <th mat-header-cell *matHeaderCellDef>Dátum</th>
+          <td mat-cell *matCellDef="let c">{{ c.contractDate ?? '–' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef style="text-align:right">Összeg</th>
+          <td mat-cell *matCellDef="let c" style="text-align:right">
+            {{ c.amount | currencyHu }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="notes">
+          <th mat-header-cell *matHeaderCellDef>Megjegyzés</th>
+          <td mat-cell *matCellDef="let c">{{ c.notes ?? '–' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let c">
+            @if (isEditable() && canModify()) {
+              <button
+                mat-icon-button
+                color="warn"
+                [disabled]="deleting() === c.id"
+                (click)="confirmDelete(c)"
+                matTooltip="Törlés"
+              >
+                @if (deleting() === c.id) {
+                  <mat-spinner diameter="18" />
+                } @else {
+                  <mat-icon>delete</mat-icon>
+                }
+              </button>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
+      </table>
+    } @else {
+      <p style="color:rgba(0,0,0,0.54);margin-bottom:12px">
+        Még nincs rögzített alvállalkozói szerződés.
+      </p>
+    }
+
+    <!-- Add contract form -->
+    @if (showAddForm()) {
+      <div class="form-panel">
+        <h4 style="margin:0 0 12px 0">Új szerződés rögzítése</h4>
+        <div class="form-row" [formGroup]="contractForm">
+
+          <mat-form-field style="flex:2">
+            <mat-label>Szállító *</mat-label>
+            <mat-select formControlName="vendorId">
+              @for (v of vendors(); track v.id) {
+                <mat-option [value]="v.id">{{ v.name }}</mat-option>
+              }
+            </mat-select>
+            @if (contractForm.controls.vendorId.hasError('required')) {
+              <mat-error>A szállító kiválasztása kötelező.</mat-error>
+            }
+          </mat-form-field>
+
+          <div class="vendor-add-link">
+            <button mat-button type="button" (click)="openVendorQuickAdd()">
+              <mat-icon>add</mat-icon>
+              Új cég rögzítése
+            </button>
+          </div>
+
+          <mat-form-field style="flex:1">
+            <mat-label>Szerz. dátuma *</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="contractDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="picker" />
+            <mat-datepicker #picker />
+            @if (contractForm.controls.contractDate.hasError('required')) {
+              <mat-error>A szerződéskötés dátuma kötelező.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field style="flex:1">
+            <mat-label>Összeg (Ft) *</mat-label>
+            <input matInput type="number" formControlName="amount" min="1" />
+            @if (contractForm.controls.amount.hasError('required')) {
+              <mat-error>Az összeg kötelező.</mat-error>
+            }
+            @if (contractForm.controls.amount.hasError('min')) {
+              <mat-error>Az összegnek legalább 1 Ft-nak kell lennie.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field style="flex:1">
+            <mat-label>Szerz. azonosító</mat-label>
+            <input matInput formControlName="contractIdentifier" maxlength="100" />
+          </mat-form-field>
+
+          @if (budgetItems().length > 0) {
+            <mat-form-field style="flex:2">
+              <mat-label>Kapcsolt költési terv tétel</mat-label>
+              <mat-select formControlName="budgetItemId">
+                <mat-option [value]="null">– Nincs kapcsolt tétel –</mat-option>
+                @for (item of budgetItems(); track item.id) {
+                  <mat-option [value]="item.id">{{ item.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+
+          <mat-form-field style="flex:2">
+            <mat-label>Megjegyzés</mat-label>
+            <textarea matInput formControlName="notes" rows="2" maxlength="2000"></textarea>
+          </mat-form-field>
+
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button mat-button (click)="cancelAddForm()">Mégse</button>
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="contractForm.invalid || saving()"
+            (click)="submitContract()"
+          >
+            @if (saving()) {
+              <mat-spinner diameter="18" style="display:inline-block;margin-right:4px" />
+            } @else {
+              <mat-icon>save</mat-icon>
+            }
+            Mentés
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Action buttons -->
+    @if (isEditable() && canModify() && !showAddForm()) {
+      <div class="action-row">
+        <button mat-stroked-button (click)="openAddForm()">
+          <mat-icon>add</mat-icon>
+          Szerződés hozzáadása
+        </button>
+      </div>
+    }
+
+  </div>
+}

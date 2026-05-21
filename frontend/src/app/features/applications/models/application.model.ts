@@ -194,6 +194,32 @@ export interface ApplicationFilter {
   sortDir?: 'asc' | 'desc';
 }
 
+export interface VendorContract {
+  id: string;
+  applicationId: string;
+  vendorId: string;
+  vendorName: string;
+  contractIdentifier: string | null;
+  contractDate: string | null;
+  amount: number;
+  currency: string;
+  budgetItemId: string | null;
+  budgetItemName: string | null;
+  notes: string | null;
+  createdByUserId: string;
+  createdAt: string;
+}
+
+export interface CreateVendorContractRequest {
+  vendorId: string;
+  amount: number;
+  currency: string;
+  contractDate?: string;
+  contractIdentifier?: string;
+  budgetItemId?: string;
+  notes?: string;
+}
+
 export interface CreateApplicationRequest {
   title: string;
   granterId: string;

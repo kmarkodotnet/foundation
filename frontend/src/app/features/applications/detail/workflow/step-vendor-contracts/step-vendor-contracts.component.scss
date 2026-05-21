@@ -1,0 +1,44 @@
+.vc-container {
+  padding: 8px 0;
+}
+
+.summary-panel {
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.form-panel {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.action-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.vendor-add-link {
+  display: flex;
+  align-items: center;
+  padding-bottom: 16px;
+}

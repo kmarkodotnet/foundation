@@ -480,7 +480,7 @@ public class Application : AggregateRoot<Guid>
     {
         EnsureNotLocked();
         var step = GetStep(stepType);
-        var comment = Comment.Create(step.Id, text, byUserId);
+        var comment = Comment.Create(Id, text, byUserId, step.Id);
         step.AddComment(comment);
         UpdatedAt = DateTimeOffset.UtcNow;
 

@@ -29,6 +29,7 @@ import { ProofRecordFormDialogComponent } from './proof-record-form-dialog.compo
 import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
 import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
 import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
+import { CommentSectionComponent } from '../../../../../shared/components/comment-section/comment-section.component';
 
 interface LightboxState {
   url: string;
@@ -54,6 +55,7 @@ interface LightboxState {
     DocumentListComponent,
     DocumentUploadComponent,
     EmailRecordComponent,
+    CommentSectionComponent,
   ],
   templateUrl: './step-proof-records.component.html',
   styleUrl: './step-proof-records.component.scss',

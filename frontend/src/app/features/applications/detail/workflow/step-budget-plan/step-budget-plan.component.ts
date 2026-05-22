@@ -40,6 +40,7 @@ import { DocumentDto } from '../../../models/application.model';
 import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
 import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
 import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
+import { CommentSectionComponent } from '../../../../../shared/components/comment-section/comment-section.component';
 
 const ITEM_TYPE_LABELS: Record<BudgetItemType, string> = {
   Event: 'Rendezvény',
@@ -67,6 +68,7 @@ const ITEM_TYPE_LABELS: Record<BudgetItemType, string> = {
     DocumentListComponent,
     DocumentUploadComponent,
     EmailRecordComponent,
+    CommentSectionComponent,
   ],
   templateUrl: './step-budget-plan.component.html',
   styleUrl: './step-budget-plan.component.scss',

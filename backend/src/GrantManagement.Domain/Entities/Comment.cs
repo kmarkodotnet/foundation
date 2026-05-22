@@ -4,36 +4,45 @@ namespace GrantManagement.Domain.Entities;
 
 public class Comment : BaseEntity<Guid>
 {
-    public Guid WorkflowStepId { get; private set; }
-    public string Text { get; private set; } = null!;
-    public Guid AuthorUserId { get; private set; }
+    public Guid ApplicationId { get; private set; }
+    public Guid? WorkflowStepId { get; private set; }
+    public string Body { get; private set; } = null!;
+    public Guid AuthorId { get; private set; }
     public bool IsDeleted { get; private set; }
+    public DateTimeOffset? DeletedAt { get; private set; }
 
     private Comment() { }
 
-    public static Comment Create(Guid workflowStepId, string text, Guid authorUserId)
+    public static Comment Create(
+        Guid applicationId,
+        string body,
+        Guid authorId,
+        Guid? workflowStepId = null)
     {
         return new Comment
         {
             Id = Guid.NewGuid(),
+            ApplicationId = applicationId,
             WorkflowStepId = workflowStepId,
-            Text = text,
-            AuthorUserId = authorUserId,
+            Body = body,
+            AuthorId = authorId,
             IsDeleted = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
     }
 
-    public void Edit(string newText)
+    public void Edit(string newBody)
     {
-        Text = newText;
+        Body = newBody;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void Delete()
     {
         IsDeleted = true;
+        DeletedAt = DateTimeOffset.UtcNow;
+        Body = "[Megjegyzés törölve]";
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

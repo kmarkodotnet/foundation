@@ -1,0 +1,142 @@
+<div class="comment-section">
+  <div class="comment-header">
+    <h4 class="section-title">Megjegyzések</h4>
+    @if (!isLocked()) {
+      <button mat-button class="add-btn" (click)="toggleAddForm()">
+        <mat-icon>{{ showAddForm() ? 'close' : 'add_comment' }}</mat-icon>
+        {{ showAddForm() ? 'Mégse' : 'Megjegyzés hozzáadása' }}
+      </button>
+    }
+  </div>
+
+  <!-- Add form -->
+  @if (showAddForm()) {
+    <div class="add-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Megjegyzés</mat-label>
+        <textarea
+          matInput
+          [formControl]="newCommentControl"
+          rows="3"
+          placeholder="Írj megjegyzést..."
+        ></textarea>
+        <mat-hint align="end">{{ (newCommentControl.value?.length ?? 0) }}/2000</mat-hint>
+        @if (newCommentControl.hasError('maxlength')) {
+          <mat-error>Maximum 2000 karakter engedélyezett.</mat-error>
+        }
+      </mat-form-field>
+      <div class="form-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="newCommentControl.invalid || sending()"
+          (click)="submitComment()"
+        >
+          @if (sending()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            Küldés
+          }
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="loading-wrap">
+      <mat-spinner diameter="28" />
+    </div>
+  } @else {
+    <!-- Empty state -->
+    @if (comments().length === 0) {
+      <p class="empty-text">Még nincs megjegyzés.</p>
+    }
+
+    <!-- Comment list -->
+    <div class="comment-list">
+      @for (comment of comments(); track comment.id) {
+        <div class="comment-bubble" [class.deleted]="comment.isDeleted">
+          <div class="bubble-header">
+            <div class="author-info">
+              @if (comment.authorAvatarUrl) {
+                <img
+                  [src]="comment.authorAvatarUrl"
+                  class="avatar"
+                  [alt]="comment.authorName"
+                />
+              } @else {
+                <div class="avatar-placeholder">
+                  {{ comment.authorName.charAt(0).toUpperCase() }}
+                </div>
+              }
+              <div class="author-meta">
+                <span class="author-name">{{ comment.authorName }}</span>
+                <span class="comment-date">{{ comment.createdAt | dateHu }}</span>
+                @if (comment.updatedAt !== comment.createdAt && !comment.isDeleted) {
+                  <span class="edited-label">(szerkesztve)</span>
+                }
+              </div>
+            </div>
+
+            <!-- Edit / delete actions -->
+            @if (!comment.isDeleted && canModifyComment(comment) && !isLocked()) {
+              <div class="comment-actions">
+                @if (editingCommentId() !== comment.id) {
+                  <button
+                    mat-icon-button
+                    (click)="startEdit(comment)"
+                    matTooltip="Szerkesztés"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="confirmDelete(comment)"
+                    matTooltip="Törlés"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Inline edit form -->
+          @if (editingCommentId() === comment.id) {
+            <div class="edit-form">
+              <mat-form-field appearance="outline" class="full-width">
+                <textarea
+                  matInput
+                  [formControl]="editControl"
+                  rows="3"
+                ></textarea>
+                <mat-hint align="end">{{ (editControl.value?.length ?? 0) }}/2000</mat-hint>
+                @if (editControl.hasError('maxlength')) {
+                  <mat-error>Maximum 2000 karakter engedélyezett.</mat-error>
+                }
+              </mat-form-field>
+              <div class="edit-actions">
+                <button
+                  mat-flat-button
+                  color="primary"
+                  [disabled]="editControl.invalid"
+                  (click)="submitEdit(comment)"
+                >
+                  Mentés
+                </button>
+                <button mat-button (click)="cancelEdit()">Mégse</button>
+              </div>
+            </div>
+          } @else {
+            <!-- Body -->
+            <p class="comment-body" [class.deleted-body]="comment.isDeleted">
+              {{ comment.body }}
+            </p>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

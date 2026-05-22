@@ -28,6 +28,7 @@ import { AuthService } from '../../../../../core/auth/auth.service';
 import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
 import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
 import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
+import { CommentSectionComponent } from '../../../../../shared/components/comment-section/comment-section.component';
 
 @Component({
   selector: 'gm-step-submission',
@@ -48,6 +49,7 @@ import { EmailRecordComponent } from '../../../../../shared/components/email-rec
     DocumentListComponent,
     DocumentUploadComponent,
     EmailRecordComponent,
+    CommentSectionComponent,
   ],
   templateUrl: './step-submission.component.html',
 })

@@ -26,7 +26,8 @@ public class WorkflowStepConfiguration : IEntityTypeConfiguration<WorkflowStep>
         builder.HasMany(ws => ws.Comments)
             .WithOne()
             .HasForeignKey(c => c.WorkflowStepId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(ws => ws.EmailAttachments)
             .WithOne()

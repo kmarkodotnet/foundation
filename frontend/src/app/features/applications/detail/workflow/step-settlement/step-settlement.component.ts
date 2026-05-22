@@ -36,6 +36,7 @@ import {
 } from '../../../models/application.model';
 import { SettlementService } from '../../../services/settlement.service';
 import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
+import { CommentSectionComponent } from '../../../../../shared/components/comment-section/comment-section.component';
 
 @Component({
   selector: 'gm-step-settlement',
@@ -53,6 +54,7 @@ import { EmailRecordComponent } from '../../../../../shared/components/email-rec
     MatProgressSpinnerModule,
     MatTooltipModule,
     EmailRecordComponent,
+    CommentSectionComponent,
   ],
   templateUrl: './step-settlement.component.html',
   styleUrl: './step-settlement.component.scss',

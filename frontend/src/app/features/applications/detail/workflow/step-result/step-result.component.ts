@@ -36,6 +36,7 @@ import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
 import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
 import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
 import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
+import { CommentSectionComponent } from '../../../../../shared/components/comment-section/comment-section.component';
 
 @Component({
   selector: 'gm-step-result',
@@ -58,6 +59,7 @@ import { EmailRecordComponent } from '../../../../../shared/components/email-rec
     DocumentListComponent,
     DocumentUploadComponent,
     EmailRecordComponent,
+    CommentSectionComponent,
   ],
   templateUrl: './step-result.component.html',
 })

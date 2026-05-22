@@ -396,3 +396,21 @@ export interface CreateEmailRequest {
   contentSummary?: string;
   workflowStepId?: string;
 }
+
+export interface CommentDto {
+  id: string;
+  applicationId: string;
+  workflowStepId: string | null;
+  body: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddCommentRequest {
+  body: string;
+  workflowStepId?: string;
+}

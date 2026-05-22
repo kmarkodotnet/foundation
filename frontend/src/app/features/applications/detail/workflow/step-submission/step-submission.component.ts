@@ -22,7 +22,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { WorkflowService } from '../../../services/workflow.service';
 import { DocumentDto, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
 import { CodelistService } from '../../../../../features/codelists/services/codelist.service';
-import { CodeListItem } from '../../../../../features/codelists/models/codelist.model';
+import { CodeListItemDto } from '../../../../../features/codelists/models/codelist.model';
 import { HasRoleDirective } from '../../../../../shared/directives/has-role.directive';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
@@ -66,7 +66,7 @@ export class StepSubmissionComponent implements OnInit {
 
   readonly saving = signal(false);
   readonly requestingApproval = signal(false);
-  readonly submissionMethods = signal<CodeListItem[]>([]);
+  readonly submissionMethods = signal<CodeListItemDto[]>([]);
   readonly savedDetail = signal<WorkflowStepDetail | null>(null);
   readonly docRefreshTick = signal(0);
 
@@ -83,7 +83,7 @@ export class StepSubmissionComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.codelistService.getAll().subscribe({
+    this.codelistService.getCodeLists().subscribe({
       next: (lists) => {
         const submissionList = lists.find((l) =>
           l.name.toLowerCase().includes('beadás') || l.name.toLowerCase().includes('beadas')

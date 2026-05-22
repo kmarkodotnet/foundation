@@ -1,34 +1,53 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { CodeList, CodeListItem, CreateCodeListItemRequest, UpdateCodeListItemRequest } from '../models/codelist.model';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import {
+  CodeListDto,
+  CodeListItemDto,
+  CreateCodeListRequest,
+  CreateCodeListItemRequest,
+  UpdateCodeListItemRequest,
+} from '../models/codelist.model';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class CodelistService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiUrl}/codelists`;
+  private readonly base = `${environment.apiUrl}/code-lists`;
 
-  getAll() {
-    return this.http.get<CodeList[]>(this.base);
+  getCodeLists() {
+    return this.http.get<CodeListDto[]>(this.base);
   }
 
-  getItems(codeListId: string) {
-    return this.http.get<CodeListItem[]>(`${this.base}/${codeListId}/items`);
+  getItems(listId: string, includeInactive = false) {
+    const params = new HttpParams().set('includeInactive', includeInactive);
+    return this.http.get<CodeListItemDto[]>(`${this.base}/${listId}/items`, { params });
   }
 
-  createItem(codeListId: string, request: CreateCodeListItemRequest) {
-    return this.http.post<CodeListItem>(`${this.base}/${codeListId}/items`, request);
+  createCodeList(request: CreateCodeListRequest) {
+    return this.http.post<CodeListDto>(this.base, request);
   }
 
-  updateItem(codeListId: string, itemId: string, request: UpdateCodeListItemRequest) {
-    return this.http.put<CodeListItem>(`${this.base}/${codeListId}/items/${itemId}`, request);
+  deleteCodeList(id: string) {
+    return this.http.delete(`${this.base}/${id}`);
   }
 
-  deleteItem(codeListId: string, itemId: string) {
-    return this.http.delete(`${this.base}/${codeListId}/items/${itemId}`);
+  createItem(listId: string, request: CreateCodeListItemRequest) {
+    return this.http.post<CodeListItemDto>(`${this.base}/${listId}/items`, request);
   }
 
-  reorderItems(codeListId: string, orderedIds: string[]) {
-    return this.http.put(`${this.base}/${codeListId}/items/reorder`, { orderedIds });
+  updateItem(listId: string, itemId: string, request: UpdateCodeListItemRequest) {
+    return this.http.put<CodeListItemDto>(`${this.base}/${listId}/items/${itemId}`, request);
+  }
+
+  deactivateItem(listId: string, itemId: string) {
+    return this.http.patch(`${this.base}/${listId}/items/${itemId}/deactivate`, {});
+  }
+
+  activateItem(listId: string, itemId: string) {
+    return this.http.patch(`${this.base}/${listId}/items/${itemId}/activate`, {});
+  }
+
+  reorderItems(listId: string, orderedItemIds: string[]) {
+    return this.http.put(`${this.base}/${listId}/items/reorder`, { orderedItemIds });
   }
 }

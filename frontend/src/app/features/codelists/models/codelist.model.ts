@@ -1,29 +1,36 @@
-export interface CodeList {
+export interface CodeListDto {
   id: string;
-  code: string;
   name: string;
+  description: string | null;
   isSystem: boolean;
-  items: CodeListItem[];
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface CodeListItem {
+export interface CodeListItemDto {
   id: string;
   codeListId: string;
+  code: string;
   name: string;
-  value: string;
+  description: string | null;
   order: number;
-  isActive: boolean;
+  status: 'Active' | 'Inactive';
+}
+
+export interface CreateCodeListRequest {
+  name: string;
+  description?: string | null;
 }
 
 export interface CreateCodeListItemRequest {
+  code: string;
   name: string;
-  value: string;
-  order?: number;
+  description?: string | null;
 }
 
 export interface UpdateCodeListItemRequest {
+  code: string;
   name: string;
-  value: string;
-  order?: number;
-  isActive: boolean;
+  description?: string | null;
 }

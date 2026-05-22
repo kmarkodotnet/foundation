@@ -10,6 +10,7 @@ public class CodeList : AggregateRoot<Guid>
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
     public bool IsSystem { get; private set; }
+    public bool IsDeleted { get; private set; }
 
     private readonly List<CodeListItem> _items = [];
     public IReadOnlyList<CodeListItem> Items => _items.AsReadOnly();
@@ -24,6 +25,7 @@ public class CodeList : AggregateRoot<Guid>
             Name = name,
             Description = description,
             IsSystem = isSystem,
+            IsDeleted = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
@@ -31,20 +33,23 @@ public class CodeList : AggregateRoot<Guid>
 
     public CodeListItem AddItem(string code, string name, string? description)
     {
-        if (_items.Any(i => i.Code == code))
+        if (_items.Any(i => i.Code == code && !i.IsDeleted))
             throw new DomainException($"A '{code}' kód már létezik ebben a kódszótárban.");
 
-        var order = _items.Count + 1;
+        var order = _items.Count(i => !i.IsDeleted) + 1;
         var item = CodeListItem.Create(Id, code, name, description, order);
         _items.Add(item);
         UpdatedAt = DateTimeOffset.UtcNow;
         return item;
     }
 
-    public void UpdateItem(Guid itemId, string name, string? description)
+    public void UpdateItem(Guid itemId, string code, string name, string? description)
     {
+        if (_items.Any(i => i.Code == code && i.Id != itemId && !i.IsDeleted))
+            throw new DomainException($"A '{code}' kód már létezik ebben a kódszótárban.");
+
         var item = _items.First(i => i.Id == itemId);
-        item.Update(name, description);
+        item.UpdateFull(code, name, description);
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
@@ -62,10 +67,25 @@ public class CodeList : AggregateRoot<Guid>
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void ReorderItems(IReadOnlyList<Guid> orderedIds)
+    {
+        for (var i = 0; i < orderedIds.Count; i++)
+        {
+            var item = _items.FirstOrDefault(x => x.Id == orderedIds[i]);
+            item?.SetOrder(i + 1);
+        }
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public void Delete()
     {
         if (IsSystem)
             throw new DomainException("Rendszer kódszótár nem törölhető.");
+
+        IsDeleted = true;
+        foreach (var item in _items)
+            item.SoftDelete();
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 }
 
@@ -77,6 +97,7 @@ public class CodeListItem : BaseEntity<Guid>
     public string? Description { get; private set; }
     public int Order { get; private set; }
     public CodeListItemStatus Status { get; private set; }
+    public bool IsDeleted { get; private set; }
 
     private CodeListItem() { }
 
@@ -96,13 +117,15 @@ public class CodeListItem : BaseEntity<Guid>
             Description = description,
             Order = order,
             Status = CodeListItemStatus.Active,
+            IsDeleted = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
     }
 
-    internal void Update(string name, string? description)
+    internal void UpdateFull(string code, string name, string? description)
     {
+        Code = code;
         Name = name;
         Description = description;
         UpdatedAt = DateTimeOffset.UtcNow;
@@ -117,6 +140,18 @@ public class CodeListItem : BaseEntity<Guid>
     internal void Activate()
     {
         Status = CodeListItemStatus.Active;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    internal void SetOrder(int order)
+    {
+        Order = order;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    internal void SoftDelete()
+    {
+        IsDeleted = true;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

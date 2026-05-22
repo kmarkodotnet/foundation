@@ -43,6 +43,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
         modelBuilder.Entity<ProofRecord>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<EmailRecord>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<CodeList>().HasQueryFilter(cl => !cl.IsDeleted);
+        modelBuilder.Entity<CodeListItem>().HasQueryFilter(i => !i.IsDeleted);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

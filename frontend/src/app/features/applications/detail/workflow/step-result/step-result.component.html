@@ -1,6 +1,6 @@
 <div class="step-result-container">
 
-  @if (isEditable || correctionMode()) {
+  @if (isEditable() || correctionMode()) {
     <form [formGroup]="form" class="result-form">
       <mat-radio-group formControlName="isWon" class="result-radio-group">
         <mat-radio-button [value]="true">Nyert</mat-radio-button>
@@ -106,4 +106,12 @@
     </div>
   }
 
+  <mat-divider style="margin: 16px 0" />
+  <h3 style="margin: 8px 0">Dokumentumok</h3>
+  @if (isEditable() && canModify()) {
+    <gm-document-upload [appId]="applicationId()" [stepId]="step().id" (uploaded)="onDocumentUploaded($event)" />
+  }
+  <gm-document-list [appId]="applicationId()" [stepId]="step().id" [isLocked]="isLocked()" [refreshTrigger]="docRefreshTick()" />
+  <mat-divider style="margin: 16px 0" />
+  <gm-email-record [appId]="applicationId()" [stepId]="step().id" [isLocked]="isLocked()" />
 </div>

@@ -35,6 +35,7 @@ import {
   WorkflowStepDetail,
 } from '../../../models/application.model';
 import { SettlementService } from '../../../services/settlement.service';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 @Component({
   selector: 'gm-step-settlement',
@@ -51,6 +52,7 @@ import { SettlementService } from '../../../services/settlement.service';
     MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    EmailRecordComponent,
   ],
   templateUrl: './step-settlement.component.html',
   styleUrl: './step-settlement.component.scss',

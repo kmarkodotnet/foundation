@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   inject,
   input,
   output,
@@ -10,6 +11,7 @@ import {
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -18,10 +20,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { WorkflowService } from '../../../services/workflow.service';
-import { WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
+import { DocumentDto, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
 import { CodelistService } from '../../../../../features/codelists/services/codelist.service';
 import { CodeListItem } from '../../../../../features/codelists/models/codelist.model';
 import { HasRoleDirective } from '../../../../../shared/directives/has-role.directive';
+import { AuthService } from '../../../../../core/auth/auth.service';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 @Component({
   selector: 'gm-step-submission',
@@ -32,12 +38,16 @@ import { HasRoleDirective } from '../../../../../shared/directives/has-role.dire
     ReactiveFormsModule,
     MatButtonModule,
     MatDatepickerModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
     HasRoleDirective,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-submission.component.html',
 })
@@ -50,11 +60,18 @@ export class StepSubmissionComponent implements OnInit {
   private readonly workflowService = inject(WorkflowService);
   private readonly codelistService = inject(CodelistService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly authService = inject(AuthService);
 
   readonly saving = signal(false);
   readonly requestingApproval = signal(false);
   readonly submissionMethods = signal<CodeListItem[]>([]);
   readonly savedDetail = signal<WorkflowStepDetail | null>(null);
+  readonly docRefreshTick = signal(0);
+
+  readonly canModify = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role === 'Admin' || role === 'PalyazatiMunkatars';
+  });
 
   readonly form = new FormGroup({
     submittedAt: new FormControl<Date | null>(null, [Validators.required]),
@@ -78,12 +95,14 @@ export class StepSubmissionComponent implements OnInit {
     });
   }
 
-  get isEditable(): boolean {
-    return this.step().status === 'Active' && !this.isLocked();
-  }
+  readonly isEditable = computed(() => this.step().status === 'Active' && !this.isLocked());
 
   get hasData(): boolean {
     return this.savedDetail() != null || this.form.value.submittedAt != null;
+  }
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
   }
 
   save(): void {

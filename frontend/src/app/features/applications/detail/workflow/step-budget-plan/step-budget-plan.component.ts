@@ -35,6 +35,11 @@ import {
 import { BudgetPlanService } from '../../../services/budget-plan.service';
 import { HasRoleDirective } from '../../../../../shared/directives/has-role.directive';
 import { CurrencyHuPipe } from '../../../../../shared/pipes/currency-hu.pipe';
+import { AuthService } from '../../../../../core/auth/auth.service';
+import { DocumentDto } from '../../../models/application.model';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 const ITEM_TYPE_LABELS: Record<BudgetItemType, string> = {
   Event: 'Rendezvény',
@@ -59,6 +64,9 @@ const ITEM_TYPE_LABELS: Record<BudgetItemType, string> = {
     MatTooltipModule,
     CurrencyHuPipe,
     HasRoleDirective,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-budget-plan.component.html',
   styleUrl: './step-budget-plan.component.scss',
@@ -71,10 +79,17 @@ export class StepBudgetPlanComponent implements OnInit {
 
   private readonly budgetPlanService = inject(BudgetPlanService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly authService = inject(AuthService);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly requestingApproval = signal(false);
+  readonly docRefreshTick = signal(0);
+
+  readonly canModify = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role === 'Admin' || role === 'PalyazatiMunkatars';
+  });
   readonly budgetPlan = signal<BudgetPlan | null>(null);
   readonly localItems = signal<UpsertBudgetItemRequest[]>([]);
   readonly showItemForm = signal(false);
@@ -113,8 +128,10 @@ export class StepBudgetPlanComponent implements OnInit {
     return diff != null && diff < 0;
   });
 
-  get isEditable(): boolean {
-    return this.step().status === 'Active' && !this.isLocked();
+  readonly isEditable = computed(() => this.step().status === 'Active' && !this.isLocked());
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
   }
 
   get itemTypeLabel(): (type: BudgetItemType) => string {

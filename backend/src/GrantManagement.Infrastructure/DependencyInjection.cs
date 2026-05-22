@@ -35,6 +35,7 @@ public static class DependencyInjection
 
         services.Configure<SmtpSettings>(configuration.GetSection("Smtp"));
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddSingleton<IEmailParser, EmailParserService>();
 
         var uploadsPath = configuration["FileStorage:BasePath"] ?? "data/uploads";
         services.AddSingleton<IFileStorageService>(_ => new LocalFileStorageService(uploadsPath));

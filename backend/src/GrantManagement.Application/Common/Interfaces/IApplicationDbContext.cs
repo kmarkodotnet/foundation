@@ -13,6 +13,7 @@ public interface IApplicationDbContext
     DbSet<Document> Documents { get; }
     DbSet<Comment> Comments { get; }
     DbSet<EmailAttachment> EmailAttachments { get; }
+    DbSet<EmailRecord> EmailRecords { get; }
     DbSet<BudgetPlanEntity> BudgetPlans { get; }
     DbSet<BudgetItem> BudgetItems { get; }
     DbSet<VendorContract> VendorContracts { get; }

@@ -328,3 +328,71 @@ export interface RecordSettlementRequest {
   description?: string;
   notes?: string;
 }
+
+export type DocumentType =
+  | 'CallDocument'
+  | 'SubmissionDocument'
+  | 'ContractDocument'
+  | 'Invoice'
+  | 'ProofPhoto'
+  | 'SettlementDocument'
+  | 'Other';
+
+export interface DocumentDto {
+  id: string;
+  workflowStepId: string;
+  documentType: string;
+  displayName: string | null;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+  version: number;
+  isArchived: boolean;
+  previousVersionId: string | null;
+  uploadedByName: string;
+  uploadedAt: string;
+}
+
+export interface DocumentVersionDto {
+  id: string;
+  version: number;
+  fileName: string;
+  displayName: string | null;
+  uploadedAt: string;
+  uploadedByName: string;
+  isArchived: boolean;
+}
+
+export type EmailDirection = 'In' | 'Out';
+
+export interface EmailRecordDto {
+  id: string;
+  applicationId: string;
+  workflowStepId: string | null;
+  subject: string;
+  senderEmail: string;
+  sentDate: string;
+  direction: EmailDirection;
+  contentSummary: string | null;
+  hasAttachment: boolean;
+  attachmentFileName: string | null;
+  createdByUserId: string;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface EmlPreviewDto {
+  from: string | null;
+  subject: string | null;
+  date: string | null;
+  body: string | null;
+}
+
+export interface CreateEmailRequest {
+  subject: string;
+  senderEmail: string;
+  sentDate: string;
+  direction: EmailDirection;
+  contentSummary?: string;
+  workflowStepId?: string;
+}

@@ -1,0 +1,68 @@
+@if (!showForm()) {
+  <button mat-stroked-button (click)="openForm()">
+    <mat-icon>upload_file</mat-icon>
+    Dokumentum hozzáadása
+  </button>
+} @else {
+  <div class="du-form-panel">
+    <h4 class="du-title">Dokumentum feltöltése</h4>
+
+    <form [formGroup]="form" class="du-form">
+      <mat-form-field appearance="outline" class="du-type-field">
+        <mat-label>Dokumentum típusa *</mat-label>
+        <mat-select formControlName="documentType">
+          @for (opt of documentTypeOptions; track opt.value) {
+            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+          }
+        </mat-select>
+        @if (form.controls.documentType.hasError('required')) {
+          <mat-error>A dokumentum típusa kötelező.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="du-name-field">
+        <mat-label>Megjelenítési név (opcionális)</mat-label>
+        <input matInput formControlName="displayName" maxlength="300" />
+      </mat-form-field>
+    </form>
+
+    <div class="du-file-row">
+      <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="uploading()">
+        <mat-icon>attach_file</mat-icon>
+        Fájl kiválasztása
+      </button>
+      <input
+        #fileInput
+        type="file"
+        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.tif,.tiff,.msg,.eml"
+        style="display:none"
+        (change)="onFileSelected($event)"
+      />
+      @if (selectedFile(); as file) {
+        <span class="du-filename">{{ file.name }}</span>
+      }
+    </div>
+
+    @if (uploading()) {
+      <mat-progress-bar mode="determinate" [value]="uploadProgress()" />
+      <span class="du-progress-label">{{ uploadProgress() }}%</span>
+    }
+
+    <div class="du-actions">
+      <button mat-button (click)="cancelForm()" [disabled]="uploading()">Mégse</button>
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="form.invalid || !selectedFile() || uploading()"
+        (click)="submitUpload()"
+      >
+        @if (uploading()) {
+          Feltöltés folyamatban...
+        } @else {
+          <mat-icon>cloud_upload</mat-icon>
+          Feltöltés
+        }
+      </button>
+    </div>
+  </div>
+}

@@ -18,6 +18,7 @@ import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -26,12 +27,15 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { WorkflowService } from '../../../services/workflow.service';
-import { ApplicationDetail, WorkflowStep } from '../../../models/application.model';
+import { ApplicationDetail, DocumentDto, WorkflowStep } from '../../../models/application.model';
 import { HasRoleDirective } from '../../../../../shared/directives/has-role.directive';
 import { ConfirmDialogComponent } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { CurrencyHuPipe } from '../../../../../shared/pipes/currency-hu.pipe';
 import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 @Component({
   selector: 'gm-step-result',
@@ -42,6 +46,7 @@ import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
     ReactiveFormsModule,
     MatButtonModule,
     MatDatepickerModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -50,6 +55,9 @@ import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
     HasRoleDirective,
     CurrencyHuPipe,
     DateHuPipe,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-result.component.html',
 })
@@ -70,8 +78,16 @@ export class StepResultComponent implements OnInit {
   readonly closing = signal(false);
   readonly correcting = signal(false);
   readonly correctionMode = signal(false);
+  readonly docRefreshTick = signal(0);
 
   readonly isAdmin = computed(() => this.auth.currentUser()?.role === 'Admin');
+
+  readonly canModify = computed(() => {
+    const role = this.auth.currentUser()?.role;
+    return role === 'Admin' || role === 'PalyazatiMunkatars';
+  });
+
+  readonly isEditable = computed(() => this.step().status === 'Active' && !this.isLocked());
 
   private readonly _isWonValue = signal<boolean | null>(null);
   readonly isWonSelected = computed(() => this._isWonValue() === true);
@@ -83,10 +99,6 @@ export class StepResultComponent implements OnInit {
     resultDate: new FormControl<Date | null>(null),
     resultIdentifier: new FormControl(''),
   });
-
-  get isEditable(): boolean {
-    return this.step().status === 'Active' && !this.isLocked();
-  }
 
   get canCorrect(): boolean {
     const status = this.application().status;
@@ -284,6 +296,10 @@ export class StepResultComponent implements OnInit {
         },
       });
     });
+  }
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
   }
 
   private toDateOnly(date: Date): string {

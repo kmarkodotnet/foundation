@@ -23,9 +23,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
-import { ProofPhotoDto, ProofRecordDto, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
+import { DocumentDto, ProofPhotoDto, ProofRecordDto, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
 import { ProofRecordService } from '../../../services/proof-record.service';
 import { ProofRecordFormDialogComponent } from './proof-record-form-dialog.component';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 interface LightboxState {
   url: string;
@@ -48,6 +51,9 @@ interface LightboxState {
     MatProgressSpinnerModule,
     MatTooltipModule,
     DateHuPipe,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-proof-records.component.html',
   styleUrl: './step-proof-records.component.scss',
@@ -69,6 +75,7 @@ export class StepProofRecordsComponent implements OnInit, OnDestroy {
   readonly thumbnailUrls = signal<Map<string, string>>(new Map());
   readonly downloadingAll = signal<string | null>(null);
   readonly lightboxPhoto = signal<LightboxState | null>(null);
+  readonly docRefreshTick = signal(0);
 
   readonly canModify = computed(() => {
     const role = this.authService.currentUser()?.role;
@@ -205,6 +212,10 @@ export class StepProofRecordsComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
   }
 
   fileSizeLabel(bytes: number): string {

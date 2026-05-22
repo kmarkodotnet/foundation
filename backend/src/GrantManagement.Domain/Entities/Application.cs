@@ -449,13 +449,15 @@ public class Application : AggregateRoot<Guid>
         string storagePath,
         long fileSizeBytes,
         string contentType,
-        Guid uploadedByUserId)
+        Guid uploadedByUserId,
+        string? displayName = null)
     {
         EnsureNotLocked();
         var step = GetStep(stepType);
         var doc = Document.Create(
             step.Id, documentType, fileName, storagePath,
-            fileSizeBytes, contentType, uploadedByUserId);
+            fileSizeBytes, contentType, uploadedByUserId,
+            displayName: displayName);
         step.AddDocument(doc);
         UpdatedAt = DateTimeOffset.UtcNow;
 

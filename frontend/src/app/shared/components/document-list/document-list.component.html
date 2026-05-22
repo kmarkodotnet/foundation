@@ -1,0 +1,157 @@
+@if (loading()) {
+  <div class="dl-loading">
+    <mat-spinner diameter="32" />
+  </div>
+} @else {
+  <div class="dl-container">
+
+    <!-- Header row with "show archived" toggle -->
+    <div class="dl-header">
+      <span class="dl-count">{{ visibleDocuments().length }} dokumentum</span>
+      <mat-slide-toggle
+        [checked]="includeArchived()"
+        (change)="toggleIncludeArchived()"
+      >
+        Archivált dokumentumok mutatása
+      </mat-slide-toggle>
+    </div>
+
+    @if (visibleDocuments().length === 0) {
+      <p class="dl-empty">Ehhez a lépéshez még nincs dokumentum.</p>
+    } @else {
+      <div class="dl-list">
+        @for (doc of visibleDocuments(); track doc.id) {
+          <div class="dl-item" [class.dl-item--archived]="doc.isArchived">
+            <!-- Icon -->
+            <div class="dl-icon">
+              <mat-icon>{{ fileIcon(doc.contentType) }}</mat-icon>
+            </div>
+
+            <!-- Main info -->
+            <div class="dl-info">
+              <div class="dl-name">
+                {{ doc.displayName ?? doc.fileName }}
+                @if (doc.isArchived) {
+                  <mat-chip class="dl-archived-chip" disabled>Archivált</mat-chip>
+                }
+              </div>
+              <div class="dl-meta">
+                <span>{{ documentTypeLabel(doc.documentType) }}</span>
+                <span class="dl-sep">·</span>
+                <span>{{ fileSizeLabel(doc.fileSizeBytes) }}</span>
+                <span class="dl-sep">·</span>
+                <span>v{{ doc.version }}</span>
+                <span class="dl-sep">·</span>
+                <span>{{ doc.uploadedByName }}</span>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="dl-actions">
+              <!-- Download -->
+              <button
+                mat-icon-button
+                matTooltip="Letöltés"
+                [disabled]="downloading() === doc.id"
+                (click)="downloadDocument(doc)"
+              >
+                @if (downloading() === doc.id) {
+                  <mat-spinner diameter="18" />
+                } @else {
+                  <mat-icon>download</mat-icon>
+                }
+              </button>
+
+              <!-- Preview (PDF or image) -->
+              @if (isPdf(doc.contentType) || isImage(doc.contentType)) {
+                <button
+                  mat-icon-button
+                  matTooltip="{{ isPdf(doc.contentType) ? 'Megnyitás böngészőben' : 'Előnézet' }}"
+                  (click)="previewDocument(doc)"
+                >
+                  <mat-icon>{{ isPdf(doc.contentType) ? 'open_in_new' : 'image' }}</mat-icon>
+                </button>
+              }
+
+              <!-- Version history toggle -->
+              <button
+                mat-icon-button
+                matTooltip="Verzióelőzmények"
+                [disabled]="loadingVersionsFor() === doc.id"
+                (click)="toggleVersions(doc)"
+              >
+                @if (loadingVersionsFor() === doc.id) {
+                  <mat-spinner diameter="18" />
+                } @else {
+                  <mat-icon>history</mat-icon>
+                }
+              </button>
+
+              <!-- Archive (Admin only) -->
+              @if (canArchive() && !doc.isArchived && !isLocked()) {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Archiválás"
+                  [disabled]="archiving() === doc.id"
+                  (click)="confirmArchive(doc)"
+                >
+                  @if (archiving() === doc.id) {
+                    <mat-spinner diameter="18" />
+                  } @else {
+                    <mat-icon>archive</mat-icon>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Version history expansion panel -->
+          @if (expandedVersionsFor() === doc.id) {
+            <div class="dl-versions">
+              <div class="dl-versions-header">Verzióelőzmények</div>
+              @if (versions().get(doc.id); as versionList) {
+                @if (versionList.length === 0) {
+                  <p class="dl-versions-empty">Nincs korábbi verzió.</p>
+                } @else {
+                  @for (v of versionList; track v.id) {
+                    <div class="dl-version-row">
+                      <span class="dl-version-num">v{{ v.version }}</span>
+                      <span class="dl-version-name">{{ v.displayName ?? v.fileName }}</span>
+                      <span class="dl-version-meta">{{ v.uploadedByName }}</span>
+                      @if (v.isArchived) {
+                        <mat-chip disabled class="dl-archived-chip">Archivált</mat-chip>
+                      }
+                      <button
+                        mat-icon-button
+                        matTooltip="Letöltés"
+                        (click)="downloadVersion(doc.id, v.id, v.fileName)"
+                      >
+                        <mat-icon>download</mat-icon>
+                      </button>
+                    </div>
+                  }
+                }
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- Image Lightbox -->
+@if (lightbox(); as lb) {
+  <div class="dl-lightbox-overlay" (click)="closeLightbox()">
+    <div class="dl-lightbox-content" (click)="$event.stopPropagation()">
+      <img [src]="lb.url" [alt]="lb.fileName" class="dl-lightbox-img" />
+      <div class="dl-lightbox-footer">
+        <span>{{ lb.fileName }}</span>
+        <button mat-icon-button (click)="closeLightbox()" matTooltip="Bezárás">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+}

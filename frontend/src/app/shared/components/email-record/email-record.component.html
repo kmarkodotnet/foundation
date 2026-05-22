@@ -1,0 +1,193 @@
+@if (loading()) {
+  <div style="display:flex;justify-content:center;padding:16px">
+    <mat-spinner diameter="32" />
+  </div>
+} @else {
+  <div class="email-section">
+
+    <div class="email-header">
+      <h4 class="section-title">E-mailek</h4>
+      @if (canWrite() && !isLocked()) {
+        <button mat-stroked-button color="primary" (click)="openAddForm()">
+          <mat-icon>add</mat-icon>
+          E-mail hozzáadása
+        </button>
+      }
+    </div>
+
+    @if (showAddForm()) {
+      <div class="add-form-card">
+        <form [formGroup]="emailForm" (ngSubmit)="submitEmail()">
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Tárgy</mat-label>
+            <input matInput formControlName="subject" />
+            @if (emailForm.get('subject')?.hasError('required') && emailForm.get('subject')?.touched) {
+              <mat-error>A tárgy megadása kötelező.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Feladó e-mail cím</mat-label>
+            <input matInput formControlName="senderEmail" type="email" />
+            @if (emailForm.get('senderEmail')?.hasError('required') && emailForm.get('senderEmail')?.touched) {
+              <mat-error>A feladó megadása kötelező.</mat-error>
+            }
+            @if (emailForm.get('senderEmail')?.hasError('email') && emailForm.get('senderEmail')?.touched) {
+              <mat-error>Érvénytelen e-mail cím formátum.</mat-error>
+            }
+          </mat-form-field>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Küldés dátuma</mat-label>
+              <input matInput [matDatepicker]="sentDatePicker" formControlName="sentDate" />
+              <mat-datepicker-toggle matIconSuffix [for]="sentDatePicker" />
+              <mat-datepicker #sentDatePicker />
+              @if (emailForm.get('sentDate')?.hasError('required') && emailForm.get('sentDate')?.touched) {
+                <mat-error>A küldés dátuma kötelező.</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Irány</mat-label>
+              <mat-select formControlName="direction">
+                <mat-option value="In">Bejövő</mat-option>
+                <mat-option value="Out">Kimenő</mat-option>
+              </mat-select>
+              @if (emailForm.get('direction')?.hasError('required') && emailForm.get('direction')?.touched) {
+                <mat-error>Az irány megadása kötelező.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Tartalom összefoglalója (opcionális)</mat-label>
+            <textarea matInput formControlName="contentSummary" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="file-row">
+            <label class="file-label">
+              <mat-icon>attach_file</mat-icon>
+              .eml / .msg fájl csatolása (opcionális)
+              <input
+                type="file"
+                accept=".eml,.msg"
+                style="display:none"
+                (change)="onFileSelected($event)"
+              />
+            </label>
+            @if (selectedFile) {
+              <span class="file-name">{{ selectedFile.name }}</span>
+            }
+          </div>
+
+          <div class="form-actions">
+            <button type="button" mat-button (click)="cancelAddForm()">Mégsem</button>
+            <button
+              type="submit"
+              mat-flat-button
+              color="primary"
+              [disabled]="emailForm.invalid || saving()"
+            >
+              @if (saving()) {
+                <mat-spinner diameter="18" />
+              } @else {
+                Mentés
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+    @if (emails().length === 0) {
+      <p class="empty-text">Nincs rögzített e-mail.</p>
+    } @else {
+      <div class="email-list">
+        @for (email of emails(); track email.id) {
+          <div class="email-card">
+            <div class="email-card-header">
+              <div class="email-meta">
+                <span class="email-subject">{{ email.subject }}</span>
+                <span class="direction-badge" [class]="directionClass(email.direction)">
+                  {{ directionLabel(email.direction) }}
+                </span>
+              </div>
+              <div class="email-actions">
+                @if (email.hasAttachment) {
+                  <button
+                    mat-icon-button
+                    matTooltip="Előnézet"
+                    (click)="openPreview(email)"
+                  >
+                    <mat-icon>preview</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    matTooltip="Letöltés"
+                    (click)="downloadAttachment(email)"
+                  >
+                    <mat-icon>download</mat-icon>
+                  </button>
+                } @else if (canWrite() && !isLocked()) {
+                  <button
+                    mat-icon-button
+                    matTooltip="Fájl csatolása"
+                    [disabled]="uploading() === email.id"
+                    (click)="uploadAttachment(email)"
+                  >
+                    @if (uploading() === email.id) {
+                      <mat-spinner diameter="18" />
+                    } @else {
+                      <mat-icon>attach_file</mat-icon>
+                    }
+                  </button>
+                }
+                @if (canDelete(email) && !isLocked()) {
+                  <button
+                    mat-icon-button
+                    matTooltip="Törlés"
+                    color="warn"
+                    [disabled]="deleting() === email.id"
+                    (click)="confirmDelete(email)"
+                  >
+                    @if (deleting() === email.id) {
+                      <mat-spinner diameter="18" />
+                    } @else {
+                      <mat-icon>delete</mat-icon>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="email-details">
+              <span class="detail-item">
+                <mat-icon class="detail-icon">person</mat-icon>
+                {{ email.senderEmail }}
+              </span>
+              <span class="detail-item">
+                <mat-icon class="detail-icon">calendar_today</mat-icon>
+                {{ email.sentDate | date: 'yyyy. MM. dd.' }}
+              </span>
+              <span class="detail-item">
+                <mat-icon class="detail-icon">account_circle</mat-icon>
+                {{ email.createdByName }}
+              </span>
+              @if (email.hasAttachment) {
+                <span class="detail-item attachment-info">
+                  <mat-icon class="detail-icon">attach_file</mat-icon>
+                  {{ email.attachmentFileName }}
+                </span>
+              }
+            </div>
+            @if (email.contentSummary) {
+              <p class="email-summary">{{ email.contentSummary }}</p>
+            }
+          </div>
+        }
+      </div>
+    }
+
+  </div>
+}

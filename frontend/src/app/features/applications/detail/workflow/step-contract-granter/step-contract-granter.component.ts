@@ -12,6 +12,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -19,8 +20,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { WorkflowService } from '../../../services/workflow.service';
-import { ApplicationDetail, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
+import { ApplicationDetail, DocumentDto, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
 import { HasRoleDirective } from '../../../../../shared/directives/has-role.directive';
+import { AuthService } from '../../../../../core/auth/auth.service';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 @Component({
   selector: 'gm-step-contract-granter',
@@ -32,11 +37,15 @@ import { HasRoleDirective } from '../../../../../shared/directives/has-role.dire
     MatButtonModule,
     MatCheckboxModule,
     MatDatepickerModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
     HasRoleDirective,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-contract-granter.component.html',
 })
@@ -49,8 +58,17 @@ export class StepContractGranterComponent implements OnInit {
 
   private readonly workflowService = inject(WorkflowService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly authService = inject(AuthService);
 
   readonly saving = signal(false);
+  readonly docRefreshTick = signal(0);
+
+  readonly canModify = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role === 'Admin' || role === 'PalyazatiMunkatars';
+  });
+
+  readonly isEditable = computed(() => this.step().status === 'Active' && !this.isLocked());
 
   readonly form = new FormGroup({
     contractIdentifier: new FormControl(''),
@@ -59,10 +77,6 @@ export class StepContractGranterComponent implements OnInit {
     notificationDate: new FormControl<Date | null>(null),
     complete: new FormControl(false),
   });
-
-  get isEditable(): boolean {
-    return this.step().status === 'Active' && !this.isLocked();
-  }
 
   ngOnInit(): void {
     this.prefillFromApplication();
@@ -121,6 +135,10 @@ export class StepContractGranterComponent implements OnInit {
         });
       },
     });
+  }
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
   }
 
   private toDateOnly(date: Date): string {

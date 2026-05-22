@@ -15,6 +15,7 @@ public class Document : BaseEntity<Guid>
     public bool IsArchived { get; private set; }
     public Guid? PreviousVersionId { get; private set; }
     public Guid UploadedByUserId { get; private set; }
+    public string? DisplayName { get; private set; }
 
     private Document() { }
 
@@ -27,7 +28,8 @@ public class Document : BaseEntity<Guid>
         string contentType,
         Guid uploadedByUserId,
         int version = 1,
-        Guid? previousVersionId = null)
+        Guid? previousVersionId = null,
+        string? displayName = null)
     {
         return new Document
         {
@@ -42,6 +44,7 @@ public class Document : BaseEntity<Guid>
             Version = version,
             PreviousVersionId = previousVersionId,
             IsArchived = false,
+            DisplayName = displayName,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

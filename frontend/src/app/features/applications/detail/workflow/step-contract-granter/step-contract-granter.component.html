@@ -1,6 +1,6 @@
 <div class="step-contract-container">
 
-  @if (isEditable) {
+  @if (isEditable()) {
     <form [formGroup]="form" class="contract-form">
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Szerződés azonosítója</mat-label>
@@ -54,7 +54,7 @@
         </button>
       </div>
     </form>
-  } @else {
+  } @else if (!isEditable()) {
     <div class="contract-summary">
       @if (application().granterContractIdentifier) {
         <p><strong>Szerződés azonosítója:</strong> {{ application().granterContractIdentifier }}</p>
@@ -74,4 +74,12 @@
     </div>
   }
 
+  <mat-divider style="margin: 16px 0" />
+  <h3 style="margin: 8px 0">Dokumentumok</h3>
+  @if (isEditable() && canModify()) {
+    <gm-document-upload [appId]="applicationId()" [stepId]="step().id" (uploaded)="onDocumentUploaded($event)" />
+  }
+  <gm-document-list [appId]="applicationId()" [stepId]="step().id" [isLocked]="isLocked()" [refreshTrigger]="docRefreshTick()" />
+  <mat-divider style="margin: 16px 0" />
+  <gm-email-record [appId]="applicationId()" [stepId]="step().id" [isLocked]="isLocked()" />
 </div>

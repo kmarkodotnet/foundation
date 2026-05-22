@@ -30,9 +30,12 @@ import { CurrencyHuPipe } from '../../../../../shared/pipes/currency-hu.pipe';
 import { Vendor } from '../../../../vendors/models/vendor.model';
 import { VendorQuickAddDialogComponent } from '../../../../vendors/vendor-quick-add-dialog.component';
 import { VendorService } from '../../../../vendors/services/vendor.service';
-import { BudgetItem, VendorContract, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
+import { BudgetItem, DocumentDto, VendorContract, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
 import { BudgetPlanService } from '../../../services/budget-plan.service';
 import { VendorContractService } from '../../../services/vendor-contract.service';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 @Component({
   selector: 'gm-step-vendor-contracts',
@@ -52,6 +55,9 @@ import { VendorContractService } from '../../../services/vendor-contract.service
     MatTableModule,
     MatTooltipModule,
     CurrencyHuPipe,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-vendor-contracts.component.html',
   styleUrl: './step-vendor-contracts.component.scss',
@@ -74,6 +80,7 @@ export class StepVendorContractsComponent implements OnInit {
   readonly saving = signal(false);
   readonly deleting = signal<string | null>(null);
   readonly showAddForm = signal(false);
+  readonly docRefreshTick = signal(0);
   readonly contracts = signal<VendorContract[]>([]);
   readonly vendors = signal<Vendor[]>([]);
   readonly budgetItems = signal<BudgetItem[]>([]);
@@ -100,6 +107,10 @@ export class StepVendorContractsComponent implements OnInit {
 
     return role === 'Admin' || role === 'PalyazatiMunkatars';
   });
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
+  }
 
   readonly contractForm = new FormGroup({
     vendorId: new FormControl<string | null>(null, [Validators.required]),

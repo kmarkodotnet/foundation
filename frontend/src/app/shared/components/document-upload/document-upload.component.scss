@@ -1,0 +1,56 @@
+.du-form-panel {
+  background: #f5f5f5;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.du-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.du-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.du-type-field {
+  flex: 1;
+  min-width: 220px;
+}
+
+.du-name-field {
+  flex: 1;
+  min-width: 220px;
+}
+
+.du-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.du-filename {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.7);
+  word-break: break-all;
+}
+
+.du-progress-label {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.54);
+  text-align: right;
+}
+
+.du-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

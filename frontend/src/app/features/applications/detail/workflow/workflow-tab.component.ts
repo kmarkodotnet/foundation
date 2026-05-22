@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
@@ -57,7 +57,7 @@ const STEP_STATUS_ICONS: Record<string, string> = {
   template: `
     <div style="padding:16px">
       <mat-accordion multi>
-        @for (step of steps(); track step.id) {
+        @for (step of sortedSteps(); track step.id) {
           <mat-expansion-panel [expanded]="step.status === 'Active'">
             <mat-expansion-panel-header>
               <mat-panel-title>
@@ -224,6 +224,8 @@ export class WorkflowTabComponent {
   readonly isLocked = input(false);
   readonly stepChanged = output<void>();
   readonly applicationUpdated = output<ApplicationDetail>();
+
+  readonly sortedSteps = computed(() => [...this.steps()].sort((a, b) => a.order - b.order));
 
   stepLabel(type: WorkflowStepType): string {
     return STEP_LABELS[type] ?? type;

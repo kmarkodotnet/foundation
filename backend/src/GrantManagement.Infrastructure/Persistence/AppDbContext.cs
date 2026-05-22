@@ -15,6 +15,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<EmailAttachment> EmailAttachments => Set<EmailAttachment>();
+    public DbSet<EmailRecord> EmailRecords => Set<EmailRecord>();
     public DbSet<BudgetPlan> BudgetPlans => Set<BudgetPlan>();
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
     public DbSet<VendorContract> VendorContracts => Set<VendorContract>();
@@ -41,6 +42,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<GrantApp>().HasQueryFilter(a => !a.IsArchived);
         modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
         modelBuilder.Entity<ProofRecord>().HasQueryFilter(p => !p.IsDeleted);
+        modelBuilder.Entity<EmailRecord>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

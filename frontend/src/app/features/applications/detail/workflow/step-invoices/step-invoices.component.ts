@@ -41,6 +41,7 @@ import { CurrencyHuPipe } from '../../../../../shared/pipes/currency-hu.pipe';
 import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
 import {
   BudgetItem,
+  DocumentDto,
   Invoice,
   InvoiceSummaryDto,
   WorkflowStep,
@@ -52,6 +53,9 @@ import {
   MarkPaidDialogComponent,
   MarkPaidDialogResult,
 } from './mark-paid-dialog.component';
+import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
+import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
+import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 
 function paymentDateRequiredValidator(control: AbstractControl): ValidationErrors | null {
   const group = control as FormGroup;
@@ -90,6 +94,9 @@ function paymentDateRequiredValidator(control: AbstractControl): ValidationError
     MatTooltipModule,
     CurrencyHuPipe,
     DateHuPipe,
+    DocumentListComponent,
+    DocumentUploadComponent,
+    EmailRecordComponent,
   ],
   templateUrl: './step-invoices.component.html',
   styleUrl: './step-invoices.component.scss',
@@ -112,6 +119,7 @@ export class StepInvoicesComponent implements OnInit {
   readonly deleting = signal<string | null>(null);
   readonly markingPaid = signal<string | null>(null);
   readonly showAddForm = signal(false);
+  readonly docRefreshTick = signal(0);
   readonly invoices = signal<Invoice[]>([]);
   readonly summary = signal<InvoiceSummaryDto | null>(null);
   readonly budgetItems = signal<BudgetItem[]>([]);
@@ -283,6 +291,10 @@ export class StepInvoicesComponent implements OnInit {
           });
         },
       });
+  }
+
+  onDocumentUploaded(_doc: DocumentDto): void {
+    this.docRefreshTick.update((n) => n + 1);
   }
 
   private loadInvoices(): void {

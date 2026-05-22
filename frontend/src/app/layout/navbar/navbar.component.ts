@@ -7,6 +7,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
+import { GlobalSearchComponent } from '../../shared/components/global-search/global-search.component';
 
 @Component({
   selector: 'gm-navbar',
@@ -20,11 +21,13 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
     MatMenuModule,
     MatDividerModule,
     NotificationBellComponent,
+    GlobalSearchComponent,
   ],
   template: `
     <mat-toolbar color="primary">
       <span>Pályázatkezelő</span>
       <span class="gm-spacer"></span>
+      <gm-global-search />
       <gm-notification-bell />
       <button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Profil menü">
         <mat-icon>account_circle</mat-icon>

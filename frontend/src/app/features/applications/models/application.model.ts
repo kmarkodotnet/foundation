@@ -145,12 +145,15 @@ export interface ApplicationListItem {
   id: string;
   title: string;
   identifier: string | null;
-  status: ApplicationStatus;
   granterName: string;
+  status: ApplicationStatus;
   submissionDeadline: string;
   spendingDeadline: string | null;
   awardedAmount: number | null;
-  createdAt: string;
+  lastModifiedAt: string;
+  isDeadlineWarning: boolean;
+  isDeadlineCritical: boolean;
+  isSpendingDeadlineWarning: boolean;
 }
 
 export interface ApplicationDetail {
@@ -182,16 +185,28 @@ export interface ApplicationDetail {
   granterNotificationDate: string | null;
 }
 
+export type ApplicationSortBy =
+  | 'SubmissionDeadline'
+  | 'AwardedAmount'
+  | 'LastModified'
+  | 'Status';
+
+export type SortDirection = 'Asc' | 'Desc';
+
 export interface ApplicationFilter {
   page: number;
   pageSize: number;
-  search?: string;
-  status?: ApplicationStatus[];
+  searchTerm?: string;
   granterId?: string;
-  deadlineFrom?: string;
-  deadlineTo?: string;
-  sortBy?: string;
-  sortDir?: 'asc' | 'desc';
+  applicationTypeId?: string;
+  statuses?: ApplicationStatus[];
+  submissionDeadlineFrom?: string;
+  submissionDeadlineTo?: string;
+  awardedAmountMin?: number;
+  awardedAmountMax?: number;
+  includeArchived?: boolean;
+  sortBy?: ApplicationSortBy;
+  sortDirection?: SortDirection;
 }
 
 export interface VendorContract {

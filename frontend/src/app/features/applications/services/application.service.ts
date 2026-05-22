@@ -20,13 +20,19 @@ export class ApplicationService {
       .set('page', filter.page)
       .set('pageSize', filter.pageSize);
 
-    if (filter.search) params = params.set('search', filter.search);
-    if (filter.status?.length) params = params.set('status', filter.status.join(','));
+    if (filter.searchTerm) params = params.set('searchTerm', filter.searchTerm);
     if (filter.granterId) params = params.set('granterId', filter.granterId);
-    if (filter.deadlineFrom) params = params.set('deadlineFrom', filter.deadlineFrom);
-    if (filter.deadlineTo) params = params.set('deadlineTo', filter.deadlineTo);
+    if (filter.applicationTypeId) params = params.set('applicationTypeId', filter.applicationTypeId);
+    if (filter.statuses?.length) {
+      filter.statuses.forEach((s) => (params = params.append('statuses', s)));
+    }
+    if (filter.submissionDeadlineFrom) params = params.set('submissionDeadlineFrom', filter.submissionDeadlineFrom);
+    if (filter.submissionDeadlineTo) params = params.set('submissionDeadlineTo', filter.submissionDeadlineTo);
+    if (filter.awardedAmountMin != null) params = params.set('awardedAmountMin', filter.awardedAmountMin);
+    if (filter.awardedAmountMax != null) params = params.set('awardedAmountMax', filter.awardedAmountMax);
+    if (filter.includeArchived) params = params.set('includeArchived', true);
     if (filter.sortBy) params = params.set('sortBy', filter.sortBy);
-    if (filter.sortDir) params = params.set('sortDir', filter.sortDir);
+    if (filter.sortDirection) params = params.set('sortDirection', filter.sortDirection);
 
     return this.http.get<PagedResult<ApplicationListItem>>(this.base, { params });
   }
@@ -47,13 +53,21 @@ export class ApplicationService {
     return this.http.delete(`${this.base}/${id}`);
   }
 
-  exportExcel(filter: Partial<ApplicationFilter>) {
+  exportApplications(filter: Omit<ApplicationFilter, 'page' | 'pageSize' | 'sortBy' | 'sortDirection'>) {
     let params = new HttpParams();
-    if (filter.status?.length) params = params.set('status', filter.status.join(','));
+
+    if (filter.searchTerm) params = params.set('searchTerm', filter.searchTerm);
     if (filter.granterId) params = params.set('granterId', filter.granterId);
-    return this.http.get(`${this.base}/export`, {
-      params,
-      responseType: 'blob',
-    });
+    if (filter.applicationTypeId) params = params.set('applicationTypeId', filter.applicationTypeId);
+    if (filter.statuses?.length) {
+      filter.statuses.forEach((s) => (params = params.append('statuses', s)));
+    }
+    if (filter.submissionDeadlineFrom) params = params.set('submissionDeadlineFrom', filter.submissionDeadlineFrom);
+    if (filter.submissionDeadlineTo) params = params.set('submissionDeadlineTo', filter.submissionDeadlineTo);
+    if (filter.awardedAmountMin != null) params = params.set('awardedAmountMin', filter.awardedAmountMin);
+    if (filter.awardedAmountMax != null) params = params.set('awardedAmountMax', filter.awardedAmountMax);
+    if (filter.includeArchived) params = params.set('includeArchived', true);
+
+    return this.http.get(`${this.base}/export`, { params, responseType: 'blob' });
   }
 }

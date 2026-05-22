@@ -3,6 +3,7 @@ using GrantManagement.Application.Applications.Commands.ArchiveApplication;
 using GrantManagement.Application.Applications.Commands.CreateApplication;
 using GrantManagement.Application.Applications.Commands.UpdateApplication;
 using GrantManagement.Application.Applications.DTOs;
+using GrantManagement.Application.Applications.Queries.ExportApplications;
 using GrantManagement.Application.Applications.Queries.GetApplicationDetail;
 using GrantManagement.Application.Applications.Queries.GetApplicationList;
 using GrantManagement.Application.Common.Models;
@@ -17,7 +18,7 @@ namespace GrantManagement.API.Controllers;
 public class ApplicationsController : ApiControllerBase
 {
     /// <summary>
-    /// Returns a paged list of grant applications with optional filtering.
+    /// Returns a paged, filtered and sorted list of grant applications.
     /// </summary>
     /// <response code="200">Paged list returned.</response>
     /// <response code="401">Not authenticated.</response>
@@ -27,13 +28,59 @@ public class ApplicationsController : ApiControllerBase
     public async Task<ActionResult<PagedResult<ApplicationListItemDto>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? search = null,
-        [FromQuery] ApplicationStatus[]? status = null,
+        [FromQuery] string? searchTerm = null,
         [FromQuery] Guid? granterId = null,
+        [FromQuery] Guid? applicationTypeId = null,
+        [FromQuery] ApplicationStatus[]? statuses = null,
+        [FromQuery] DateOnly? submissionDeadlineFrom = null,
+        [FromQuery] DateOnly? submissionDeadlineTo = null,
+        [FromQuery] decimal? awardedAmountMin = null,
+        [FromQuery] decimal? awardedAmountMax = null,
+        [FromQuery] bool includeArchived = false,
+        [FromQuery] ApplicationSortBy sortBy = ApplicationSortBy.SubmissionDeadline,
+        [FromQuery] SortDirection sortDirection = SortDirection.Asc,
         CancellationToken ct = default)
     {
-        var query = new GetApplicationListQuery(page, pageSize, search, status, granterId);
+        var query = new GetApplicationListQuery(
+            page, pageSize, searchTerm, granterId, applicationTypeId,
+            statuses, submissionDeadlineFrom, submissionDeadlineTo,
+            awardedAmountMin, awardedAmountMax, includeArchived, sortBy, sortDirection);
         return Ok(await Sender.Send(query, ct));
+    }
+
+    /// <summary>
+    /// Exports the filtered application list to Excel (.xlsx). Requires Admin, Elnok, or Penzugyes role.
+    /// </summary>
+    /// <response code="200">Excel file returned.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <response code="403">Insufficient role.</response>
+    [HttpGet("export")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Export(
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] Guid? granterId = null,
+        [FromQuery] Guid? applicationTypeId = null,
+        [FromQuery] ApplicationStatus[]? statuses = null,
+        [FromQuery] DateOnly? submissionDeadlineFrom = null,
+        [FromQuery] DateOnly? submissionDeadlineTo = null,
+        [FromQuery] decimal? awardedAmountMin = null,
+        [FromQuery] decimal? awardedAmountMax = null,
+        [FromQuery] bool includeArchived = false,
+        CancellationToken ct = default)
+    {
+        var query = new ExportApplicationsQuery(
+            searchTerm, granterId, applicationTypeId,
+            statuses, submissionDeadlineFrom, submissionDeadlineTo,
+            awardedAmountMin, awardedAmountMax, includeArchived);
+
+        var result = await Sender.Send(query, ct);
+
+        return File(
+            result.Content,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            result.FileName);
     }
 
     /// <summary>

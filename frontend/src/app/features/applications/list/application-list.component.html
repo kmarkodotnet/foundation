@@ -1,34 +1,120 @@
 <div class="gm-page-container">
-  <div style="display:flex; align-items:center; margin-bottom:16px">
-    <h1 style="margin:0">Pályázatok</h1>
+  <!-- Fejléc -->
+  <div class="gm-page-header">
+    <h1>Pályázatok</h1>
     <span class="gm-spacer"></span>
+    <button
+      mat-stroked-button
+      *hasRole="['Admin', 'Elnok', 'Penzugyes']"
+      [disabled]="exporting() || result()?.totalCount === 0"
+      (click)="export()"
+    >
+      @if (exporting()) {
+        <mat-spinner diameter="18" style="display:inline-block;margin-right:6px" />
+      } @else {
+        <mat-icon>download</mat-icon>
+      }
+      Exportálás (.xlsx)
+    </button>
     <button mat-flat-button color="primary" *hasRole="['Admin', 'PalyazatiMunkatars']" (click)="createNew()">
       <mat-icon>add</mat-icon>
       Új pályázat
     </button>
   </div>
 
-  <mat-card class="gm-card-gap">
-    <mat-card-content>
-      <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end">
-        <mat-form-field appearance="outline">
-          <mat-label>Keresés</mat-label>
-          <input matInput [(ngModel)]="searchText" (keyup.enter)="onSearch()" placeholder="Cím, azonosító...">
-          <mat-icon matSuffix (click)="onSearch()" style="cursor:pointer">search</mat-icon>
-        </mat-form-field>
+  <!-- Szűrők panel -->
+  <mat-expansion-panel class="gm-filter-panel">
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>filter_list</mat-icon>
+        Szűrők
+        @if (activeFilters().length > 0) {
+          <span class="gm-filter-count">{{ activeFilters().length }}</span>
+        }
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Státusz</mat-label>
-          <mat-select [(ngModel)]="filter.status" multiple (selectionChange)="load()">
-            @for (opt of statusOptions; track opt.value) {
-              <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+    <form [formGroup]="form" class="gm-filter-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Keresés</mat-label>
+        <input matInput formControlName="searchTerm" placeholder="Cím, azonosító...">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Pályáztató</mat-label>
+        <mat-select formControlName="granterId" (selectionChange)="onOtherFilterChange()">
+          <mat-option [value]="null">Összes</mat-option>
+          @for (g of granters(); track g.id) {
+            <mat-option [value]="g.id">{{ g.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Állapot</mat-label>
+        <mat-select formControlName="statuses" multiple (selectionChange)="onOtherFilterChange()">
+          @for (opt of statusOptions; track opt.value) {
+            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Beadási határidő (-tól)</mat-label>
+        <input matInput [matDatepicker]="fromPicker" formControlName="submissionDeadlineFrom"
+               (dateChange)="onOtherFilterChange()">
+        <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+        <mat-datepicker #fromPicker />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Beadási határidő (-ig)</mat-label>
+        <input matInput [matDatepicker]="toPicker" formControlName="submissionDeadlineTo"
+               (dateChange)="onOtherFilterChange()">
+        <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+        <mat-datepicker #toPicker />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Elnyert összeg min (Ft)</mat-label>
+        <input matInput type="number" formControlName="awardedAmountMin"
+               (change)="onOtherFilterChange()">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Elnyert összeg max (Ft)</mat-label>
+        <input matInput type="number" formControlName="awardedAmountMax"
+               (change)="onOtherFilterChange()">
+      </mat-form-field>
+
+      <div class="gm-filter-checkbox">
+        <mat-checkbox formControlName="includeArchived" (change)="onOtherFilterChange()">
+          Archivált pályázatok mutatása
+        </mat-checkbox>
       </div>
-    </mat-card-content>
-  </mat-card>
+    </form>
+  </mat-expansion-panel>
 
+  <!-- Aktív szűrők badge-ek -->
+  @if (activeFilters().length > 0) {
+    <div class="gm-active-filters">
+      <mat-chip-set>
+        @for (badge of activeFilters(); track badge.key) {
+          <mat-chip (removed)="removeFilter(badge.key)">
+            {{ badge.label }}
+            <mat-icon matChipRemove>cancel</mat-icon>
+          </mat-chip>
+        }
+      </mat-chip-set>
+      <button mat-button color="warn" (click)="clearAllFilters()">
+        <mat-icon>clear_all</mat-icon>
+        Összes szűrő törlése
+      </button>
+    </div>
+  }
+
+  <!-- Lista -->
   @if (loading()) {
     <div class="gm-loading-overlay">
       <mat-spinner diameter="48" />
@@ -36,21 +122,15 @@
   } @else {
     <mat-card>
       <mat-card-content>
-        <table mat-table [dataSource]="result()?.items ?? []" style="width:100%">
+        <table mat-table [dataSource]="result()?.items ?? []" matSort (matSortChange)="onSort($event)" style="width:100%">
+
           <ng-container matColumnDef="title">
-            <th mat-header-cell *matHeaderCellDef>Pályázat neve</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="SubmissionDeadline">Pályázat neve</th>
             <td mat-cell *matCellDef="let row">
               <strong>{{ row.title }}</strong>
               @if (row.identifier) {
-                <br><small>{{ row.identifier }}</small>
+                <br><small class="gm-secondary-text">{{ row.identifier }}</small>
               }
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Státusz</th>
-            <td mat-cell *matCellDef="let row">
-              <gm-status-badge [status]="row.status" />
             </td>
           </ng-container>
 
@@ -59,27 +139,50 @@
             <td mat-cell *matCellDef="let row">{{ row.granterName }}</td>
           </ng-container>
 
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="Status">Státusz</th>
+            <td mat-cell *matCellDef="let row">
+              <gm-status-badge [status]="row.status" />
+            </td>
+          </ng-container>
+
           <ng-container matColumnDef="submissionDeadline">
-            <th mat-header-cell *matHeaderCellDef>Beadási határidő</th>
-            <td mat-cell *matCellDef="let row">{{ row.submissionDeadline | dateHu }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="SubmissionDeadline">Beadási határidő</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class.gm-deadline-warning]="row.isDeadlineWarning"
+                    [class.gm-deadline-critical]="row.isDeadlineCritical"
+                    [matTooltip]="row.isDeadlineCritical ? 'Határidő lejárt!' : row.isDeadlineWarning ? 'Határidő hamarosan lejár' : ''">
+                @if (row.isDeadlineCritical) {
+                  <mat-icon class="gm-deadline-icon">warning</mat-icon>
+                } @else if (row.isDeadlineWarning) {
+                  <mat-icon class="gm-deadline-icon">schedule</mat-icon>
+                }
+                {{ row.submissionDeadline | dateHu }}
+              </span>
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="awardedAmount">
-            <th mat-header-cell *matHeaderCellDef>Nyert összeg</th>
-            <td mat-cell *matCellDef="let row">{{ row.awardedAmount | currencyHu }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="AwardedAmount">Elnyert összeg</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class.gm-spending-warning]="row.isSpendingDeadlineWarning">
+                {{ row.awardedAmount | currencyHu }}
+              </span>
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let row">
-              <button mat-icon-button matTooltip="Megnyitás" (click)="openDetail(row.id)">
+              <button mat-icon-button matTooltip="Megnyitás" (click)="openDetail(row.id); $event.stopPropagation()">
                 <mat-icon>open_in_new</mat-icon>
               </button>
             </td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="columns"></tr>
-          <tr mat-row *matRowDef="let row; columns: columns" style="cursor:pointer" (click)="openDetail(row.id)"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"
+              style="cursor:pointer" (click)="openDetail(row.id)"></tr>
         </table>
 
         @if (!result()?.items?.length) {
@@ -94,9 +197,10 @@
     @if (result()) {
       <mat-paginator
         [length]="result()!.totalCount"
-        [pageSize]="filter.pageSize"
-        [pageIndex]="filter.page - 1"
+        [pageSize]="currentPageSize"
+        [pageIndex]="currentPage - 1"
         [pageSizeOptions]="[10, 20, 50]"
+        showFirstLastButtons
         (page)="onPage($event)"
       />
     }

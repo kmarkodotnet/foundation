@@ -6,6 +6,7 @@ using GrantManagement.Infrastructure.BackgroundJobs;
 using GrantManagement.Infrastructure.Email;
 using GrantManagement.Infrastructure.FileStorage;
 using GrantManagement.Infrastructure.Identity;
+using GrantManagement.Infrastructure.Notifications;
 using GrantManagement.Infrastructure.Persistence;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -48,6 +49,7 @@ public static class DependencyInjection
 
         services.AddHangfireServer();
         services.AddScoped<DeadlineCheckJob>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.AddHttpClient();
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();

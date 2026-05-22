@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
 import { tap } from 'rxjs';
@@ -13,10 +13,11 @@ export class NotificationService implements OnDestroy {
 
   private hubConnection: signalR.HubConnection | null = null;
   private readonly _notifications = signal<AppNotification[]>([]);
-  private readonly _unreadCount = signal(0);
 
   readonly notifications = this._notifications.asReadonly();
-  readonly unreadCount = this._unreadCount.asReadonly();
+  readonly unreadCount = computed(() =>
+    this._notifications().filter((n) => !n.isRead).length
+  );
 
   startConnection(): void {
     this.hubConnection = new signalR.HubConnectionBuilder()
@@ -26,9 +27,8 @@ export class NotificationService implements OnDestroy {
       .withAutomaticReconnect()
       .build();
 
-    this.hubConnection.on('ReceiveNotification', (notification: AppNotification) => {
+    this.hubConnection.on('notification', (notification: AppNotification) => {
       this._notifications.update((list) => [notification, ...list]);
-      this._unreadCount.update((count) => count + 1);
     });
 
     this.hubConnection.start().catch(console.error);
@@ -40,37 +40,32 @@ export class NotificationService implements OnDestroy {
 
   loadNotifications() {
     return this.http
-      .get<AppNotification[]>(`${environment.apiUrl}/notifications`)
+      .get<AppNotification[]>(`${environment.apiUrl}/notifications?includeRead=false`)
       .pipe(
-        tap((notifications) => {
-          this._notifications.set(notifications);
-          this._unreadCount.set(notifications.filter((n) => !n.isRead).length);
-        })
+        tap((notifications) => this._notifications.set(notifications))
       );
   }
 
   markAsRead(id: string) {
     return this.http
-      .put(`${environment.apiUrl}/notifications/${id}/read`, {})
+      .patch(`${environment.apiUrl}/notifications/${id}/read`, {})
       .pipe(
         tap(() => {
           this._notifications.update((list) =>
             list.map((n) => (n.id === id ? { ...n, isRead: true } : n))
           );
-          this._unreadCount.update((count) => Math.max(0, count - 1));
         })
       );
   }
 
   markAllAsRead() {
     return this.http
-      .put(`${environment.apiUrl}/notifications/read-all`, {})
+      .patch(`${environment.apiUrl}/notifications/read-all`, {})
       .pipe(
         tap(() => {
           this._notifications.update((list) =>
             list.map((n) => ({ ...n, isRead: true }))
           );
-          this._unreadCount.set(0);
         })
       );
   }

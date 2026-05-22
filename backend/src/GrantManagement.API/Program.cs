@@ -1,6 +1,7 @@
 using GrantManagement.API.Common;
-using GrantManagement.API.Hubs;
 using GrantManagement.API.Middleware;
+using GrantManagement.Infrastructure.BackgroundJobs;
+using GrantManagement.Infrastructure.Hubs;
 using GrantManagement.Application;
 using GrantManagement.Infrastructure;
 using GrantManagement.Infrastructure.Persistence;
@@ -146,5 +147,10 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHangfireDashboard();
+
+RecurringJob.AddOrUpdate<DeadlineCheckJob>(
+    "deadline-check",
+    job => job.ExecuteAsync(),
+    "0 8 * * *");
 
 app.Run();

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GrantManagement.API.Hubs;
+namespace GrantManagement.Infrastructure.Hubs;
 
 [Authorize]
 public class NotificationHub : Hub

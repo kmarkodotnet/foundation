@@ -1,5 +1,4 @@
 using GrantManagement.Application.Common.Interfaces;
-using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Exceptions;
 using MediatR;
@@ -10,10 +9,14 @@ namespace GrantManagement.Application.Workflow.Commands.RequestApproval;
 public class RequestApprovalCommandHandler : IRequestHandler<RequestApprovalCommand, Unit>
 {
     private readonly IApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public RequestApprovalCommandHandler(IApplicationDbContext context)
+    public RequestApprovalCommandHandler(
+        IApplicationDbContext context,
+        INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<Unit> Handle(RequestApprovalCommand request, CancellationToken cancellationToken)
@@ -25,23 +28,26 @@ public class RequestApprovalCommandHandler : IRequestHandler<RequestApprovalComm
 
         var elnokUsers = await _context.AppUsers
             .AsNoTracking()
-            .Where(u => u.Role == UserRole.Elnok)
+            .Where(u => u.Role == UserRole.Elnok || u.Role == UserRole.Admin)
             .ToListAsync(cancellationToken);
 
         foreach (var user in elnokUsers)
         {
-            var notification = Notification.Create(
+            await _notificationService.CreateAndPushAsync(
                 user.Id,
                 NotificationType.ApprovalRequired,
                 "Beadás jóváhagyása szükséges",
                 $"A(z) \"{application.Title}\" pályázat beadása jóváhagyásra vár.",
                 application.Id,
-                "Application");
+                "Application",
+                cancellationToken);
 
-            _context.Notifications.Add(notification);
+            if (user.NotificationPrefs.EmailOnApprovalRequired)
+            {
+                // Email handled by IEmailService downstream if needed
+            }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
         return Unit.Value;
     }
 }

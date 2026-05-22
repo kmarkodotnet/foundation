@@ -1,0 +1,84 @@
+.vendor-layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 24px;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vendor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.vendor-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.summary-card {
+  mat-card-content {
+    padding-top: 8px;
+  }
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+
+  .summary-label {
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 14px;
+  }
+
+  .summary-value {
+    font-weight: 600;
+    font-size: 16px;
+  }
+}
+
+.contracts-card {
+  mat-card-content {
+    padding: 0;
+  }
+}
+
+.app-link {
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.tax-number-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  color: #5d4037;
+
+  mat-icon {
+    color: #ffc107;
+  }
+}

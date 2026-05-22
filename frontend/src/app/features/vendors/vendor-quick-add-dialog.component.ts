@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Vendor } from './models/vendor.model';
+import { VendorDto } from './models/vendor.model';
 import { VendorService } from './services/vendor.service';
 
 @Component({
@@ -33,7 +33,7 @@ import { VendorService } from './services/vendor.service';
         </mat-form-field>
         <mat-form-field>
           <mat-label>Adószám</mat-label>
-          <input matInput formControlName="taxNumber" />
+          <input matInput formControlName="taxNumber" placeholder="pl. 12345678-1-23" />
         </mat-form-field>
         <mat-form-field>
           <mat-label>E-mail</mat-label>
@@ -87,10 +87,21 @@ export class VendorQuickAddDialogComponent {
   save(): void {
     if (this.form.invalid || this.saving()) return;
     this.saving.set(true);
-    this.vendorService.create(this.form.getRawValue() as Parameters<VendorService['create']>[0]).subscribe({
-      next: (vendor: Vendor) => {
-        this.snackBar.open('Cég rögzítve.', 'Bezár', { duration: 3000 });
-        this.dialogRef.close(vendor);
+    const v = this.form.getRawValue();
+    this.vendorService.createVendor({
+      name: v.name!,
+      taxNumber: v.taxNumber || undefined,
+      email: v.email || undefined,
+      phone: v.phone || undefined,
+      address: v.address || undefined,
+    }).subscribe({
+      next: (result) => {
+        if (result.hasTaxNumberWarning) {
+          this.snackBar.open('Az adószám formátuma nem szabványos, de a cég rögzítve lett.', 'Bezár', { duration: 5000 });
+        } else {
+          this.snackBar.open('Cég rögzítve.', 'Bezár', { duration: 3000 });
+        }
+        this.dialogRef.close(result.vendor);
       },
       error: () => {
         this.saving.set(false);

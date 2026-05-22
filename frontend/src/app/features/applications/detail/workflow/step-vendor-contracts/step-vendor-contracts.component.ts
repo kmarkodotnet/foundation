@@ -27,7 +27,7 @@ import { filter, switchMap } from 'rxjs';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { CurrencyHuPipe } from '../../../../../shared/pipes/currency-hu.pipe';
-import { Vendor } from '../../../../vendors/models/vendor.model';
+import { VendorDto } from '../../../../vendors/models/vendor.model';
 import { VendorQuickAddDialogComponent } from '../../../../vendors/vendor-quick-add-dialog.component';
 import { VendorService } from '../../../../vendors/services/vendor.service';
 import { BudgetItem, DocumentDto, VendorContract, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
@@ -84,7 +84,7 @@ export class StepVendorContractsComponent implements OnInit {
   readonly showAddForm = signal(false);
   readonly docRefreshTick = signal(0);
   readonly contracts = signal<VendorContract[]>([]);
-  readonly vendors = signal<Vendor[]>([]);
+  readonly vendors = signal<VendorDto[]>([]);
   readonly budgetItems = signal<BudgetItem[]>([]);
 
   readonly tableColumns = ['vendor', 'identifier', 'contractDate', 'amount', 'notes', 'actions'];
@@ -126,7 +126,7 @@ export class StepVendorContractsComponent implements OnInit {
 
   ngOnInit(): void {
     this.vendorService.getAll().subscribe({
-      next: (vendors) => this.vendors.set(vendors),
+      next: (vendors) => this.vendors.set(vendors as VendorDto[]),
       error: () => {},
     });
 
@@ -165,7 +165,7 @@ export class StepVendorContractsComponent implements OnInit {
   }
 
   openVendorQuickAdd(): void {
-    const ref = this.dialog.open<VendorQuickAddDialogComponent, undefined, Vendor | null>(
+    const ref = this.dialog.open<VendorQuickAddDialogComponent, undefined, VendorDto | null>(
       VendorQuickAddDialogComponent,
       { width: '480px' }
     );

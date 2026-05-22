@@ -1,0 +1,152 @@
+<div class="gm-page-container">
+  <div class="gm-page-header">
+    <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+    <h1>
+      @if (isNew()) { Új szerződő cég } @else { {{ vendor()?.name ?? 'Szerződő cég' }} }
+    </h1>
+    @if (!isNew() && vendor()) {
+      @if (isInactive()) {
+        <span class="gm-badge gm-badge-inactive" style="margin-left:12px">inaktív</span>
+      } @else {
+        <span class="gm-badge gm-badge-active" style="margin-left:12px">aktív</span>
+      }
+    }
+    <span class="gm-spacer"></span>
+    @if (!isNew() && canAdmin() && !isInactive()) {
+      <button mat-stroked-button color="warn" [disabled]="deactivating()" (click)="openDeactivateDialog()">
+        @if (deactivating()) { <mat-spinner diameter="18" style="display:inline-block;vertical-align:middle;margin-right:4px" /> }
+        <mat-icon>block</mat-icon> Inaktiválás
+      </button>
+    }
+    @if (!isNew() && canAdmin() && isInactive()) {
+      <button mat-stroked-button color="primary" [disabled]="deactivating()" (click)="openActivateDialog()">
+        @if (deactivating()) { <mat-spinner diameter="18" style="display:inline-block;vertical-align:middle;margin-right:4px" /> }
+        <mat-icon>check_circle</mat-icon> Aktiválás
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="gm-loading-overlay"><mat-spinner diameter="48" /></div>
+  } @else {
+    @if (showTaxNumberWarning()) {
+      <div class="tax-number-warning">
+        <mat-icon>warning</mat-icon>
+        Az adószám formátuma nem szabványos, de a cég rögzítve lett.
+      </div>
+    }
+
+    <div class="vendor-layout">
+      <mat-card class="vendor-form-card">
+        <mat-card-header>
+          <mat-card-title>Cégadatok</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="form" (ngSubmit)="save()" class="vendor-form">
+            <mat-form-field appearance="outline">
+              <mat-label>Név *</mat-label>
+              <input matInput formControlName="name" />
+              @if (form.controls.name.hasError('required')) {
+                <mat-error>A cég neve kötelező.</mat-error>
+              }
+              @if (form.controls.name.hasError('maxlength')) {
+                <mat-error>Maximum 300 karakter.</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Adószám</mat-label>
+              <input matInput formControlName="taxNumber" placeholder="pl. 12345678-1-23" />
+              <mat-hint>Formátum: 12345678-1-23 (nem kötelező)</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Cím</mat-label>
+              <input matInput formControlName="address" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Telefon</mat-label>
+              <input matInput formControlName="phone" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>E-mail</mat-label>
+              <input matInput type="email" formControlName="email" />
+              @if (form.controls.email.hasError('email')) {
+                <mat-error>Érvénytelen e-mail cím formátum.</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="form-actions">
+              <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving()">
+                @if (saving()) {
+                  <mat-spinner diameter="18" style="display:inline-block;vertical-align:middle;margin-right:4px" />
+                }
+                Mentés
+              </button>
+              <button mat-button type="button" (click)="goBack()">Mégsem</button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      @if (!isNew() && vendor()) {
+        <div class="vendor-right">
+          <mat-card class="summary-card">
+            <mat-card-header>
+              <mat-card-title>Összesítő</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="summary-row">
+                <span class="summary-label">Szerződések száma</span>
+                <span class="summary-value">{{ vendor()!.summary.totalContracts }}</span>
+              </div>
+              <mat-divider />
+              <div class="summary-row">
+                <span class="summary-label">Teljes összeg</span>
+                <span class="summary-value">{{ vendor()!.summary.totalAmount | currencyHu }}</span>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="contracts-card">
+            <mat-card-header>
+              <mat-card-title>Kapcsolt szerződések</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (vendor()!.contracts.length === 0) {
+                <div class="gm-empty-state">
+                  <mat-icon>description</mat-icon>
+                  <p>Nincs kapcsolt szerződés.</p>
+                </div>
+              } @else {
+                <table mat-table [dataSource]="vendor()!.contracts" style="width:100%">
+                  <ng-container matColumnDef="applicationTitle">
+                    <th mat-header-cell *matHeaderCellDef>Pályázat</th>
+                    <td mat-cell *matCellDef="let row">
+                      <a class="app-link" (click)="navigateToApplication(row.applicationId)">{{ row.applicationTitle }}</a>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="amount">
+                    <th mat-header-cell *matHeaderCellDef>Összeg</th>
+                    <td mat-cell *matCellDef="let row">{{ row.amount | currencyHu }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="contractDate">
+                    <th mat-header-cell *matHeaderCellDef>Dátum</th>
+                    <td mat-cell *matCellDef="let row">{{ row.contractDate ? (row.contractDate | dateHu) : '–' }}</td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="contractColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: contractColumns" style="cursor:pointer" (click)="navigateToApplication(row.applicationId)"></tr>
+                </table>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      }
+    </div>
+  }
+</div>

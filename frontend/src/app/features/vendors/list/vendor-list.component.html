@@ -1,0 +1,78 @@
+<div class="gm-page-container">
+  <div class="gm-page-header">
+    <h1>Szerződő cégek</h1>
+    <span class="gm-spacer"></span>
+    <button mat-flat-button color="primary" *hasRole="['Admin', 'PalyazatiMunkatars', 'Penzugyes']" (click)="createNew()">
+      <mat-icon>add</mat-icon> Új cég
+    </button>
+  </div>
+
+  <mat-card>
+    <mat-card-content>
+      <div class="vendor-filters">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Keresés (cégnév)</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [formControl]="searchControl" placeholder="Írjon be egy nevet..." />
+        </mat-form-field>
+        <mat-checkbox [formControl]="includeInactiveControl">Inaktívak mutatása</mat-checkbox>
+      </div>
+
+      @if (loading()) {
+        <div class="gm-loading-overlay"><mat-spinner diameter="48" /></div>
+      } @else {
+        <table mat-table [dataSource]="vendors()" style="width:100%">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Név</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.name }}
+              @if (row.status === 'Inactive') {
+                <span class="gm-badge gm-badge-inactive" style="margin-left:8px">inaktív</span>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="taxNumber">
+            <th mat-header-cell *matHeaderCellDef>Adószám</th>
+            <td mat-cell *matCellDef="let row">{{ row.taxNumber ?? '–' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <td mat-cell *matCellDef="let row">{{ row.email ?? '–' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Státusz</th>
+            <td mat-cell *matCellDef="let row">
+              @if (row.status === 'Active') {
+                <span class="gm-badge gm-badge-active">aktív</span>
+              } @else {
+                <span class="gm-badge gm-badge-inactive">inaktív</span>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row">
+              <button mat-icon-button matTooltip="Részletek" (click)="openDetail(row.id); $event.stopPropagation()">
+                <mat-icon>open_in_new</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns" style="cursor:pointer" (click)="openDetail(row.id)"></tr>
+        </table>
+
+        @if (!vendors().length) {
+          <div class="gm-empty-state">
+            <mat-icon>handshake</mat-icon>
+            <p>Nem található szerződő cég.</p>
+          </div>
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

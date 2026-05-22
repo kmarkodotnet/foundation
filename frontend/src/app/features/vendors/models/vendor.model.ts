@@ -1,23 +1,52 @@
-export interface Vendor {
+export interface VendorDto {
   id: string;
   name: string;
   taxNumber: string | null;
-  email: string | null;
-  phone: string | null;
   address: string | null;
-  contactPersonName: string | null;
-  notes: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+export type Vendor = VendorDto;
+
+export interface VendorContractSummaryDto {
+  applicationId: string;
+  applicationTitle: string;
+  amount: number;
+  currency: string;
+  contractDate: string | null;
+}
+
+export interface VendorSummaryDto {
+  totalContracts: number;
+  totalAmount: number;
+}
+
+export interface VendorDetailDto extends VendorDto {
+  contracts: VendorContractSummaryDto[];
+  summary: VendorSummaryDto;
 }
 
 export interface CreateVendorRequest {
   name: string;
   taxNumber?: string;
-  email?: string;
-  phone?: string;
   address?: string;
-  contactPersonName?: string;
-  notes?: string;
+  phone?: string;
+  email?: string;
 }
 
-export type UpdateVendorRequest = CreateVendorRequest;
+export interface CreateVendorResult {
+  vendor: VendorDto;
+  hasTaxNumberWarning: boolean;
+}
+
+export interface UpdateVendorRequest {
+  name: string;
+  taxNumber?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}

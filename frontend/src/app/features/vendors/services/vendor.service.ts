@@ -1,6 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Vendor, CreateVendorRequest, UpdateVendorRequest } from '../models/vendor.model';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import {
+  VendorDto,
+  VendorDetailDto,
+  CreateVendorRequest,
+  CreateVendorResult,
+  UpdateVendorRequest,
+} from '../models/vendor.model';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -8,23 +14,34 @@ export class VendorService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/vendors`;
 
-  getAll() {
-    return this.http.get<Vendor[]>(this.base);
+  getAll(search?: string, includeInactive = false) {
+    let params = new HttpParams();
+    if (search) params = params.set('search', search);
+    if (includeInactive) params = params.set('includeInactive', 'true');
+    return this.http.get<VendorDto[]>(this.base, { params });
   }
 
-  getById(id: string) {
-    return this.http.get<Vendor>(`${this.base}/${id}`);
+  getVendorDetail(id: string) {
+    return this.http.get<VendorDetailDto>(`${this.base}/${id}`);
+  }
+
+  createVendor(request: CreateVendorRequest) {
+    return this.http.post<CreateVendorResult>(this.base, request);
+  }
+
+  updateVendor(id: string, request: UpdateVendorRequest) {
+    return this.http.put<VendorDetailDto>(`${this.base}/${id}`, request);
+  }
+
+  deactivateVendor(id: string) {
+    return this.http.patch<VendorDto>(`${this.base}/${id}/deactivate`, null);
+  }
+
+  activateVendor(id: string) {
+    return this.http.patch<VendorDto>(`${this.base}/${id}/activate`, null);
   }
 
   create(request: CreateVendorRequest) {
-    return this.http.post<Vendor>(this.base, request);
-  }
-
-  update(id: string, request: UpdateVendorRequest) {
-    return this.http.put<Vendor>(`${this.base}/${id}`, request);
-  }
-
-  delete(id: string) {
-    return this.http.delete(`${this.base}/${id}`);
+    return this.createVendor(request);
   }
 }

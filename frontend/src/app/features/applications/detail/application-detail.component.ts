@@ -24,6 +24,8 @@ import { CurrencyHuPipe } from '../../../shared/pipes/currency-hu.pipe';
 import { WorkflowTabComponent } from './workflow/workflow-tab.component';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ApplicationAuditTabComponent } from './audit/application-audit-tab.component';
+import { HasRoleDirective } from '../../../shared/directives/has-role.directive';
 
 @Component({
   selector: 'gm-application-detail',
@@ -40,6 +42,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     DateHuPipe,
     CurrencyHuPipe,
     WorkflowTabComponent,
+    ApplicationAuditTabComponent,
+    HasRoleDirective,
   ],
   templateUrl: './application-detail.component.html',
   styleUrl: './application-detail.component.scss',
@@ -68,6 +72,11 @@ export class ApplicationDetailComponent implements OnInit {
     return role === 'Admin' &&
       app != null &&
       (app.status === 'ClosedWon' || app.status === 'ClosedLost');
+  });
+
+  readonly canViewAudit = computed(() => {
+    const role = this.auth.currentUser()?.role;
+    return role === 'Admin' || role === 'Elnok';
   });
 
   readonly isLocked = computed(() => {

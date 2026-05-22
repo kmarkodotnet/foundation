@@ -112,6 +112,11 @@
           (applicationUpdated)="application.set($event)"
         />
       </mat-tab>
+      @if (canViewAudit()) {
+        <mat-tab label="Előzmények">
+          <gm-application-audit-tab [applicationId]="app.id" />
+        </mat-tab>
+      }
     </mat-tab-group>
   }
 </div>

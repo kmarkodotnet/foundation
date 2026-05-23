@@ -30,9 +30,13 @@ import { AuthService } from '../../core/auth/auth.service';
         <mat-icon matListItemIcon>history</mat-icon>
         <span matListItemTitle>Audit napló</span>
       </a>
-      <a mat-list-item routerLink="/admin" routerLinkActive="active" *hasRole="['Admin']">
+      <a mat-list-item routerLink="/admin/users" routerLinkActive="active" *hasRole="['Admin']">
         <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
-        <span matListItemTitle>Adminisztráció</span>
+        <span matListItemTitle>Felhasználók</span>
+      </a>
+      <a mat-list-item routerLink="/admin/settings" routerLinkActive="active" *hasRole="['Admin']">
+        <mat-icon matListItemIcon>settings</mat-icon>
+        <span matListItemTitle>Rendszerbeállítások</span>
       </a>
       <a mat-list-item routerLink="/profile" routerLinkActive="active">
         <mat-icon matListItemIcon>account_circle</mat-icon>

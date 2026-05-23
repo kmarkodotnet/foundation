@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 using BudgetPlanEntity = GrantManagement.Domain.Entities.BudgetPlan;
 using SettlementEntity = GrantManagement.Domain.Entities.Settlement;
+using SystemSettingsEntity = GrantManagement.Domain.Entities.SystemSettings;
 
 namespace GrantManagement.Application.Common.Interfaces;
 
@@ -28,6 +29,7 @@ public interface IApplicationDbContext
     DbSet<AppUser> AppUsers { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<SystemSettingsEntity> SystemSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

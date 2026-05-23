@@ -30,6 +30,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Domain.Entities.SystemSettings> SystemSettings => Set<Domain.Entities.SystemSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

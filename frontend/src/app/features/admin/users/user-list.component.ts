@@ -1,28 +1,78 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AdminUserService } from '../services/admin-user.service';
-import { AdminUser } from '../models/admin-user.model';
+import { AdminUser, ROLE_LABELS } from '../models/admin-user.model';
 import { UserRole } from '../../../core/auth/models/user.model';
+import { AuthService } from '../../../core/auth/auth.service';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { DateHuPipe } from '../../../shared/pipes/date-hu.pipe';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 @Component({
   selector: 'gm-user-list',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatButtonModule, MatCardModule, MatChipsModule, MatIconModule,
-    MatProgressSpinnerModule, MatSelectModule, MatTableModule, MatTooltipModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    MatTableModule,
+    MatTooltipModule,
     DateHuPipe,
   ],
   template: `
     <div class="gm-page-container">
       <h1>Felhasználók kezelése</h1>
+
+      <mat-card class="gm-filter-card">
+        <mat-card-content>
+          <form [formGroup]="filterForm" class="gm-filter-row">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="gm-search-field">
+              <mat-icon matPrefix>search</mat-icon>
+              <mat-label>Keresés (név, e-mail)</mat-label>
+              <input matInput formControlName="searchTerm" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Szerepkör</mat-label>
+              <mat-select formControlName="role">
+                <mat-option value="">Mind</mat-option>
+                @for (r of roleOptions; track r.value) {
+                  <mat-option [value]="r.value">{{ r.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
       @if (loading()) {
         <div class="gm-loading-overlay"><mat-spinner diameter="48" /></div>
       } @else {
@@ -30,86 +80,209 @@ import { DateHuPipe } from '../../../shared/pipes/date-hu.pipe';
           <mat-card-content>
             <table mat-table [dataSource]="users()" style="width:100%">
               <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef>Név</th>
-                <td mat-cell *matCellDef="let row">
-                  <strong>{{ row.name }}</strong><br>
-                  <small>{{ row.email }}</small>
+                <th mat-header-cell *matHeaderCellDef>Felhasználó</th>
+                <td mat-cell *matCellDef="let row" [class.gm-inactive-row]="!row.isActive">
+                  <div class="gm-user-cell">
+                    @if (row.profilePictureUrl) {
+                      <img [src]="row.profilePictureUrl" class="gm-avatar" alt="" />
+                    } @else {
+                      <div class="gm-avatar-placeholder">
+                        <mat-icon>account_circle</mat-icon>
+                      </div>
+                    }
+                    <div>
+                      <strong>{{ row.name }}</strong>
+                      @if (!row.isActive) {
+                        <mat-chip class="gm-inactive-chip" color="warn" highlighted>Inaktív</mat-chip>
+                      }
+                      <br>
+                      <small class="gm-email">{{ row.email }}</small>
+                    </div>
+                  </div>
                 </td>
               </ng-container>
+
               <ng-container matColumnDef="role">
                 <th mat-header-cell *matHeaderCellDef>Szerepkör</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-select [value]="row.role" (selectionChange)="changeRole(row.id, $event.value)" style="min-width:160px">
-                    @for (r of roleOptions; track r) {
-                      <mat-option [value]="r">{{ r }}</mat-option>
+                  <mat-select
+                    [value]="row.role"
+                    (selectionChange)="changeRole(row, $event.value)"
+                    style="min-width: 190px"
+                  >
+                    @for (r of roleOptions; track r.value) {
+                      <mat-option [value]="r.value">{{ r.label }}</mat-option>
                     }
                   </mat-select>
                 </td>
               </ng-container>
-              <ng-container matColumnDef="isActive">
-                <th mat-header-cell *matHeaderCellDef>Státusz</th>
+
+              <ng-container matColumnDef="lastLoginAt">
+                <th mat-header-cell *matHeaderCellDef>Utolsó belépés</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-chip [color]="row.isActive ? 'primary' : 'warn'" highlighted>
-                    {{ row.isActive ? 'Aktív' : 'Inaktív' }}
-                  </mat-chip>
+                  {{ row.lastLoginAt ? (row.lastLoginAt | dateHu: 'datetime') : '–' }}
                 </td>
               </ng-container>
-              <ng-container matColumnDef="lastLoginAt">
-                <th mat-header-cell *matHeaderCellDef>Utolsó bejelentkezés</th>
-                <td mat-cell *matCellDef="let row">{{ row.lastLoginAt | dateHu: 'datetime' }}</td>
-              </ng-container>
+
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let row">
-                  @if (row.isActive) {
-                    <button mat-icon-button color="warn" matTooltip="Deaktiválás" (click)="toggleActive(row, false)">
-                      <mat-icon>block</mat-icon>
-                    </button>
-                  } @else {
-                    <button mat-icon-button color="primary" matTooltip="Aktiválás" (click)="toggleActive(row, true)">
-                      <mat-icon>check_circle</mat-icon>
-                    </button>
+                  @if (row.id !== currentUserId()) {
+                    @if (row.isActive) {
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        matTooltip="Inaktiválás"
+                        (click)="confirmDeactivate(row)"
+                      >
+                        <mat-icon>block</mat-icon>
+                      </button>
+                    } @else {
+                      <button
+                        mat-icon-button
+                        color="primary"
+                        matTooltip="Reaktiválás"
+                        (click)="activate(row)"
+                      >
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
+                    }
                   }
                 </td>
               </ng-container>
+
               <tr mat-header-row *matHeaderRowDef="columns"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns"></tr>
+              <tr mat-row *matRowDef="let row; columns: columns"
+                  [class.gm-inactive-row]="!row.isActive"></tr>
             </table>
+
+            @if (users().length === 0) {
+              <p class="gm-empty">Nincs találat.</p>
+            }
           </mat-card-content>
         </mat-card>
       }
     </div>
   `,
+  styles: [`
+    .gm-filter-card { margin-bottom: 16px; }
+    .gm-filter-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .gm-search-field { flex: 1; min-width: 220px; }
+    .gm-user-cell { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+    .gm-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+    .gm-avatar-placeholder { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--mat-sys-on-surface-variant); }
+    .gm-inactive-chip { font-size: 10px; margin-left: 8px; }
+    .gm-email { color: var(--mat-sys-on-surface-variant); }
+    .gm-inactive-row { opacity: 0.55; }
+    .gm-empty { color: var(--mat-sys-on-surface-variant); padding: 24px; text-align: center; }
+  `],
 })
 export class UserListComponent implements OnInit {
   private readonly service = inject(AdminUserService);
+  private readonly auth = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(false);
   readonly users = signal<AdminUser[]>([]);
-  readonly columns = ['name', 'role', 'isActive', 'lastLoginAt', 'actions'];
-  readonly roleOptions: UserRole[] = ['Admin', 'Elnok', 'PalyazatiMunkatars', 'Penzugyes', 'Megtekinto'];
+  readonly currentUserId = computed(() => this.auth.currentUser()?.userId ?? '');
+
+  readonly columns = ['name', 'role', 'lastLoginAt', 'actions'];
+
+  readonly roleOptions: { value: UserRole; label: string }[] = Object.entries(ROLE_LABELS).map(
+    ([value, label]) => ({ value: value as UserRole, label })
+  );
+
+  readonly filterForm = new FormGroup({
+    searchTerm: new FormControl('', { nonNullable: true }),
+    role: new FormControl<UserRole | ''>(''),
+  });
 
   ngOnInit(): void {
+    this.load();
+    this.filterForm.valueChanges
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => this.load());
+  }
+
+  load(): void {
+    const { searchTerm, role } = this.filterForm.getRawValue();
     this.loading.set(true);
-    this.service.getAll().subscribe({
-      next: (data) => { this.users.set(data); this.loading.set(false); },
-      error: () => this.loading.set(false),
+    this.service.getAll(searchTerm || undefined, (role as UserRole) || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => { this.users.set(data); this.loading.set(false); },
+        error: () => this.loading.set(false),
+      });
+  }
+
+  changeRole(user: AdminUser, role: UserRole): void {
+    this.service.updateRole(user.id, role).subscribe({
+      next: () => {
+        this.users.update((list) =>
+          list.map((u) => u.id === user.id ? { ...u, role } : u)
+        );
+        this.snackBar.open('Szerepkör frissítve.', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.snackBar.open(
+          err?.error?.detail ?? 'Nem sikerült módosítani a szerepkört.',
+          'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+        );
+        this.load();
+      },
     });
   }
 
-  changeRole(id: string, role: UserRole): void {
-    this.service.updateRole(id, { role }).subscribe(() =>
-      this.snackBar.open('Szerepkör frissítve.', 'OK', { duration: 3000 })
-    );
+  confirmDeactivate(user: AdminUser): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Felhasználó inaktiválása',
+        message: `Biztosan inaktiválja ${user.name} fiókját? A felhasználó nem tud bejelentkezni.`,
+        confirmLabel: 'Inaktiválás',
+      },
+    });
+    ref.afterClosed().subscribe((confirmed) => {
+      if (confirmed) this.deactivate(user);
+    });
   }
 
-  toggleActive(user: AdminUser, activate: boolean): void {
-    const op = activate ? this.service.activate(user.id) : this.service.deactivate(user.id);
-    op.subscribe(() => {
-      this.users.update((list) =>
-        list.map((u) => u.id === user.id ? { ...u, isActive: activate } : u)
-      );
+  private deactivate(user: AdminUser): void {
+    this.service.deactivate(user.id).subscribe({
+      next: () => {
+        this.users.update((list) =>
+          list.map((u) => u.id === user.id ? { ...u, isActive: false } : u)
+        );
+        this.snackBar.open('Felhasználó inaktiválva.', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.snackBar.open(
+          err?.error?.detail ?? 'Nem sikerült inaktiválni.',
+          'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+        );
+      },
+    });
+  }
+
+  activate(user: AdminUser): void {
+    this.service.activate(user.id).subscribe({
+      next: () => {
+        this.users.update((list) =>
+          list.map((u) => u.id === user.id ? { ...u, isActive: true } : u)
+        );
+        this.snackBar.open('Felhasználó reaktiválva.', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.snackBar.open(
+          err?.error?.detail ?? 'Nem sikerült reaktiválni.',
+          'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+        );
+      },
     });
   }
 }

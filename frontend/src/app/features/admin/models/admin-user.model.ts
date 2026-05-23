@@ -4,13 +4,26 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
+  profilePictureUrl: string | null;
   role: UserRole;
   isActive: boolean;
-  googleId: string;
   createdAt: string;
   lastLoginAt: string | null;
 }
 
-export interface UpdateUserRoleRequest {
-  role: UserRole;
+export const ROLE_LABELS: Record<UserRole, string> = {
+  Admin: 'Adminisztrátor',
+  Elnok: 'Elnök',
+  PalyazatiMunkatars: 'Pályázati munkatárs',
+  Penzugyes: 'Pénzügyes',
+  Megtekinto: 'Megtekintő',
+};
+
+export interface SystemSettings {
+  notificationWarningDays: number;
+  spendingWarningDays: number;
+  maxFileSizeMb: number;
+  organizationName: string;
+  defaultUserRole: UserRole;
+  updatedAt: string;
 }

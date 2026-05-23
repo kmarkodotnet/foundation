@@ -11,4 +11,9 @@ export const adminRoutes: Routes = [
     loadComponent: () =>
       import('./users/user-list.component').then((m) => m.UserListComponent),
   },
+  {
+    path: 'settings',
+    loadComponent: () =>
+      import('./settings/system-settings.component').then((m) => m.SystemSettingsComponent),
+  },
 ];

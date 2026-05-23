@@ -40,11 +40,22 @@ public sealed class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginComma
 
         if (appUser is null)
         {
+            var settings = await _context.SystemSettings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var defaultRole = settings?.DefaultUserRole ?? Domain.Enums.UserRole.Megtekinto;
+
+            // First user ever becomes Admin automatically
+            var anyUserExists = await _context.AppUsers.AsNoTracking().AnyAsync(cancellationToken);
+            if (!anyUserExists) defaultRole = Domain.Enums.UserRole.Admin;
+
             appUser = AppUser.CreateFromGoogle(
                 googleUser.GoogleId,
                 googleUser.Email,
                 googleUser.FullName,
-                googleUser.PictureUrl);
+                googleUser.PictureUrl,
+                defaultRole);
 
             _context.AppUsers.Add(appUser);
         }

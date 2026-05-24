@@ -1,5 +1,6 @@
 using AutoMapper;
 using GrantManagement.Application.Applications.DTOs;
+using GrantManagement.Application.Applications.Helpers;
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Exceptions;
@@ -61,8 +62,7 @@ public class CreateApplicationCommandHandler
         _context.Applications.Add(application);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ApplicationDetailDto>(
-            application,
-            opts => opts.Items["GranterName"] = granter.Name);
+        return await ApplicationDetailMappingHelper.MapToDetailDtoAsync(
+            _context, _mapper, application, cancellationToken);
     }
 }

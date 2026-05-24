@@ -1,5 +1,6 @@
 using AutoMapper;
 using GrantManagement.Application.Applications.DTOs;
+using GrantManagement.Application.Applications.Helpers;
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Exceptions;
@@ -67,12 +68,7 @@ public class ApproveSettlementCommandHandler : IRequestHandler<ApproveSettlement
             .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
             ?? throw new NotFoundException(nameof(GrantApp), request.ApplicationId);
 
-        var granter = await _context.Granters
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == updated.GranterId, cancellationToken);
-
-        return _mapper.Map<ApplicationDetailDto>(
-            updated,
-            opts => opts.Items["GranterName"] = granter?.Name ?? string.Empty);
+        return await ApplicationDetailMappingHelper.MapToDetailDtoAsync(
+            _context, _mapper, updated, cancellationToken);
     }
 }

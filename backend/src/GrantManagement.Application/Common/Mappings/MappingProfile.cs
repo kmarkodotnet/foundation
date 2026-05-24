@@ -15,6 +15,28 @@ public class MappingProfile : Profile
             .ForMember(d => d.GranterName, opt => opt.MapFrom(
                 (src, dest, member, ctx) =>
                     ctx.Items.TryGetValue("GranterName", out var name) ? (string?)name : string.Empty))
+            .ForMember(d => d.CreatedByUserName, opt => opt.MapFrom(
+                (src, dest, member, ctx) =>
+                    ctx.Items.TryGetValue("CreatedByUserName", out var n) ? (string?)n : string.Empty))
+            .ForMember(d => d.ApplicationTypeName, opt => opt.MapFrom(
+                (src, dest, member, ctx) =>
+                    ctx.Items.TryGetValue("ApplicationTypeName", out var n) ? (string?)n : null))
+            .ForMember(d => d.SubmissionDeadline, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.SubmissionDeadline : default))
+            .ForMember(d => d.SpendingDeadline, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.SpendingDeadline : null))
+            .ForMember(d => d.MinAmount, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.MinAmount != null ? (decimal?)s.CallData.MinAmount.Amount : null : null))
+            .ForMember(d => d.MaxAmount, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.MaxAmount != null ? (decimal?)s.CallData.MaxAmount.Amount : null : null))
+            .ForMember(d => d.OtherMetadata, opt => opt.MapFrom(
+                s => s.CallData != null ? s.CallData.OtherMetadata : null))
+            .ForMember(d => d.AwardedAmount, opt => opt.MapFrom(
+                s => s.Result != null ? s.Result.AwardedAmount != null ? (decimal?)s.Result.AwardedAmount.Amount : null : null))
+            .ForMember(d => d.ResultDate, opt => opt.MapFrom(
+                s => s.Result != null ? (DateOnly?)s.Result.ResultDate : null))
+            .ForMember(d => d.ResultIdentifier, opt => opt.MapFrom(
+                s => s.Result != null ? s.Result.ResultIdentifier : null))
             .ForMember(d => d.GranterContractIdentifier, opt => opt.MapFrom(
                 s => s.GranterContractData != null ? s.GranterContractData.ContractIdentifier : null))
             .ForMember(d => d.GranterContractDate, opt => opt.MapFrom(

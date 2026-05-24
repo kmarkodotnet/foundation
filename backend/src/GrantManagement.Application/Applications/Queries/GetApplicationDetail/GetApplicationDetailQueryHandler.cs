@@ -1,9 +1,10 @@
-using AutoMapper;
 using GrantManagement.Application.Applications.DTOs;
+using GrantManagement.Application.Applications.Helpers;
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AutoMapper;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 
 namespace GrantManagement.Application.Applications.Queries.GetApplicationDetail;
@@ -31,12 +32,7 @@ public class GetApplicationDetailQueryHandler
             .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
             ?? throw new NotFoundException(nameof(GrantApp), request.ApplicationId);
 
-        var granter = await _context.Granters
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == application.GranterId, cancellationToken);
-
-        return _mapper.Map<ApplicationDetailDto>(
-            application,
-            opts => opts.Items["GranterName"] = granter?.Name ?? string.Empty);
+        return await ApplicationDetailMappingHelper.MapToDetailDtoAsync(
+            _context, _mapper, application, cancellationToken);
     }
 }

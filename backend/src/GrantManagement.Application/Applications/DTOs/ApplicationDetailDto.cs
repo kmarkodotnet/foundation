@@ -14,7 +14,21 @@ public class ApplicationDetailDto
     public bool IsArchived { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
+    public string CreatedByUserName { get; init; } = null!;
     public IReadOnlyList<WorkflowStepDto> WorkflowSteps { get; init; } = [];
+
+    // CallStepData fields
+    public DateTimeOffset SubmissionDeadline { get; init; }
+    public DateOnly? SpendingDeadline { get; init; }
+    public decimal? MinAmount { get; init; }
+    public decimal? MaxAmount { get; init; }
+    public string? ApplicationTypeName { get; init; }
+    public string? OtherMetadata { get; init; }
+
+    // Result fields
+    public decimal? AwardedAmount { get; init; }
+    public DateOnly? ResultDate { get; init; }
+    public string? ResultIdentifier { get; init; }
 
     // Granter contract data
     public string? GranterContractIdentifier { get; init; }

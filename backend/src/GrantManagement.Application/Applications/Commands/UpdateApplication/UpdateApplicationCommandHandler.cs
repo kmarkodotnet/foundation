@@ -1,6 +1,8 @@
 using AutoMapper;
 using GrantManagement.Application.Applications.DTOs;
+using GrantManagement.Application.Applications.Helpers;
 using GrantManagement.Application.Common.Interfaces;
+using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Exceptions;
 using GrantManagement.Domain.ValueObjects;
 using MediatR;
@@ -30,10 +32,8 @@ public class UpdateApplicationCommandHandler
             .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
             ?? throw new NotFoundException(nameof(GrantApp), request.ApplicationId);
 
-        var granter = await _context.Granters
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == application.GranterId, cancellationToken)
-            ?? throw new NotFoundException(nameof(GrantManagement.Domain.Entities.Granter), application.GranterId);
+        if (!await _context.Granters.AnyAsync(g => g.Id == application.GranterId, cancellationToken))
+            throw new NotFoundException(nameof(Granter), application.GranterId);
 
         var callData = new CallStepData
         {
@@ -52,8 +52,7 @@ public class UpdateApplicationCommandHandler
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ApplicationDetailDto>(
-            application,
-            opts => opts.Items["GranterName"] = granter.Name);
+        return await ApplicationDetailMappingHelper.MapToDetailDtoAsync(
+            _context, _mapper, application, cancellationToken);
     }
 }

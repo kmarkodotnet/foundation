@@ -72,8 +72,12 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSignalR();
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
+    {
         opts.JsonSerializerOptions.Converters.Add(
-            new System.Text.Json.Serialization.JsonStringEnumConverter()));
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+        opts.JsonSerializerOptions.Encoder =
+            System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // Swagger / OpenAPI
@@ -139,18 +143,24 @@ app.UseCors("AllowAngularClient");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    Authorization = []
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = []
+    });
+
+    app.MapHangfireDashboard();
+
+    RecurringJob.AddOrUpdate<DeadlineCheckJob>(
+        "deadline-check",
+        job => job.ExecuteAsync(),
+        "0 8 * * *");
+}
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
-app.MapHangfireDashboard();
-
-RecurringJob.AddOrUpdate<DeadlineCheckJob>(
-    "deadline-check",
-    job => job.ExecuteAsync(),
-    "0 8 * * *");
 
 app.Run();
+
+public partial class Program { }

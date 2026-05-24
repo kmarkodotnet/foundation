@@ -1,8 +1,10 @@
 using GrantManagement.API.Common;
+using GrantManagement.Application.BudgetPlan.Commands.ApproveBudgetPlan;
 using GrantManagement.Application.BudgetPlan.Commands.RequestBudgetPlanApproval;
 using GrantManagement.Application.BudgetPlan.Commands.UpsertBudgetPlan;
 using GrantManagement.Application.BudgetPlan.DTOs;
 using GrantManagement.Application.BudgetPlan.Queries.GetBudgetPlan;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -76,6 +78,30 @@ public class BudgetPlanController : ApiControllerBase
         CancellationToken ct = default)
     {
         await Sender.Send(new RequestBudgetPlanApprovalCommand(applicationId), ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Approves the budget plan and advances the workflow to VendorContracts step.
+    /// Requires Admin or Elnok role.
+    /// </summary>
+    /// <response code="204">Budget plan approved.</response>
+    /// <response code="400">Budget plan step not in Active state.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <response code="403">Insufficient role.</response>
+    /// <response code="404">Application not found.</response>
+    [HttpPost("approve")]
+    [Authorize(Policy = "CanApproveApplication")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Approve(
+        Guid applicationId,
+        CancellationToken ct = default)
+    {
+        await Sender.Send(new ApproveBudgetPlanCommand(applicationId), ct);
         return NoContent();
     }
 }

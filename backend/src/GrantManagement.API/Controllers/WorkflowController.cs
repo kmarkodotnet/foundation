@@ -2,6 +2,7 @@ using GrantManagement.API.Common;
 using GrantManagement.Application.Applications.DTOs;
 using GrantManagement.Application.Workflow.Commands.ApproveStep;
 using GrantManagement.Application.Workflow.Commands.CloseApplication;
+using GrantManagement.Application.Workflow.Commands.CompleteStep;
 using GrantManagement.Application.Workflow.Commands.CorrectResult;
 using GrantManagement.Application.Workflow.Commands.RecordResult;
 using GrantManagement.Application.Workflow.Commands.RequestApproval;
@@ -162,6 +163,29 @@ public class WorkflowController : ApiControllerBase
         CancellationToken ct = default)
     {
         return Ok(await Sender.Send(command with { ApplicationId = applicationId }, ct));
+    }
+
+    /// <summary>
+    /// Completes a workflow step and activates the next pending step.
+    /// Requires Admin or PalyazatiMunkatars role.
+    /// </summary>
+    /// <response code="200">Step completed.</response>
+    /// <response code="400">Step not in Active state.</response>
+    /// <response code="401">Not authenticated.</response>
+    /// <response code="403">Insufficient role.</response>
+    /// <response code="404">Application not found.</response>
+    [HttpPost("{stepType}/complete")]
+    [ProducesResponseType(typeof(WorkflowStepDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<WorkflowStepDetailDto>> CompleteStep(
+        Guid applicationId,
+        WorkflowStepType stepType,
+        CancellationToken ct = default)
+    {
+        return Ok(await Sender.Send(new CompleteStepCommand(applicationId, stepType), ct));
     }
 
     /// <summary>

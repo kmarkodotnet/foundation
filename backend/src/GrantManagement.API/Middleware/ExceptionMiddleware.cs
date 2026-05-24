@@ -88,7 +88,8 @@ public class ExceptionMiddleware
         await context.Response.WriteAsync(
             JsonSerializer.Serialize(problemDetails, new JsonSerializerOptions
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             }));
     }
 }

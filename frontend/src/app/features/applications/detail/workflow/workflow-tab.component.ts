@@ -1,7 +1,10 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApplicationDetail, WorkflowStep, WorkflowStepDetail, WorkflowStepType } from '../../models/application.model';
 import { DateHuPipe } from '../../../../shared/pipes/date-hu.pipe';
 import { StepSubmissionComponent } from './step-submission/step-submission.component';
@@ -14,6 +17,7 @@ import { StepInvoicesComponent } from './step-invoices/step-invoices.component';
 import { StepProofRecordsComponent } from './step-proof-records/step-proof-records.component';
 import { StepSettlementComponent } from './step-settlement/step-settlement.component';
 import { SkipStepButtonComponent } from '../../../../shared/components/skip-step-button/skip-step-button.component';
+import { WorkflowService } from '../../services/workflow.service';
 
 const STEP_LABELS: Record<WorkflowStepType, string> = {
   Call: '[1] Pályázati felhívás',
@@ -39,9 +43,11 @@ const STEP_STATUS_ICONS: Record<string, string> = {
 @Component({
   selector: 'gm-workflow-tab',
   imports: [
+    MatButtonModule,
     MatExpansionModule,
     MatIconModule,
     MatChipsModule,
+    MatProgressSpinnerModule,
     DateHuPipe,
     StepSubmissionComponent,
     ApprovalPanelComponent,
@@ -148,6 +154,23 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                 [isLocked]="isLocked()"
                 (stepUpdated)="onStepUpdated($event)"
               />
+              @if (!isLocked() && step.status === 'Active') {
+                <div style="display:flex;gap:8px;padding:8px 0">
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    [disabled]="completing() === step.stepType"
+                    (click)="completeStep(step.stepType)"
+                  >
+                    @if (completing() === step.stepType) {
+                      <mat-spinner diameter="18" style="display:inline-block;margin-right:4px" />
+                    } @else {
+                      <mat-icon>check_circle</mat-icon>
+                    }
+                    Lépés lezárása
+                  </button>
+                </div>
+              }
               @if (!isLocked() && step.isSkippable) {
                 <gm-skip-step-button
                   [applicationId]="applicationId()"
@@ -164,6 +187,23 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                 [isLocked]="isLocked()"
                 (stepUpdated)="onStepUpdated($event)"
               />
+              @if (!isLocked() && step.status === 'Active') {
+                <div style="display:flex;gap:8px;padding:8px 0">
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    [disabled]="completing() === step.stepType"
+                    (click)="completeStep(step.stepType)"
+                  >
+                    @if (completing() === step.stepType) {
+                      <mat-spinner diameter="18" style="display:inline-block;margin-right:4px" />
+                    } @else {
+                      <mat-icon>check_circle</mat-icon>
+                    }
+                    Lépés lezárása
+                  </button>
+                </div>
+              }
               @if (!isLocked() && step.isSkippable) {
                 <gm-skip-step-button
                   [applicationId]="applicationId()"
@@ -180,6 +220,23 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                 [isLocked]="isLocked()"
                 (stepUpdated)="onStepUpdated($event)"
               />
+              @if (!isLocked() && step.status === 'Active') {
+                <div style="display:flex;gap:8px;padding:8px 0">
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    [disabled]="completing() === step.stepType"
+                    (click)="completeStep(step.stepType)"
+                  >
+                    @if (completing() === step.stepType) {
+                      <mat-spinner diameter="18" style="display:inline-block;margin-right:4px" />
+                    } @else {
+                      <mat-icon>check_circle</mat-icon>
+                    }
+                    Lépés lezárása
+                  </button>
+                </div>
+              }
               @if (!isLocked() && step.isSkippable) {
                 <gm-skip-step-button
                   [applicationId]="applicationId()"
@@ -218,12 +275,17 @@ const STEP_STATUS_ICONS: Record<string, string> = {
   `,
 })
 export class WorkflowTabComponent {
+  private readonly workflowService = inject(WorkflowService);
+  private readonly snackBar = inject(MatSnackBar);
+
   readonly applicationId = input.required<string>();
   readonly application = input<ApplicationDetail | null>(null);
   readonly steps = input<WorkflowStep[]>([]);
   readonly isLocked = input(false);
   readonly stepChanged = output<void>();
   readonly applicationUpdated = output<ApplicationDetail>();
+
+  readonly completing = signal<string | null>(null);
 
   readonly sortedSteps = computed(() => [...this.steps()].sort((a, b) => a.order - b.order));
 
@@ -245,6 +307,25 @@ export class WorkflowTabComponent {
       Locked: '#9e9e9e',
     };
     return colors[status] ?? '#bdbdbd';
+  }
+
+  completeStep(stepType: string): void {
+    if (this.completing()) return;
+    this.completing.set(stepType);
+    this.workflowService.completeStep(this.applicationId(), stepType).subscribe({
+      next: () => {
+        this.completing.set(null);
+        this.snackBar.open('Lépés lezárva.', 'Bezár', { duration: 4000 });
+        this.stepChanged.emit();
+      },
+      error: () => {
+        this.completing.set(null);
+        this.snackBar.open('Nem sikerült lezárni a lépést.', 'Bezár', {
+          duration: 5000,
+          panelClass: ['gm-snack-error'],
+        });
+      },
+    });
   }
 
   onStepUpdated(_detail: WorkflowStepDetail): void {

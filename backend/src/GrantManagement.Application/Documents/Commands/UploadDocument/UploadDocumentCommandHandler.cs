@@ -81,6 +81,9 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
             _currentUser.UserId,
             request.DisplayName);
 
+        // EF Core tracks entities discovered via navigation with non-default Guid keys as Unchanged.
+        // Explicitly mark the new document as Added so SaveChanges generates an INSERT.
+        _context.Documents.Add(doc);
         await _context.SaveChangesAsync(cancellationToken);
 
         var uploader = await _context.AppUsers

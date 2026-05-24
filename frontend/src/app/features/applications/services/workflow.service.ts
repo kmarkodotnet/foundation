@@ -46,6 +46,10 @@ export class WorkflowService {
     return this.http.put<WorkflowStepDetail>(`${this.base}/${appId}/workflow/contract-granter`, data);
   }
 
+  completeStep(appId: string, stepType: string): Observable<WorkflowStepDetail> {
+    return this.http.post<WorkflowStepDetail>(`${this.base}/${appId}/workflow/${stepType}/complete`, {});
+  }
+
   skipStep(appId: string, stepType: string, data: SkipStepRequest): Observable<WorkflowStepDetail> {
     return this.http.post<WorkflowStepDetail>(`${this.base}/${appId}/workflow/${stepType}/skip`, data);
   }

@@ -23,7 +23,6 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<GrantApp>
             .HasMaxLength(50)
             .IsRequired();
 
-        builder.Property<uint>("xmin").HasColumnType("xid").IsRowVersion();
 
         builder.OwnsOne(a => a.CallData, callData =>
         {

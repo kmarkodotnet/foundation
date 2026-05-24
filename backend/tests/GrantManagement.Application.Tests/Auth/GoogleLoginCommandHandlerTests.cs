@@ -37,9 +37,10 @@ public class GoogleLoginCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenNewGoogleUser_ShouldCreateAppUserWithMegtekintoRole()
+    public async Task Handle_WhenNewGoogleUserAndOthersExist_ShouldCreateWithMegtekintoRole()
     {
         // Arrange
+        var existingUser = AppUser.CreateFromGoogle("google-id-other", "other@test.com", "Other", null);
         var googleInfo = new GoogleUserInfo("google-id-new", "new@test.com", "New User", null);
         var command = new GoogleLoginCommand("valid-code", "https://example.com/callback");
 
@@ -47,10 +48,12 @@ public class GoogleLoginCommandHandlerTests
             .Setup(g => g.ExchangeCodeAsync(command.AuthorizationCode, command.RedirectUri, It.IsAny<CancellationToken>()))
             .ReturnsAsync(googleInfo);
 
-        var appUsers = new List<AppUser>();
+        // Pre-existing user ensures AnyAsync() returns true → default Megtekinto role applied
+        var appUsers = new List<AppUser> { existingUser };
         var mockDbSet = CreateMockDbSet(appUsers);
 
         _contextMock.Setup(c => c.AppUsers).Returns(mockDbSet.Object);
+        _contextMock.Setup(c => c.SystemSettings).Returns(CreateEmptySystemSettingsMock().Object);
         _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
@@ -69,6 +72,34 @@ public class GoogleLoginCommandHandlerTests
             u.Role == GrantManagement.Domain.Enums.UserRole.Megtekinto)), Times.Once);
 
         _contextMock.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenFirstEverGoogleUser_ShouldCreateWithAdminRole()
+    {
+        // Arrange
+        var googleInfo = new GoogleUserInfo("google-id-first", "first@test.com", "First User", null);
+        var command = new GoogleLoginCommand("valid-code", "https://example.com/callback");
+
+        _googleAuthServiceMock
+            .Setup(g => g.ExchangeCodeAsync(command.AuthorizationCode, command.RedirectUri, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(googleInfo);
+
+        var appUsers = new List<AppUser>(); // empty DB → first user
+        var mockDbSet = CreateMockDbSet(appUsers);
+
+        _contextMock.Setup(c => c.AppUsers).Returns(mockDbSet.Object);
+        _contextMock.Setup(c => c.SystemSettings).Returns(CreateEmptySystemSettingsMock().Object);
+        _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.User.Role.Should().Be("Admin");
+
+        mockDbSet.Verify(d => d.Add(It.Is<AppUser>(u =>
+            u.Role == GrantManagement.Domain.Enums.UserRole.Admin)), Times.Once);
     }
 
     [Fact]
@@ -149,5 +180,26 @@ public class GoogleLoginCommandHandlerTests
         mockDbSet.As<IQueryable<AppUser>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
 
         return mockDbSet;
+    }
+
+    private static Mock<DbSet<GrantManagement.Domain.Entities.SystemSettings>> CreateEmptySystemSettingsMock()
+    {
+        var data = new List<GrantManagement.Domain.Entities.SystemSettings>();
+        var queryable = data.AsQueryable();
+        var mock = new Mock<DbSet<GrantManagement.Domain.Entities.SystemSettings>>();
+
+        mock.As<IAsyncEnumerable<GrantManagement.Domain.Entities.SystemSettings>>()
+            .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+            .Returns(new TestAsyncEnumerator<GrantManagement.Domain.Entities.SystemSettings>(data.GetEnumerator()));
+
+        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>()
+            .Setup(m => m.Provider)
+            .Returns(new TestAsyncQueryProvider<GrantManagement.Domain.Entities.SystemSettings>(queryable.Provider));
+
+        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>().Setup(m => m.Expression).Returns(queryable.Expression);
+        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
+        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
+
+        return mock;
     }
 }

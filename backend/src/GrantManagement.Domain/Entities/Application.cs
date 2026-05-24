@@ -255,6 +255,11 @@ public class Application : AggregateRoot<Guid>
         if (step.Status != WorkflowStepStatus.Active)
             throw new DomainException($"A(z) {stepType} lépés nem zárható le ebben az állapotban.");
         step.Complete(byUserId);
+        _workflowSteps
+            .Where(s => s.Order > step.Order && s.Status == WorkflowStepStatus.Pending)
+            .OrderBy(s => s.Order)
+            .FirstOrDefault()
+            ?.Activate();
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
@@ -276,7 +281,10 @@ public class Application : AggregateRoot<Guid>
         if (BudgetPlan == null)
             throw new DomainException("Nincs jóváhagyható költési terv.");
         BudgetPlan.Approve(approverUserId);
-        GetStep(WorkflowStepType.BudgetPlan).Approve(approverUserId);
+        var budgetStep = GetStep(WorkflowStepType.BudgetPlan);
+        budgetStep.Approve(approverUserId);
+        budgetStep.Complete(approverUserId);
+        GetStep(WorkflowStepType.VendorContracts).Activate();
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

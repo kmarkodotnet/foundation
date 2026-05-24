@@ -99,6 +99,7 @@ public class UpsertBudgetPlanCommandHandler : IRequestHandler<UpsertBudgetPlanCo
             ApprovedAt = bp.ApprovedAt,
             ApprovedByUserId = bp.ApprovedByUserId,
             Items = bp.Items
+                .Where(i => !i.IsDeleted)
                 .OrderBy(i => i.SortOrder)
                 .Select(i => new BudgetItemDto
                 {

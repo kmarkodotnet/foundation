@@ -37,23 +37,27 @@ public class AuthorizationBehaviourTests
         {
             SubmissionDeadline = DateTimeOffset.UtcNow.AddDays(30)
         };
+        var byUserId = Guid.NewGuid();
         var app = GrantApp.Create(
             title: "Test Pályázat",
             granterId: Guid.NewGuid(),
             callData: callData,
-            createdByUserId: Guid.NewGuid());
+            createdByUserId: byUserId);
 
         // Move to InProgress
         var submissionData = new SubmissionStepData
         {
             SubmittedAt = DateTimeOffset.UtcNow,
-            SubmittedByUserId = Guid.NewGuid()
+            SubmittedByUserId = byUserId
         };
-        app.RecordSubmission(submissionData, Guid.NewGuid());
+        app.RecordSubmission(submissionData, byUserId);
 
-        // Record a Lost result
+        // Approve submission → activates the Result step
+        app.ApproveSubmission(byUserId);
+
+        // Record a Lost result → Result step must be Active
         var lostResult = ApplicationResult.Lost(DateOnly.FromDateTime(DateTime.UtcNow));
-        app.RecordResult(lostResult, Guid.NewGuid());
+        app.RecordResult(lostResult, byUserId);
 
         // ManualClose → ClosedLost → IsLocked = true
         app.ManualClose();

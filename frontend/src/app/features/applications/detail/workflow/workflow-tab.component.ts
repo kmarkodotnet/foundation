@@ -15,6 +15,7 @@ import { StepBudgetPlanComponent } from './step-budget-plan/step-budget-plan.com
 import { StepVendorContractsComponent } from './step-vendor-contracts/step-vendor-contracts.component';
 import { StepInvoicesComponent } from './step-invoices/step-invoices.component';
 import { StepProofRecordsComponent } from './step-proof-records/step-proof-records.component';
+import { StepCallComponent } from './step-call/step-call.component';
 import { StepSettlementComponent } from './step-settlement/step-settlement.component';
 import { SkipStepButtonComponent } from '../../../../shared/components/skip-step-button/skip-step-button.component';
 import { WorkflowService } from '../../services/workflow.service';
@@ -54,6 +55,7 @@ const STEP_STATUS_ICONS: Record<string, string> = {
     StepResultComponent,
     StepContractGranterComponent,
     StepBudgetPlanComponent,
+    StepCallComponent,
     StepVendorContractsComponent,
     StepInvoicesComponent,
     StepProofRecordsComponent,
@@ -77,7 +79,16 @@ const STEP_STATUS_ICONS: Record<string, string> = {
               </mat-panel-description>
             </mat-expansion-panel-header>
 
-            @if (step.stepType === 'Submission') {
+            @if (step.stepType === 'Call') {
+              @if (application()) {
+                <gm-step-call
+                  [applicationId]="applicationId()"
+                  [application]="application()!"
+                  [step]="step"
+                  [isLocked]="isLocked()"
+                />
+              }
+            } @else if (step.stepType === 'Submission') {
               <gm-step-submission
                 [applicationId]="applicationId()"
                 [step]="step"

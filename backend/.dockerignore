@@ -1,0 +1,24 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/TestResults/
+
+# Development configs (ne kerüljön képbe)
+**/appsettings.Development.json
+**/appsettings.*.json
+!**/appsettings.json
+
+# Data és feltöltések
+**/data/
+
+# Git
+**/.git/
+**/.gitignore
+
+# Tests
+**/tests/
+
+# IDE
+**/.vs/
+**/.idea/
+**/*.user

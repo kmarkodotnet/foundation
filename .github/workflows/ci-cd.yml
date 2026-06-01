@@ -1,0 +1,109 @@
+name: CI/CD – Test · Build · Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  ci-cd:
+    name: Test → Build → Deploy
+    runs-on: self-hosted
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Backend unit tesztek ────────────────────────────────────────────
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore backend/GrantManagement.sln
+
+      - name: Run Domain tests
+        run: >
+          dotnet test backend/tests/GrantManagement.Domain.Tests
+          -c Release --no-restore
+          --logger "trx;LogFileName=domain.trx"
+
+      - name: Run Application tests
+        run: >
+          dotnet test backend/tests/GrantManagement.Application.Tests
+          -c Release --no-restore
+          --logger "trx;LogFileName=application.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/*.trx"
+
+      # ── 3. Docker ARM64 build ──────────────────────────────────────────────
+      - name: Setup QEMU (ARM64 emuláció)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image (linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: false
+          outputs: type=docker,dest=grantmanagement-api.tar
+          tags: grantmanagement-api:latest
+
+      - name: Build frontend image (linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          platforms: linux/arm64
+          push: false
+          outputs: type=docker,dest=grantmanagement-web.tar
+          tags: grantmanagement-web:latest
+
+      # ── 4. SSH hozzáférés beállítása ────────────────────────────────────────
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: RPi felvétele az ismert hosztok közé
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
+          ssh-keyscan -H "${{ secrets.RPI_HOST }}" >> "$env:USERPROFILE\.ssh\known_hosts"
+
+      # ── 5. Fájlok másolása az RPi-re ───────────────────────────────────────
+      - name: SCP – image tar-ok + compose fájl az RPi-re
+        shell: powershell
+        run: |
+          scp grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml `
+            "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}:~/grant/"
+
+      # ── 6. Deployment az RPi-n ────────────────────────────────────────────
+      - name: Deploy – docker load + compose up
+        shell: powershell
+        run: |
+          $cmd = @"
+          set -e
+          cd ~/grant
+          echo '>>> Backend image betöltése...'
+          docker load -i grantmanagement-api.tar
+          echo '>>> Frontend image betöltése...'
+          docker load -i grantmanagement-web.tar
+          echo '>>> Szolgáltatások indítása...'
+          docker compose up -d --remove-orphans
+          echo '>>> Takarítás...'
+          rm -f grantmanagement-api.tar grantmanagement-web.tar
+          echo '>>> Futó konténerek:'
+          docker compose ps
+          "@
+          $cmd | ssh "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" 'bash -s'

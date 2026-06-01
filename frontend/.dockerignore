@@ -1,0 +1,17 @@
+# Függőségek (npm ci a Dockerfile-ban tölti le)
+node_modules/
+
+# Build kimenet
+dist/
+
+# Development és IDE fájlok
+.angular/
+*.local
+.env*
+
+# Git
+.git/
+.gitignore
+
+# Tesztek
+coverage/

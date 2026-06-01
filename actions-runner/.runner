@@ -1,0 +1,11 @@
+﻿{
+  "agentId": 21,
+  "agentName": "KRYZEN",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus2.actions.githubusercontent.com/9nQvq8y5w1TfXgwAR54hK1UtHapUr3FR16JNUWIQ6u8rp0HQA3/",
+  "gitHubUrl": "https://github.com/kmarkodotnet/foundation",
+  "workFolder": "_work",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}

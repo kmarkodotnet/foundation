@@ -146,6 +146,9 @@ _NCrunch*
 appsettings.*.local.json
 secrets.json
 
+# Docker environment (tartalmaz jelszavakat!)
+.env
+
 ===========================================
 
 

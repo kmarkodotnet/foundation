@@ -126,7 +126,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "GrantManagement API v1"));
@@ -158,6 +158,7 @@ if (!app.Environment.IsEnvironment("Testing"))
         "0 8 * * *");
 }
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 

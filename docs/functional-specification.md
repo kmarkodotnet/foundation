@@ -1,9 +1,9 @@
 # Funkcionális Specifikáció – Pályázatkezelő Rendszer
 
 **Verzió:** 1.0  
-**Dátum:** 2025  
+**Dátum:** 2026  
 **Státusz:** Tervezet  
-**Készítette:** [Megrendelő neve]  
+**Készítette:** Markó Krisztián
 
 ---
 
@@ -67,7 +67,7 @@ A dokumentum **nem tartalmaz** technikai implementációs részleteket (kód, ad
 
 Az alapítvány rendszeres időközönként állami és nem állami pályázatokon vesz részt. A pályázati tevékenység összetett folyamat: a felhívás megjelenésétől a beadáson, eredményhirdetésen, szerződéskötésen, pénzfelhasználáson, teljesítésigazoláson át az elszámolásig számos párhuzamos és egymásra épülő tevékenységet érint.
 
-A jelenleg alkalmazott, jellemzően manuális vagy táblázatalapú nyilvántartás nem biztosít elegendő átláthatóságot, nyomon követhetőséget és dokumentumkezelési funkcionalitást.
+A jelenleg alkalmazott, jellemzően manuális nyilvántartás nem biztosít elegendő átláthatóságot, nyomon követhetőséget és dokumentumkezelési funkcionalitást.
 
 ### 2.2 A rendszer célja
 
@@ -82,9 +82,9 @@ A tervezett webalkalmazás célja:
 
 ### 2.3 Érintett szervezeti egységek
 
-- Alapítvány elnöksége (stratégiai döntések, jóváhagyások)
-- Pályázati munkacsoport (pályázatok összeállítása, benyújtása)
-- Pénzügyi csoport (számlák, kifizetések, elszámolás)
+- Alapítvány elnökség (stratégiai döntések, jóváhagyások)
+- Pályázati munkatársak (pályázatok összeállítása, benyújtása)
+- Pénzügyi munkatásak (számlák, kifizetések, elszámolás)
 - Adminisztráció (rendszerkarbantartás, felhasználókezelés)
 
 ---

@@ -15,11 +15,6 @@ jobs:
         uses: actions/checkout@v4
 
       # ── 2. Backend unit tesztek ────────────────────────────────────────────
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
       - name: Restore NuGet packages
         run: dotnet restore backend/GrantManagement.sln
 

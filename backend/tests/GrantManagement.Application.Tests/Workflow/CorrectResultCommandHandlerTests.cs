@@ -41,6 +41,8 @@ public class CorrectResultCommandHandlerTests
         var application = CreateWonApplication();
         SetupApplicationsMock([application]);
         SetupGrantersMock([]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
         _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var command = new CorrectResultCommand(
@@ -69,6 +71,8 @@ public class CorrectResultCommandHandlerTests
         var application = CreateLostApplication();
         SetupApplicationsMock([application]);
         SetupGrantersMock([]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
         _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var command = new CorrectResultCommand(
@@ -187,6 +191,12 @@ public class CorrectResultCommandHandlerTests
     {
         _contextMock.Setup(c => c.Granters).Returns(CreateMockDbSet(data).Object);
     }
+
+    private void SetupAppUsersMock(List<AppUser> data)
+        => _contextMock.Setup(c => c.AppUsers).Returns(CreateMockDbSet(data).Object);
+
+    private void SetupCodeListItemsMock(List<CodeListItem> data)
+        => _contextMock.Setup(c => c.CodeListItems).Returns(CreateMockDbSet(data).Object);
 
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
     {

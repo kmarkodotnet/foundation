@@ -47,6 +47,8 @@ public class UpdateApplicationCommandHandlerTests
 
         SetupApplicationsMock([application]);
         SetupGrantersMock([granter]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
         _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
@@ -104,6 +106,12 @@ public class UpdateApplicationCommandHandlerTests
         var mock = CreateMockDbSet(data);
         _contextMock.Setup(c => c.Granters).Returns(mock.Object);
     }
+
+    private void SetupAppUsersMock(List<AppUser> data)
+        => _contextMock.Setup(c => c.AppUsers).Returns(CreateMockDbSet(data).Object);
+
+    private void SetupCodeListItemsMock(List<CodeListItem> data)
+        => _contextMock.Setup(c => c.CodeListItems).Returns(CreateMockDbSet(data).Object);
 
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
     {

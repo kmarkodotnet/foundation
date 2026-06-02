@@ -37,6 +37,8 @@ public class GetApplicationDetailQueryHandlerTests
 
         SetupApplicationsMock([application]);
         SetupGrantersMock([granter]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
 
         // Act
         var result = await _sut.Handle(new GetApplicationDetailQuery(application.Id), CancellationToken.None);
@@ -58,6 +60,8 @@ public class GetApplicationDetailQueryHandlerTests
 
         SetupApplicationsMock([application]);
         SetupGrantersMock([granter]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
 
         // Act
         var result = await _sut.Handle(new GetApplicationDetailQuery(application.Id), CancellationToken.None);
@@ -77,6 +81,8 @@ public class GetApplicationDetailQueryHandlerTests
         var application = CreateDraftApplication(Guid.NewGuid());
         SetupApplicationsMock([application]);
         SetupGrantersMock([]); // no granter
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
 
         // Act
         var result = await _sut.Handle(new GetApplicationDetailQuery(application.Id), CancellationToken.None);
@@ -117,6 +123,12 @@ public class GetApplicationDetailQueryHandlerTests
     {
         _contextMock.Setup(c => c.Granters).Returns(CreateMockDbSet(data).Object);
     }
+
+    private void SetupAppUsersMock(List<AppUser> data)
+        => _contextMock.Setup(c => c.AppUsers).Returns(CreateMockDbSet(data).Object);
+
+    private void SetupCodeListItemsMock(List<CodeListItem> data)
+        => _contextMock.Setup(c => c.CodeListItems).Returns(CreateMockDbSet(data).Object);
 
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
     {

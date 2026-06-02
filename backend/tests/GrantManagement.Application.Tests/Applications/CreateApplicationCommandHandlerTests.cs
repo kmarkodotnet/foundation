@@ -42,6 +42,8 @@ public class CreateApplicationCommandHandlerTests
         var command = ValidCommand(granter.Id);
 
         SetupGrantersMock([granter]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
         GrantApp? capturedApp = null;
         var appsMock = CreateMockDbSet<GrantApp>([]);
         appsMock.Setup(d => d.Add(It.IsAny<GrantApp>()))
@@ -71,6 +73,8 @@ public class CreateApplicationCommandHandlerTests
         var command = ValidCommand(granter.Id);
 
         SetupGrantersMock([granter]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
         GrantApp? capturedApp = null;
         var appsMock = CreateMockDbSet<GrantApp>([]);
         appsMock.Setup(d => d.Add(It.IsAny<GrantApp>()))
@@ -98,6 +102,8 @@ public class CreateApplicationCommandHandlerTests
         // Arrange
         var granter = CreateActiveGranter();
         SetupGrantersMock([granter]);
+        SetupAppUsersMock([]);
+        SetupCodeListItemsMock([]);
         GrantApp? capturedApp = null;
         var appsMock = CreateMockDbSet<GrantApp>([]);
         appsMock.Setup(d => d.Add(It.IsAny<GrantApp>()))
@@ -169,6 +175,12 @@ public class CreateApplicationCommandHandlerTests
         var mock = CreateMockDbSet(data);
         _contextMock.Setup(c => c.Granters).Returns(mock.Object);
     }
+
+    private void SetupAppUsersMock(List<AppUser> data)
+        => _contextMock.Setup(c => c.AppUsers).Returns(CreateMockDbSet(data).Object);
+
+    private void SetupCodeListItemsMock(List<CodeListItem> data)
+        => _contextMock.Setup(c => c.CodeListItems).Returns(CreateMockDbSet(data).Object);
 
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
     {

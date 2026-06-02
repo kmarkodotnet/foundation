@@ -74,7 +74,7 @@ jobs:
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
-          ssh-keyscan -H "${{ secrets.RPI_HOST }}" >> "$env:USERPROFILE\.ssh\known_hosts"
+          ssh-keyscan -t rsa,ecdsa,ed25519 "${{ secrets.RPI_HOST }}" >> "$env:USERPROFILE\.ssh\known_hosts"
 
       # ── 5. Fájlok másolása az RPi-re ───────────────────────────────────────
       - name: SCP – image tar-ok + compose fájl az RPi-re

@@ -26,8 +26,6 @@ import { DateHuPipe } from '../../../../../shared/pipes/date-hu.pipe';
 import { DocumentDto, ProofPhotoDto, ProofRecordDto, WorkflowStep, WorkflowStepDetail } from '../../../models/application.model';
 import { ProofRecordService } from '../../../services/proof-record.service';
 import { ProofRecordFormDialogComponent } from './proof-record-form-dialog.component';
-import { DocumentListComponent } from '../../../../../shared/components/document-list/document-list.component';
-import { DocumentUploadComponent } from '../../../../../shared/components/document-upload/document-upload.component';
 import { EmailRecordComponent } from '../../../../../shared/components/email-record/email-record.component';
 import { CommentSectionComponent } from '../../../../../shared/components/comment-section/comment-section.component';
 
@@ -52,8 +50,6 @@ interface LightboxState {
     MatProgressSpinnerModule,
     MatTooltipModule,
     DateHuPipe,
-    DocumentListComponent,
-    DocumentUploadComponent,
     EmailRecordComponent,
     CommentSectionComponent,
   ],

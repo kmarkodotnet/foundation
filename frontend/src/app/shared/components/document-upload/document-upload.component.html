@@ -56,12 +56,10 @@
         [disabled]="form.invalid || !selectedFile() || uploading()"
         (click)="submitUpload()"
       >
-        @if (uploading()) {
-          Feltöltés folyamatban...
-        } @else {
+        @if (!uploading()) {
           <mat-icon>cloud_upload</mat-icon>
-          Feltöltés
         }
+        {{ uploading() ? 'Feltöltés folyamatban...' : 'Feltöltés' }}
       </button>
     </div>
   </div>

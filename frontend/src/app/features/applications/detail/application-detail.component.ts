@@ -25,8 +25,6 @@ import { WorkflowTabComponent } from './workflow/workflow-tab.component';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ApplicationAuditTabComponent } from './audit/application-audit-tab.component';
-import { HasRoleDirective } from '../../../shared/directives/has-role.directive';
-
 @Component({
   selector: 'gm-application-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,7 +41,6 @@ import { HasRoleDirective } from '../../../shared/directives/has-role.directive'
     CurrencyHuPipe,
     WorkflowTabComponent,
     ApplicationAuditTabComponent,
-    HasRoleDirective,
   ],
   templateUrl: './application-detail.component.html',
   styleUrl: './application-detail.component.scss',

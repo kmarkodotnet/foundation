@@ -70,17 +70,11 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: RPi felvétele az ismert hosztok közé
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
-          ssh-keyscan -t rsa,ecdsa,ed25519 "${{ secrets.RPI_HOST }}" >> "$env:USERPROFILE\.ssh\known_hosts"
-
       # ── 5. Fájlok másolása az RPi-re ───────────────────────────────────────
       - name: SCP – image tar-ok + compose fájl az RPi-re
         shell: powershell
         run: |
-          scp grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml `
+          scp -o StrictHostKeyChecking=no grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml `
             "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}:~/grant/"
 
       # ── 6. Deployment az RPi-n ────────────────────────────────────────────
@@ -101,4 +95,4 @@ jobs:
           echo '>>> Futó konténerek:'
           docker compose ps
           "@
-          $cmd | ssh "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" 'bash -s'
+          $cmd | ssh -o StrictHostKeyChecking=no "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" 'bash -s'

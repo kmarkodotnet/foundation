@@ -88,15 +88,15 @@ jobs:
             "set -e",
             "cd ~/grant",
             "echo loading backend image...",
-            "docker load -i grantmanagement-api.tar",
+            "sudo docker load -i grantmanagement-api.tar",
             "echo loading frontend image...",
-            "docker load -i grantmanagement-web.tar",
+            "sudo docker load -i grantmanagement-web.tar",
             "echo starting services...",
-            "docker compose up -d --remove-orphans",
+            "sudo docker compose up -d --remove-orphans",
             "echo cleanup...",
             "rm -f grantmanagement-api.tar grantmanagement-web.tar",
             "echo running containers:",
-            "docker compose ps"
+            "sudo docker compose ps"
           )
           $script = $lines -join "`n"
           [System.IO.File]::WriteAllText("deploy.sh", $script + "`n", (New-Object System.Text.UTF8Encoding $false))

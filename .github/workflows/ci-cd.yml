@@ -3,6 +3,7 @@ name: CI/CD – Test · Build · Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   ci-cd:

@@ -148,6 +148,7 @@ secrets.json
 
 # Docker environment (tartalmaz jelszavakat!)
 .env
+.env.example
 
 ===========================================
 

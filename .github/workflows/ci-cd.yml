@@ -80,34 +80,41 @@ jobs:
           [System.IO.File]::WriteAllText($keyPath, $env:DEPLOY_KEY + "`n")
           icacls $keyPath /inheritance:r /grant:r "${env:USERNAME}:(R)" | Out-Null
 
-      # ── 5. Fájlok másolása az RPi-re ───────────────────────────────────────
-      - name: SCP – image tar-ok + compose fájl az RPi-re
+      # ── 5. Deploy szkript + fájlok másolása az RPi-re ────────────────────
+      - name: Deploy szkript előkészítése
+        shell: powershell
+        run: |
+          $lines = @(
+            "set -e",
+            "cd ~/grant",
+            "echo loading backend image...",
+            "docker load -i grantmanagement-api.tar",
+            "echo loading frontend image...",
+            "docker load -i grantmanagement-web.tar",
+            "echo starting services...",
+            "docker compose up -d --remove-orphans",
+            "echo cleanup...",
+            "rm -f grantmanagement-api.tar grantmanagement-web.tar",
+            "echo running containers:",
+            "docker compose ps"
+          )
+          $script = $lines -join "`n"
+          [System.IO.File]::WriteAllText("deploy.sh", $script + "`n", (New-Object System.Text.UTF8Encoding $false))
+
+      - name: SCP – image tar-ok + compose fájl + deploy szkript az RPi-re
         shell: powershell
         run: |
           scp -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `
-            grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml `
+            grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml deploy.sh `
             "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}:~/grant/"
 
       # ── 6. Deployment az RPi-n ────────────────────────────────────────────
       - name: Deploy – docker load + compose up
         shell: powershell
         run: |
-          $cmd = @"
-          set -e
-          cd ~/grant
-          echo '>>> Backend image betöltése...'
-          docker load -i grantmanagement-api.tar
-          echo '>>> Frontend image betöltése...'
-          docker load -i grantmanagement-web.tar
-          echo '>>> Szolgáltatások indítása...'
-          docker compose up -d --remove-orphans
-          echo '>>> Takarítás...'
-          rm -f grantmanagement-api.tar grantmanagement-web.tar
-          echo '>>> Futó konténerek:'
-          docker compose ps
-          "@
-          $cmd | ssh -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `
-            "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" 'bash -s'
+          ssh -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `
+            "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" `
+            "bash ~/grant/deploy.sh"
 
       # ── 7. Takarítás ──────────────────────────────────────────────────────
       - name: SSH kulcs törlése

@@ -65,17 +65,23 @@ jobs:
           outputs: type=docker,dest=grantmanagement-web.tar
           tags: grantmanagement-web:latest
 
-      # ── 4. SSH hozzáférés beállítása ────────────────────────────────────────
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      # ── 4. SSH kulcs előkészítése ──────────────────────────────────────────
+      - name: SSH kulcs írása fájlba
+        shell: powershell
+        env:
+          DEPLOY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
+          $keyPath = "$env:USERPROFILE\.ssh\deploy_key"
+          [System.IO.File]::WriteAllText($keyPath, $env:DEPLOY_KEY + "`n")
+          icacls $keyPath /inheritance:r /grant:r "${env:USERNAME}:(R)" | Out-Null
 
       # ── 5. Fájlok másolása az RPi-re ───────────────────────────────────────
       - name: SCP – image tar-ok + compose fájl az RPi-re
         shell: powershell
         run: |
-          scp -o StrictHostKeyChecking=no grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml `
+          scp -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `
+            grantmanagement-api.tar grantmanagement-web.tar docker-compose.yml `
             "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}:~/grant/"
 
       # ── 6. Deployment az RPi-n ────────────────────────────────────────────
@@ -96,4 +102,11 @@ jobs:
           echo '>>> Futó konténerek:'
           docker compose ps
           "@
-          $cmd | ssh -o StrictHostKeyChecking=no "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" 'bash -s'
+          $cmd | ssh -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `
+            "${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}" 'bash -s'
+
+      # ── 7. Takarítás ──────────────────────────────────────────────────────
+      - name: SSH kulcs törlése
+        if: always()
+        shell: powershell
+        run: Remove-Item -Force "$env:USERPROFILE\.ssh\deploy_key" -ErrorAction SilentlyContinue

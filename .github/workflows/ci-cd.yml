@@ -73,6 +73,10 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
           $keyPath = "$env:USERPROFILE\.ssh\deploy_key"
+          if (Test-Path $keyPath) {
+            icacls $keyPath /reset | Out-Null
+            Remove-Item -Force $keyPath
+          }
           [System.IO.File]::WriteAllText($keyPath, $env:DEPLOY_KEY + "`n")
           icacls $keyPath /inheritance:r /grant:r "${env:USERNAME}:(R)" | Out-Null
 
@@ -109,4 +113,9 @@ jobs:
       - name: SSH kulcs törlése
         if: always()
         shell: powershell
-        run: Remove-Item -Force "$env:USERPROFILE\.ssh\deploy_key" -ErrorAction SilentlyContinue
+        run: |
+          $keyPath = "$env:USERPROFILE\.ssh\deploy_key"
+          if (Test-Path $keyPath) {
+            icacls $keyPath /reset | Out-Null
+            Remove-Item -Force $keyPath
+          }

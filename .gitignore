@@ -10,6 +10,16 @@
 
 .claude/
 
+# CI/CD
+
+actions-runner/
+inspect-html/
+*.tar
+
+# E2E
+
+e2e/test-results/
+
 # Build results
 
 [Dd]ebug/

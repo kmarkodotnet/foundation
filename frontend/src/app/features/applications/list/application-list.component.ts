@@ -1,5 +1,6 @@
 import {
-  ChangeDetectionStrategy,
+  ApplicationRef,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   OnInit,
@@ -73,7 +74,6 @@ interface ActiveFilterBadge {
 @Component({
   selector: 'gm-application-list',
   standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [provideNativeDateAdapter()],
   imports: [
     ReactiveFormsModule,
@@ -106,6 +106,8 @@ export class ApplicationListComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly appRef = inject(ApplicationRef);
 
   readonly loading = signal(false);
   readonly exporting = signal(false);
@@ -223,6 +225,7 @@ export class ApplicationListComponent implements OnInit {
         switchMap(() => {
           const snap = this.form.getRawValue();
           this._snapshot.set(snap);
+          this.cdr.markForCheck();
           const filter = this._buildFilter(snap);
           this._syncUrl(filter);
           this.loading.set(true);
@@ -299,7 +302,7 @@ export class ApplicationListComponent implements OnInit {
   }
 
   removeFilter(key: keyof FilterSnapshot): void {
-    const defaults: Partial<FilterSnapshot> = {
+    const defaults: FilterSnapshot = {
       searchTerm: '',
       granterId: null,
       statuses: [],
@@ -310,28 +313,30 @@ export class ApplicationListComponent implements OnInit {
       includeArchived: false,
     };
     this.form.patchValue({ [key]: defaults[key] }, { emitEvent: false });
+    this._snapshot.set({ ...this._snapshot(), [key]: defaults[key] });
     this.page$.next({ ...this.page$.value, page: 1 });
     this.filterTrigger$.next();
+    this.appRef.tick();
   }
 
   clearAllFilters(): void {
-    this.form.reset(
-      {
-        searchTerm: '',
-        granterId: null,
-        statuses: [],
-        submissionDeadlineFrom: null,
-        submissionDeadlineTo: null,
-        awardedAmountMin: null,
-        awardedAmountMax: null,
-        includeArchived: false,
-      },
-      { emitEvent: false },
-    );
+    const cleared: FilterSnapshot = {
+      searchTerm: '',
+      granterId: null,
+      statuses: [],
+      submissionDeadlineFrom: null,
+      submissionDeadlineTo: null,
+      awardedAmountMin: null,
+      awardedAmountMax: null,
+      includeArchived: false,
+    };
+    this.form.reset(cleared, { emitEvent: false });
+    this._snapshot.set(cleared);
     this.sortBy = 'SubmissionDeadline';
     this.sortDirection = 'Asc';
     this.page$.next({ page: 1, pageSize: this.page$.value.pageSize });
     this.filterTrigger$.next();
+    this.appRef.tick();
   }
 
   openDetail(id: string): void {

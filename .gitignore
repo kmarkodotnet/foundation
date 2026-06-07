@@ -155,6 +155,7 @@ _NCrunch*
 *.user
 
 # Local secrets / development config overrides
+appsettings.Development.json
 appsettings.*.local.json
 secrets.json
 

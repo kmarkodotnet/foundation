@@ -1,5 +1,13 @@
 @use '@angular/material' as mat;
 
+// ── Breakpoints ──────────────────────────────────────────────────────────────
+$gm-bp-md: 960px;
+$gm-bp-lg: 1280px;
+
+@mixin gm-mobile  { @media (max-width: #{$gm-bp-md - 1})  { @content; } }
+@mixin gm-tablet  { @media (min-width: #{$gm-bp-md}) and (max-width: #{$gm-bp-lg - 1}) { @content; } }
+@mixin gm-desktop { @media (min-width: #{$gm-bp-lg}) { @content; } }
+
 html {
   @include mat.theme((
     color: (
@@ -23,10 +31,25 @@ body {
   box-sizing: border-box;
 }
 
+// ── Layout ───────────────────────────────────────────────────────────────────
 .gm-page-container {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+
+  @include gm-mobile {
+    padding: 12px;
+  }
+}
+
+.gm-page-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  h1 { margin: 0; }
 }
 
 .gm-card-gap {
@@ -37,6 +60,32 @@ body {
   flex: 1 1 auto;
 }
 
+// ── Responsive grid ───────────────────────────────────────────────────────────
+.gm-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @include gm-mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Table scroll wrapper ──────────────────────────────────────────────────────
+.gm-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+// ── Responsive dialogs ────────────────────────────────────────────────────────
+@include gm-mobile {
+  .cdk-overlay-pane {
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+// ── State overlays ────────────────────────────────────────────────────────────
 .gm-loading-overlay {
   display: flex;
   justify-content: center;
@@ -50,6 +99,10 @@ body {
   align-items: center;
   padding: 48px;
   color: rgba(0, 0, 0, 0.54);
+
+  @include gm-mobile {
+    padding: 24px;
+  }
 
   mat-icon {
     font-size: 64px;

@@ -3,9 +3,11 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 
   h1 {
     margin: 0;
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
   }
 }
 
@@ -15,7 +17,7 @@
 
 .gm-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
   margin-bottom: 8px;
 
@@ -36,5 +38,6 @@
 }
 
 .gm-workflow-tabs {
-  width: 130%;
+  width: 100%;
+  overflow-x: auto;
 }

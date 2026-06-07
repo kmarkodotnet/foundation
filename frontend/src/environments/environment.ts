@@ -3,7 +3,7 @@ export const environment = {
   apiUrl: '/api/v1',
   signalrHubUrl: '/hubs/notifications',
   google: {
-    clientId: '130497332598-nnndjhb0eomeluh2ajlf5fbb7l1u75ck.apps.googleusercontent.com',
+    clientId: '130497332598-32qj9ko45vhljreir08pkdf8t0q81392.apps.googleusercontent.com',
     redirectUri: 'http://localhost:4200/auth/callback',
   },
 };

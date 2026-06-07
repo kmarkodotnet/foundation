@@ -51,6 +51,19 @@
   gap: 12px;
   flex-wrap: wrap;
   align-items: flex-start;
+
+  mat-form-field {
+    flex: 1;
+    min-width: 160px;
+  }
+
+  @media (max-width: 959px) {
+    flex-direction: column;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
 }
 
 .checkbox-row {

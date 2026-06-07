@@ -20,6 +20,7 @@
   } @else {
     <mat-card>
       <mat-card-content>
+        <div class="gm-table-scroll">
         <table mat-table [dataSource]="granters()" style="width:100%">
 
           <ng-container matColumnDef="name">
@@ -67,6 +68,7 @@
             (click)="openDetail(row.id)"
           ></tr>
         </table>
+        </div>
 
         @if (!granters().length) {
           <div class="gm-empty-state">

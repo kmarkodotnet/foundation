@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,9 +25,16 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
   ],
   template: `
     <mat-toolbar color="primary">
-      <span>Pályázatkezelő</span>
+      @if (isMobile()) {
+        <button mat-icon-button aria-label="Navigáció megnyitása" (click)="menuToggle.emit()">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+      <span class="gm-navbar-title">Pályázatkezelő</span>
       <span class="gm-spacer"></span>
-      <gm-global-search />
+      @if (!isMobile()) {
+        <gm-global-search />
+      }
       <gm-notification-bell />
       <button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Profil menü">
         <mat-icon>account_circle</mat-icon>
@@ -55,6 +62,7 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
   `,
   styles: [`
     .gm-spacer { flex: 1 1 auto; }
+    .gm-navbar-title { font-size: 1.1rem; font-weight: 500; }
     .gm-profile-header {
       display: flex;
       align-items: center;
@@ -68,6 +76,8 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
   `],
 })
 export class NavbarComponent {
+  readonly isMobile = input(false);
+  readonly menuToggle = output<void>();
   readonly authService = inject(AuthService);
 
   logout(): void {

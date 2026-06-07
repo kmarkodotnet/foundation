@@ -454,40 +454,6 @@ async function loadListWithData(
 }
 
 test.describe('TS-025 | Határidő figyelmeztető ikonok', () => {
-  test('DEBUG: response body és auth/me check', async ({ munkatarsPage }) => {
-    const interceptedUrls: string[] = [];
-    const responseBodies: string[] = [];
-    munkatarsPage.on('response', async (response) => {
-      const url = response.url();
-      if (url.includes('/api/v1/applications') && !url.includes('/export')) {
-        const body = await response.text().catch(() => 'ERROR_READING_BODY');
-        interceptedUrls.push(`${response.status()} ${url}`);
-        responseBodies.push(body.substring(0, 300));
-      }
-      if (url.includes('/api/v1/auth/me')) {
-        interceptedUrls.push(`AUTH_ME: ${response.status()} ${url}`);
-      }
-    });
-
-    await munkatarsPage.route('**/api/v1/applications**', (route) =>
-      route.fulfill(ok(makeListPage({ isDeadlineWarning: true }))),
-    );
-
-    await munkatarsPage.goto('/applications');
-
-    // Wait for actual rows or empty-state, whichever comes first
-    await munkatarsPage.waitForSelector('tr.mat-mdc-row, .gm-empty-state', { timeout: 10000 }).catch(() => {
-      console.log('No rows or empty state appeared');
-    });
-
-    console.log('Intercepted URLs:', interceptedUrls);
-    console.log('Response bodies:', responseBodies);
-
-    const rows = await munkatarsPage.locator('tr.mat-mdc-row').count();
-    console.log(`Rows: ${rows}`);
-    expect(rows).toBeGreaterThan(0);
-  });
-
   test('isDeadlineWarning=true esetén "schedule" ikon jelenik meg a listában', async ({
     munkatarsPage,
   }) => {

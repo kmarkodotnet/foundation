@@ -28,5 +28,12 @@ export default defineConfig({
         launchOptions: { slowMo: process.env['PWSLOWMO'] ? Number(process.env['PWSLOWMO']) : 0 },
       },
     },
+    {
+      name: 'mobile',
+      use: {
+        ...devices['Pixel 7'],
+        launchOptions: { slowMo: process.env['PWSLOWMO'] ? Number(process.env['PWSLOWMO']) : 0 },
+      },
+    },
   ],
 });

@@ -25,20 +25,27 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
   ],
   template: `
     <mat-toolbar color="primary">
-      @if (isMobile()) {
-        <button mat-icon-button aria-label="Navigáció megnyitása" (click)="menuToggle.emit()">
-          <mat-icon>menu</mat-icon>
+      <mat-toolbar-row>
+        @if (isMobile()) {
+          <button mat-icon-button aria-label="Navigáció megnyitása" (click)="menuToggle.emit()">
+            <mat-icon>menu</mat-icon>
+          </button>
+        }
+        <span class="gm-navbar-title">Pályázatkezelő</span>
+        <span class="gm-spacer"></span>
+        @if (!isMobile()) {
+          <gm-global-search />
+        }
+        <gm-notification-bell />
+        <button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Profil menü">
+          <mat-icon>account_circle</mat-icon>
         </button>
+      </mat-toolbar-row>
+      @if (isMobile()) {
+        <mat-toolbar-row class="gm-search-row">
+          <gm-global-search [fullWidth]="true" />
+        </mat-toolbar-row>
       }
-      <span class="gm-navbar-title">Pályázatkezelő</span>
-      <span class="gm-spacer"></span>
-      @if (!isMobile()) {
-        <gm-global-search />
-      }
-      <gm-notification-bell />
-      <button mat-icon-button [matMenuTriggerFor]="profileMenu" aria-label="Profil menü">
-        <mat-icon>account_circle</mat-icon>
-      </button>
     </mat-toolbar>
 
     <mat-menu #profileMenu="matMenu" xPosition="before">
@@ -63,6 +70,7 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
   styles: [`
     .gm-spacer { flex: 1 1 auto; }
     .gm-navbar-title { font-size: 1.1rem; font-weight: 500; }
+    .gm-search-row { padding: 0 8px 8px; }
     .gm-profile-header {
       display: flex;
       align-items: center;

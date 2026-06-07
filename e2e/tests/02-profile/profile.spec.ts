@@ -66,6 +66,13 @@ test.describe('TS-010 | Saját profil megtekintése', () => {
     await munkatarsPage.goto('/applications');
     await munkatarsPage.waitForURL('**/applications**', { timeout: 10_000 });
 
+    // On mobile the sidenav is closed — open it first
+    const hamburger = munkatarsPage.getByRole('button', { name: 'Navigáció megnyitása' });
+    if (await hamburger.isVisible()) {
+      await hamburger.click();
+      await munkatarsPage.waitForTimeout(300);
+    }
+
     await munkatarsPage.getByRole('link', { name: /profil/i }).click();
 
     await munkatarsPage.waitForURL('**/profile**', { timeout: 10_000 });
@@ -119,7 +126,9 @@ test.describe('TS-011 | Értesítési beállítások módosítása', () => {
     await munkatarsPage.waitForLoadState('networkidle');
 
     // Toggle off "Határidő közeledési értesítés" (was true → becomes false)
-    await munkatarsPage.getByRole('switch', { name: /határidő közeledési/i }).click();
+    const toggle = munkatarsPage.getByRole('switch', { name: /határidő közeledési/i });
+    await toggle.scrollIntoViewIfNeeded();
+    await toggle.click();
     await munkatarsPage.getByRole('button', { name: /mentés/i }).click();
 
     // PUT was called with the toggled-off value

@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   inject,
+  input,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -30,7 +31,7 @@ import { GlobalSearchResult, SearchResultItem } from '../../models/search.model'
     MatProgressSpinnerModule,
   ],
   template: `
-    <mat-form-field appearance="outline" class="gm-search-field" subscriptSizing="dynamic">
+    <mat-form-field appearance="outline" class="gm-search-field" subscriptSizing="dynamic" [style.width]="fullWidth() ? '100%' : '280px'">
       <mat-icon matPrefix>search</mat-icon>
       <input
         matInput
@@ -89,6 +90,7 @@ import { GlobalSearchResult, SearchResultItem } from '../../models/search.model'
     </mat-autocomplete>
   `,
   styles: [`
+    :host { display: block; }
     .gm-search-field { width: 280px; }
     .gm-search-name { font-weight: 500; }
     .gm-search-status {
@@ -99,6 +101,8 @@ import { GlobalSearchResult, SearchResultItem } from '../../models/search.model'
   `],
 })
 export class GlobalSearchComponent {
+  readonly fullWidth = input(false);
+
   private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);

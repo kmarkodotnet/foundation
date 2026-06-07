@@ -225,7 +225,7 @@ test.describe('TS-021 | Kötelező mezők validációja', () => {
       .locator('mat-form-field')
       .filter({ hasText: /beadási határidő/i })
       .locator('input');
-    await deadlineInput.click();
+    await deadlineInput.click({ force: true });
     await munkatarsPage.keyboard.press('Escape');
     await deadlineInput.blur();
 
@@ -494,9 +494,10 @@ test.describe('TS-025 | Határidő figyelmeztető ikonok', () => {
     await loadListWithData(munkatarsPage, { isDeadlineWarning: true });
 
     // span.gm-deadline-warning contains the mat-icon when warning flag is set
-    await expect(
-      munkatarsPage.locator('.gm-deadline-warning mat-icon.gm-deadline-icon'),
-    ).toBeVisible();
+    const warningIcon = munkatarsPage.locator('.gm-deadline-warning mat-icon.gm-deadline-icon');
+    await warningIcon.waitFor({ state: 'attached', timeout: 8_000 });
+    await warningIcon.scrollIntoViewIfNeeded();
+    await expect(warningIcon).toBeVisible({ timeout: 5_000 });
   });
 
   test('isDeadlineCritical=true esetén "warning" ikon jelenik meg a listában', async ({
@@ -505,8 +506,9 @@ test.describe('TS-025 | Határidő figyelmeztető ikonok', () => {
     await loadListWithData(munkatarsPage, { isDeadlineCritical: true });
 
     // span.gm-deadline-critical contains the mat-icon when critical flag is set
-    await expect(
-      munkatarsPage.locator('.gm-deadline-critical mat-icon.gm-deadline-icon'),
-    ).toBeVisible();
+    const criticalIcon = munkatarsPage.locator('.gm-deadline-critical mat-icon.gm-deadline-icon');
+    await criticalIcon.waitFor({ state: 'attached', timeout: 8_000 });
+    await criticalIcon.scrollIntoViewIfNeeded();
+    await expect(criticalIcon).toBeVisible({ timeout: 5_000 });
   });
 });

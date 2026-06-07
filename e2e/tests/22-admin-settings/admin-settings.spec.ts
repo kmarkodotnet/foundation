@@ -59,6 +59,13 @@ test.describe('TS-210 | Rendszerbeállítások hozzáférés', () => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
 
+    // On mobile the sidenav is closed — open it first
+    const hamburger = page.getByRole('button', { name: 'Navigáció megnyitása' });
+    if (await hamburger.isVisible()) {
+      await hamburger.click();
+      await page.waitForTimeout(300);
+    }
+
     await expect(page.locator('a[routerlink="/admin/settings"]')).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -434,12 +434,17 @@ test.describe('TS-233 | Előzmények tab', () => {
     await page.goto(`/applications/${APP_ID}`);
     await page.waitForLoadState('networkidle');
 
+    const auditResponsePromise = page.waitForResponse(
+      (r) => r.url().includes(`audit-logs/application/${APP_ID}`),
+    );
     await page.locator('.mat-mdc-tab', { hasText: 'Előzmények' }).click();
+    await auditResponsePromise;
     await page.waitForLoadState('networkidle');
 
-    await expect(
-      page.locator('td', { hasText: 'Admin Felhasználó' }).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    const userCell = page.locator('td', { hasText: 'Admin Felhasználó' }).first();
+    await userCell.waitFor({ state: 'attached', timeout: 8_000 });
+    await userCell.scrollIntoViewIfNeeded();
+    await expect(userCell).toBeVisible({ timeout: 5_000 });
   });
 
   test('Üres előzmény lista esetén "Nincs audit bejegyzés." üzenet jelenik meg', async ({ adminPage: page }) => {

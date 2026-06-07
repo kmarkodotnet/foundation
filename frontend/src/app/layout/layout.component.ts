@@ -40,7 +40,7 @@ export class LayoutComponent implements OnInit {
   private readonly router = inject(Router);
 
   private readonly sidenavRef = viewChild.required<MatSidenav>('sidenav');
-  readonly isMobile = signal(false);
+  readonly isMobile = signal(this.breakpointObserver.isMatched('(max-width: 959px)'));
 
   constructor() {
     this.breakpointObserver.observe('(max-width: 959px)').subscribe(result => {

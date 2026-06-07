@@ -16,6 +16,7 @@ export type { AuditLogEntry };
     @if (entries().length === 0) {
       <p class="gm-empty">Nincs audit bejegyzés.</p>
     } @else {
+      <div class="gm-table-scroll">
       <table mat-table [dataSource]="entries()" style="width:100%">
         <ng-container matColumnDef="expand">
           <th mat-header-cell *matHeaderCellDef style="width:40px"></th>
@@ -85,9 +86,11 @@ export type { AuditLogEntry };
         <tr mat-row *matRowDef="let row; columns: columns" class="gm-audit-row"></tr>
         <tr mat-row *matRowDef="let row; columns: ['detail']" class="gm-audit-detail-row"></tr>
       </table>
+      </div>
     }
   `,
   styles: [`
+    .gm-table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .gm-empty { color: var(--mat-sys-on-surface-variant); padding: 16px; }
     .gm-expand-btn {
       background: none; border: none; cursor: pointer; padding: 4px;

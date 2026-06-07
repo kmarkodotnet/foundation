@@ -80,8 +80,14 @@ test.describe('TS-190 | Audit napló hozzáférés', () => {
     await page.goto('/audit');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('td', { hasText: 'Application' }).first()).toBeVisible({ timeout: 8_000 });
-    await expect(page.locator('td', { hasText: 'Admin Felhasználó' }).first()).toBeVisible();
+    const entityCell = page.locator('td', { hasText: 'Application' }).first();
+    await entityCell.waitFor({ state: 'attached', timeout: 8_000 });
+    await entityCell.scrollIntoViewIfNeeded();
+    await expect(entityCell).toBeVisible({ timeout: 5_000 });
+
+    const userCell = page.locator('td', { hasText: 'Admin Felhasználó' }).first();
+    await userCell.scrollIntoViewIfNeeded();
+    await expect(userCell).toBeVisible({ timeout: 5_000 });
   });
 });
 

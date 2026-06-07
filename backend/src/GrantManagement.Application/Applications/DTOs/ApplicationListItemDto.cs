@@ -14,11 +14,20 @@ public class ApplicationListItemDto
     public decimal? AwardedAmount { get; init; }
     public DateTimeOffset LastModifiedAt { get; init; }
 
+    public int WarningDays { get; init; } = 7;
+
+    private static readonly IReadOnlySet<ApplicationStatus> ActiveStatuses =
+        new HashSet<ApplicationStatus> { ApplicationStatus.Draft, ApplicationStatus.InProgress };
+
     public bool IsDeadlineWarning =>
+        ActiveStatuses.Contains(Status) &&
+        SubmissionDeadline != default &&
         SubmissionDeadline > DateTimeOffset.UtcNow &&
-        SubmissionDeadline <= DateTimeOffset.UtcNow.AddDays(7);
+        SubmissionDeadline <= DateTimeOffset.UtcNow.AddDays(WarningDays);
 
     public bool IsDeadlineCritical =>
+        ActiveStatuses.Contains(Status) &&
+        SubmissionDeadline != default &&
         SubmissionDeadline < DateTimeOffset.UtcNow;
 
     public bool IsSpendingDeadlineWarning =>

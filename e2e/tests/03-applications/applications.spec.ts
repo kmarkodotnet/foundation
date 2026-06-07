@@ -438,18 +438,10 @@ async function loadListWithData(
   page: import('@playwright/test').Page,
   overrides: object,
 ): Promise<void> {
-  // Register a new route; in Playwright routes are checked LIFO so this
-  // overrides the empty-list mock registered by the auth fixture.
   await page.route('**/api/v1/applications**', (route) =>
     route.fulfill(ok(makeListPage(overrides))),
   );
-
-  await Promise.all([
-    page.waitForResponse(
-      (r) => r.url().includes('/api/v1/applications') && !r.url().includes('/export'),
-    ),
-    page.goto('/applications'),
-  ]);
+  await page.goto('/applications');
   await page.waitForLoadState('networkidle');
 }
 

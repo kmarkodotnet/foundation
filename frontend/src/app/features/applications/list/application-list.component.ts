@@ -98,6 +98,7 @@ interface ActiveFilterBadge {
     HasRoleDirective,
   ],
   templateUrl: './application-list.component.html',
+  styleUrl: './application-list.component.scss',
 })
 export class ApplicationListComponent implements OnInit {
   private readonly service = inject(ApplicationService);

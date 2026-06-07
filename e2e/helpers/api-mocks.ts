@@ -27,7 +27,7 @@ export async function mockApplicationsList(
 /** Mocks the granters list */
 export async function mockGrantersList(
   page: Page,
-  payload: unknown = EMPTY_PAGE,
+  payload: unknown = [],
 ): Promise<void> {
   await page.route('**/api/v1/granters**', (route) => jsonOk(route, payload));
 }

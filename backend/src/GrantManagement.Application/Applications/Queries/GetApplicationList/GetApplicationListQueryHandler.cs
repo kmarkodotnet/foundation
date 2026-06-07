@@ -97,6 +97,12 @@ public class GetApplicationListQueryHandler
                 query.OrderBy(x => x.App.CallData != null ? x.App.CallData.SubmissionDeadline : default)
         };
 
+        var warningDays = await _context.SystemSettings
+            .AsNoTracking()
+            .Select(s => s.NotificationWarningDays)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (warningDays <= 0) warningDays = 7;
+
         var totalCount = await sortedQuery.CountAsync(cancellationToken);
 
         var items = await sortedQuery
@@ -118,7 +124,8 @@ public class GetApplicationListQueryHandler
                 AwardedAmount = x.App.Result != null
                     ? x.App.Result.AwardedAmountValue
                     : null,
-                LastModifiedAt = x.App.UpdatedAt
+                LastModifiedAt = x.App.UpdatedAt,
+                WarningDays = warningDays,
             })
             .ToListAsync(cancellationToken);
 

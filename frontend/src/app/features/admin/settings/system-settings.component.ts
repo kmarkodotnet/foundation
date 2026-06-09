@@ -202,10 +202,13 @@ export class SystemSettingsComponent implements OnInit {
       },
       error: (err) => {
         this.saving.set(false);
-        this.snackBar.open(
-          err?.error?.detail ?? 'Nem sikerült menteni.',
-          'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
-        );
+        // 500 and 403 are already handled by the global errorInterceptor
+        if (err?.status !== 500 && err?.status !== 403) {
+          this.snackBar.open(
+            err?.error?.detail ?? 'Nem sikerült menteni.',
+            'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+          );
+        }
       },
     });
   }

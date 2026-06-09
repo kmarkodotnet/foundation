@@ -114,7 +114,9 @@
       </mat-tab>
       @if (canViewAudit()) {
         <mat-tab label="Előzmények">
-          <gm-application-audit-tab [applicationId]="app.id" />
+          <ng-template matTabContent>
+            <gm-application-audit-tab [applicationId]="app.id" />
+          </ng-template>
         </mat-tab>
       }
     </mat-tab-group>

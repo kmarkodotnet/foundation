@@ -434,11 +434,7 @@ test.describe('TS-233 | Előzmények tab', () => {
     await page.goto(`/applications/${APP_ID}`);
     await page.waitForLoadState('networkidle');
 
-    const auditResponsePromise = page.waitForResponse(
-      (r) => r.url().includes(`audit-logs/application/${APP_ID}`),
-    );
     await page.locator('.mat-mdc-tab', { hasText: 'Előzmények' }).click();
-    await auditResponsePromise;
     await page.waitForLoadState('networkidle');
 
     const userCell = page.locator('td', { hasText: 'Admin Felhasználó' }).first();

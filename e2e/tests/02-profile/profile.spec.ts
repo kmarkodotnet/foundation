@@ -64,7 +64,7 @@ test.describe('TS-010 | Saját profil megtekintése', () => {
     await mockUserProfile(munkatarsPage, defaultProfile);
 
     await munkatarsPage.goto('/applications');
-    await munkatarsPage.waitForURL('**/applications**', { timeout: 10_000 });
+    await munkatarsPage.waitForLoadState('networkidle');
 
     // On mobile the sidenav is closed — open it first
     const hamburger = munkatarsPage.getByRole('button', { name: 'Navigáció megnyitása' });
@@ -129,10 +129,10 @@ test.describe('TS-011 | Értesítési beállítások módosítása', () => {
     const toggle = munkatarsPage.getByRole('switch', { name: /határidő közeledési/i });
     await toggle.scrollIntoViewIfNeeded();
     await toggle.click();
+    const responsePromise = munkatarsPage.waitForResponse(PREFS_URL);
     await munkatarsPage.getByRole('button', { name: /mentés/i }).click();
+    await responsePromise;
 
-    // PUT was called with the toggled-off value
-    await munkatarsPage.waitForResponse(PREFS_URL);
     expect(capturedBody?.emailOnDeadlineApproaching).toBe(false);
   });
 

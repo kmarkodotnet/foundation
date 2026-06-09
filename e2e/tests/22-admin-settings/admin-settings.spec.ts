@@ -166,7 +166,7 @@ test.describe('TS-212 | Beállítások mentése', () => {
     await page.getByRole('button', { name: /mentés/i }).click();
 
     await expect(
-      page.locator('mat-snack-bar-container', { hasText: 'Szerverhiba' }),
+      page.locator('mat-snack-bar-container', { hasText: 'Szerverhiba' }).last(),
     ).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -1,6 +1,7 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.Auth.Commands.GoogleLogin;
 using GrantManagement.Application.Auth.Commands.Logout;
+using GrantManagement.Application.Auth.Commands.TestLogin;
 using GrantManagement.Application.Auth.Commands.UpdateNotificationPreferences;
 using GrantManagement.Application.Auth.DTOs;
 using GrantManagement.Application.Auth.Queries.GetCurrentUser;
@@ -14,6 +15,36 @@ namespace GrantManagement.API.Controllers;
 /// </summary>
 public class AuthController : ApiControllerBase
 {
+    private readonly IWebHostEnvironment _env;
+
+    public AuthController(IWebHostEnvironment env)
+    {
+        _env = env;
+    }
+
+    /// <summary>
+    /// Issues a real JWT for a named test user without Google OAuth.
+    /// Only available in the Development environment — returns 404 in Production.
+    /// </summary>
+    /// <param name="command">Test user identity and role.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">JWT issued.</response>
+    /// <response code="404">Not available outside Development.</response>
+    [HttpPost("test-login")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AuthResultDto>> TestLogin(
+        [FromBody] TestLoginCommand command,
+        CancellationToken ct = default)
+    {
+        if (!_env.IsDevelopment())
+            return NotFound();
+
+        var result = await Sender.Send(command, ct);
+        return Ok(result);
+    }
+
     /// <summary>
     /// Exchanges a Google OAuth authorization code for a JWT access token.
     /// Creates a new user account with the Megtekinto role if the user does not exist yet.

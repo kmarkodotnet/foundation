@@ -87,7 +87,7 @@ test.describe('TS-001 | Sikeres Google-bejelentkezés', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('TS-002 | Első bejelentkezés – Megtekintő alapértelmezett szerepkör', () => {
   test('Új felhasználó Megtekintő szerepkörrel jön létre', async ({ page }) => {
-    const newUser = TEST_USERS['Megtekintos'];
+    const newUser = TEST_USERS['Megtekinto'];
 
     await simulateOAuthLogin(page, newUser, async () => {
       await mockApplicationsList(page);
@@ -332,7 +332,7 @@ test.describe('TS-007 | Jogosulatlan hozzáférés megakadályozása', () => {
   test('API szinten a DELETE kérés 403-at ad vissza jogosulatlan JWT-vel', async ({ page }) => {
     // Use Megtekintő JWT directly in the API request
     const { generateJwt, TEST_USERS: users } = await import('../../helpers/jwt');
-    const token = generateJwt(users['Megtekintos']);
+    const token = generateJwt(users['Megtekinto']);
 
     // Make a DELETE request to applications endpoint with Megtekintő token
     const response = await page.request.delete(`${BASE}/api/v1/applications/some-fake-id`, {

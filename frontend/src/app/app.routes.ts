@@ -69,7 +69,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/audit/audit.routes').then((m) => m.auditRoutes),
         canActivate: [roleGuard],
-        data: { roles: ['Admin'] },
+        data: { roles: ['Admin', 'Elnok'] },
       },
       {
         path: 'profile',

@@ -124,7 +124,7 @@ export const test = base.extend<AuthFixtures>({
   },
 
   megtekintosPage: async ({ page }, use) => {
-    await injectToken(page, TEST_USERS['Megtekintos']);
+    await injectToken(page, TEST_USERS['Megtekinto']);
     await mockAuthenticatedSession(page);
     await use(page);
   },

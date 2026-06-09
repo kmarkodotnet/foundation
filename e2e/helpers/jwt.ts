@@ -13,12 +13,17 @@ function base64UrlEncode(data: string): string {
     .replace(/=/g, '');
 }
 
+/**
+ * Role values must match the C# UserRole enum and Angular UserRole type exactly.
+ * Backend: GrantManagement.Domain.Enums.UserRole
+ * Frontend: src/app/core/auth/models/user.model.ts
+ */
 export type UserRole =
   | 'Admin'
   | 'Elnok'
   | 'PalyazatiMunkatars'
   | 'Penzugyes'
-  | 'Megtekintos';
+  | 'Megtekinto';
 
 export interface TestUser {
   id: string;
@@ -57,12 +62,12 @@ export const TEST_USERS: Record<UserRole, TestUser> = {
     name: 'Teszt Pénzügyes',
     role: 'Penzugyes',
   },
-  Megtekintos: {
+  Megtekinto: {
     id: '00000000-0000-0000-0000-000000000005',
-    googleId: 'test-google-megtekintos',
-    email: 'megtekintos@test.hu',
+    googleId: 'test-google-megtekinto',
+    email: 'megtekinto@test.hu',
     name: 'Teszt Megtekintő',
-    role: 'Megtekintos',
+    role: 'Megtekinto',
   },
 };
 

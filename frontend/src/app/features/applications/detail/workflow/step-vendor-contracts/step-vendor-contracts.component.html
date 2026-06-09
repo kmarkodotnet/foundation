@@ -22,6 +22,7 @@
 
     <!-- Contracts table -->
     @if (contracts().length > 0) {
+      <div class="gm-table-scroll">
       <table mat-table [dataSource]="contracts()" style="width:100%;margin-bottom:12px">
 
         <ng-container matColumnDef="vendor">
@@ -75,6 +76,7 @@
         <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
       </table>
+      </div>
     } @else {
       <p style="color:rgba(0,0,0,0.54);margin-bottom:12px">
         Még nincs rögzített alvállalkozói szerződés.

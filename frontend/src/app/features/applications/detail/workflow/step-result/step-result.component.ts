@@ -62,6 +62,19 @@ import { CommentSectionComponent } from '../../../../../shared/components/commen
     CommentSectionComponent,
   ],
   templateUrl: './step-result.component.html',
+  styles: [`
+    .result-form { display: flex; flex-direction: column; gap: 8px; }
+    .result-form > mat-form-field { width: 100%; }
+    .result-radio-group { display: flex; gap: 16px; flex-wrap: wrap; padding: 4px 0; }
+    .result-fields {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 24px;
+      row-gap: 8px;
+    }
+    .result-fields mat-form-field { flex: 1; min-width: 200px; width: 100%; }
+    .result-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  `],
 })
 export class StepResultComponent implements OnInit {
   readonly applicationId = input.required<string>();

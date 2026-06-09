@@ -22,7 +22,7 @@ import { NotificationService } from '../core/notifications/notification.service'
       </mat-sidenav>
       <mat-sidenav-content class="gm-main-content">
         <gm-navbar [isMobile]="isMobile()" (menuToggle)="sidenav.toggle()" />
-        <main class="gm-page-container">
+        <main>
           <router-outlet />
         </main>
       </mat-sidenav-content>
@@ -31,7 +31,8 @@ import { NotificationService } from '../core/notifications/notification.service'
   styles: [`
     .gm-sidenav-container { height: 100vh; }
     .gm-sidenav { width: 240px; }
-    .gm-main-content { display: flex; flex-direction: column; }
+    .gm-main-content { display: flex; flex-direction: column; overflow-x: hidden; }
+    main { flex: 1; min-width: 0; overflow-x: hidden; }
   `],
 })
 export class LayoutComponent implements OnInit {

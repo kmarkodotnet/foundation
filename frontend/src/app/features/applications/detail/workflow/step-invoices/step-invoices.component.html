@@ -43,6 +43,7 @@
 
     <!-- Invoices table -->
     @if (invoices().length > 0) {
+      <div class="gm-table-scroll">
       <table mat-table [dataSource]="invoices()" style="width:100%;margin-bottom:12px">
 
         <ng-container matColumnDef="supplier">
@@ -119,6 +120,7 @@
         <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
       </table>
+      </div>
     } @else {
       <p style="color:rgba(0,0,0,0.54);margin-bottom:12px">
         Még nincs rögzített számla.

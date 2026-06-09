@@ -52,6 +52,11 @@ import { CommentSectionComponent } from '../../../../../shared/components/commen
     CommentSectionComponent,
   ],
   templateUrl: './step-submission.component.html',
+  styles: [`
+    .gm-step-form { display: flex; flex-direction: column; gap: 8px; }
+    .gm-step-form mat-form-field { width: 100%; }
+    .gm-step-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  `],
 })
 export class StepSubmissionComponent implements OnInit {
   readonly applicationId = input.required<string>();

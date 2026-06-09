@@ -51,6 +51,7 @@
 
     <!-- Items table -->
     @if (localItems().length > 0) {
+      <div class="gm-table-scroll">
       <table mat-table [dataSource]="localItems()" style="width:100%;margin-bottom:12px">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>Tétel neve</th>
@@ -91,6 +92,7 @@
         <tr mat-header-row *matHeaderRowDef="tableColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: tableColumns;"></tr>
       </table>
+      </div>
 
       <div style="text-align:right;margin-bottom:16px">
         <strong>Összesen: {{ totalPlanned() | currencyHu }}</strong>

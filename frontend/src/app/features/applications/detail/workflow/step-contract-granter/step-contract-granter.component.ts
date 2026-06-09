@@ -50,6 +50,12 @@ import { CommentSectionComponent } from '../../../../../shared/components/commen
     CommentSectionComponent,
   ],
   templateUrl: './step-contract-granter.component.html',
+  styles: [`
+    .contract-form { display: flex; flex-direction: column; gap: 8px; }
+    .contract-form mat-form-field { width: 100%; }
+    .checkbox-row { display: flex; align-items: center; padding: 4px 0; }
+    .contract-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  `],
 })
 export class StepContractGranterComponent implements OnInit {
   readonly applicationId = input.required<string>();

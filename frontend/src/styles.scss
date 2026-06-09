@@ -25,10 +25,17 @@ body {
   height: 100%;
   margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 * {
   box-sizing: border-box;
+}
+
+// ── Sidenav content overflow fix ─────────────────────────────────────────────
+.mat-drawer-content {
+  overflow-x: hidden !important;
 }
 
 // ── Layout ───────────────────────────────────────────────────────────────────
@@ -36,6 +43,7 @@ body {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  overflow-x: hidden;
 
   @include gm-mobile {
     padding: 12px;

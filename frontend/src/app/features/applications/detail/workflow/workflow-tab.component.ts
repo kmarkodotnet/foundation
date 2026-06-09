@@ -1,4 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { map } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -43,6 +46,29 @@ const STEP_STATUS_ICONS: Record<string, string> = {
 
 @Component({
   selector: 'gm-workflow-tab',
+  styles: [`
+    .gm-step-panel-title { display: flex; align-items: center; min-width: 0; flex-wrap: wrap; }
+    .gm-step-label { margin-left: 8px; white-space: normal; word-break: break-word; }
+    .gm-step-date-chip {
+      margin-left: auto;
+      font-size: 11px;
+      color: #388e3c;
+      white-space: nowrap;
+      padding-left: 8px;
+      flex-shrink: 0;
+    }
+    .gm-step-completed-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #388e3c;
+      padding: 4px 0 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+    .gm-step-completed-bar mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  `],
   imports: [
     MatButtonModule,
     MatExpansionModule,
@@ -67,17 +93,29 @@ const STEP_STATUS_ICONS: Record<string, string> = {
       <mat-accordion multi>
         @for (step of sortedSteps(); track step.id) {
           <mat-expansion-panel [expanded]="step.status === 'Active'">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
+            <mat-expansion-panel-header collapsedHeight="auto" expandedHeight="auto">
+              <mat-panel-title class="gm-step-panel-title">
                 <mat-icon [style.color]="stepColor(step.status)">
                   {{ stepIcon(step.status) }}
                 </mat-icon>
-                <span style="margin-left:8px">{{ stepLabel(step.stepType) }}</span>
+                <span class="gm-step-label">{{ stepLabel(step.stepType) }}</span>
+                @if (isMobile() && step.status === 'Completed' && step.completedAt) {
+                  <span class="gm-step-date-chip">{{ step.completedAt | dateHu: 'short' }}</span>
+                }
               </mat-panel-title>
-              <mat-panel-description>
-                {{ step.status === 'Completed' ? 'Lezárva: ' + (step.completedAt | dateHu) : '' }}
-              </mat-panel-description>
+              @if (!isMobile() && step.status === 'Completed') {
+                <mat-panel-description>
+                  Lezárva: {{ step.completedAt | dateHu }}
+                </mat-panel-description>
+              }
             </mat-expansion-panel-header>
+
+            @if (isMobile() && step.status === 'Completed' && step.completedAt) {
+              <div class="gm-step-completed-bar">
+                <mat-icon>check_circle</mat-icon>
+                Lezárva: {{ step.completedAt | dateHu }}
+              </div>
+            }
 
             @if (step.stepType === 'Call') {
               @if (application()) {
@@ -288,6 +326,12 @@ const STEP_STATUS_ICONS: Record<string, string> = {
 export class WorkflowTabComponent {
   private readonly workflowService = inject(WorkflowService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+
+  readonly isMobile = toSignal(
+    this.breakpointObserver.observe('(max-width: 959px)').pipe(map(r => r.matches)),
+    { initialValue: this.breakpointObserver.isMatched('(max-width: 959px)') },
+  );
 
   readonly applicationId = input.required<string>();
   readonly application = input<ApplicationDetail | null>(null);

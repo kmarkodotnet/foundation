@@ -12,6 +12,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Audit log endpoints.
 /// </summary>
+[Route("api/v1/audit-logs")]
 public class AuditLogsController : ApiControllerBase
 {
     /// <summary>

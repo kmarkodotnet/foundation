@@ -18,4 +18,9 @@ public record UpdateApplicationCommand(
     DateOnly? SpendingDeadline,
     Guid? ApplicationTypeId,
     string? OtherMetadata
-) : IRequest<ApplicationDetailDto>, IApplicationCommand;
+) : IRequest<ApplicationDetailDto>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => AuditAction.Update;
+}

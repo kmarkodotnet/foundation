@@ -13,4 +13,9 @@ public record CorrectResultCommand(
     decimal? AwardedAmount,
     DateOnly? ResultDate,
     string? ResultIdentifier
-) : IRequest<ApplicationDetailDto>, IApplicationCommand;
+) : IRequest<ApplicationDetailDto>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => AuditAction.Update;
+}

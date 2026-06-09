@@ -13,4 +13,9 @@ public record UpdateSubmissionStepCommand(
     Guid? SubmissionMethodId,
     string? ExternalIdentifier,
     string? Notes
-) : IRequest<WorkflowStepDetailDto>, IApplicationCommand;
+) : IRequest<WorkflowStepDetailDto>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => AuditAction.Update;
+}

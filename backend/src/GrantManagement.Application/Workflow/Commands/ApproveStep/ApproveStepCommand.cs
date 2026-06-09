@@ -12,4 +12,9 @@ public record ApproveStepCommand(
     WorkflowStepType StepType,
     bool IsApproved,
     string? RejectionNote
-) : IRequest<WorkflowStepDetailDto>, IApplicationCommand;
+) : IRequest<WorkflowStepDetailDto>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => IsApproved ? AuditAction.Approve : AuditAction.StatusChange;
+}

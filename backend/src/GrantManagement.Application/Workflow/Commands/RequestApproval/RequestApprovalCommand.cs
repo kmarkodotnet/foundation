@@ -6,4 +6,9 @@ using MediatR;
 namespace GrantManagement.Application.Workflow.Commands.RequestApproval;
 
 [RequireRole(UserRole.Admin, UserRole.PalyazatiMunkatars)]
-public record RequestApprovalCommand(Guid ApplicationId) : IRequest<Unit>, IApplicationCommand;
+public record RequestApprovalCommand(Guid ApplicationId) : IRequest<Unit>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => AuditAction.StatusChange;
+}

@@ -10,4 +10,9 @@ namespace GrantManagement.Application.Workflow.Commands.RestoreStep;
 public record RestoreStepCommand(
     Guid ApplicationId,
     WorkflowStepType StepType
-) : IRequest<WorkflowStepDetailDto>, IApplicationCommand;
+) : IRequest<WorkflowStepDetailDto>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => AuditAction.StatusChange;
+}

@@ -24,15 +24,29 @@ public class AuditBehaviour<TRequest, TResponse>
     {
         var response = await next();
 
+        AuditLog? entry = null;
+
         if (request is IAuditableCommand cmd)
         {
-            var entry = AuditLog.Record(
+            entry = AuditLog.Record(
                 entityType: cmd.AuditEntityType,
                 entityId:   cmd.AuditEntityId,
                 action:     cmd.AuditAction,
                 userId:     _currentUser.UserId,
                 ipAddress:  _currentUser.IpAddress);
+        }
+        else if (request is IAuditableCreateCommand<TResponse> createCmd)
+        {
+            entry = AuditLog.Record(
+                entityType: createCmd.AuditEntityType,
+                entityId:   createCmd.GetEntityId(response),
+                action:     createCmd.AuditAction,
+                userId:     _currentUser.UserId,
+                ipAddress:  _currentUser.IpAddress);
+        }
 
+        if (entry is not null)
+        {
             _context.AuditLogs.Add(entry);
             await _context.SaveChangesAsync(cancellationToken);
         }

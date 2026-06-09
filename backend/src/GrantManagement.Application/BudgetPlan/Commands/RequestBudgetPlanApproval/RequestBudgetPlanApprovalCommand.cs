@@ -6,4 +6,9 @@ using MediatR;
 namespace GrantManagement.Application.BudgetPlan.Commands.RequestBudgetPlanApproval;
 
 [RequireRole(UserRole.Admin, UserRole.PalyazatiMunkatars)]
-public record RequestBudgetPlanApprovalCommand(Guid ApplicationId) : IRequest<Unit>, IApplicationCommand;
+public record RequestBudgetPlanApprovalCommand(Guid ApplicationId) : IRequest<Unit>, IApplicationCommand, IAuditableCommand
+{
+    public string AuditEntityType => "Application";
+    public Guid AuditEntityId => ApplicationId;
+    public AuditAction AuditAction => AuditAction.StatusChange;
+}

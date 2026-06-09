@@ -17,7 +17,7 @@ export type { AuditLogEntry };
       <p class="gm-empty">Nincs audit bejegyzés.</p>
     } @else {
       <div class="gm-table-scroll">
-      <table mat-table [dataSource]="entries()" style="width:100%">
+      <table mat-table [dataSource]="entries()" multiTemplateDataRows style="width:100%">
         <ng-container matColumnDef="expand">
           <th mat-header-cell *matHeaderCellDef style="width:40px"></th>
           <td mat-cell *matCellDef="let row">
@@ -84,7 +84,7 @@ export type { AuditLogEntry };
 
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns" class="gm-audit-row"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['detail']" class="gm-audit-detail-row"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['detail']; when: isDetailRow" class="gm-audit-detail-row"></tr>
       </table>
       </div>
     }
@@ -128,6 +128,8 @@ export class AuditLogViewerComponent {
 
   readonly columns = ['expand', 'createdAt', 'userName', 'entityType', 'action', 'fieldName'];
   private readonly _expanded = signal<Set<number>>(new Set());
+
+  readonly isDetailRow = (_index: number, row: AuditLogEntry) => this._expanded().has(row.id);
 
   toggle(id: number): void {
     this._expanded.update((set) => {

@@ -625,3 +625,57 @@ test.describe('TS-043 | Eredmény korrekciója Admin által', () => {
     ).toBeVisible({ timeout: 5_000 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-043/B | Eredmény korrekciója – Elnök (U jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-043/B | Eredmény korrekciója – Elnök (U jog)', () => {
+  test('WON pályázatnál Elnöknek megjelenik az "Eredmény korrekciója" gomb', async ({
+    elnokPage,
+  }) => {
+    await mockDetailPage(elnokPage, APP_WON);
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    await expandResultPanel(elnokPage);
+
+    await expect(
+      elnokPage.getByRole('button', { name: /eredmény korrekciója/i }),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-044 | Eredmény korrekciója – Pénzügyes és Megtekintő (R jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-044 | Eredmény korrekciója – Pénzügyes és Megtekintő (R jog)', () => {
+  test('Pénzügyesnél nem jelenik meg az "Eredmény korrekciója" gomb', async ({
+    penzugyesPage,
+  }) => {
+    await mockDetailPage(penzugyesPage, APP_WON);
+    await penzugyesPage.goto(`/applications/${APP_ID}`);
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    await expandResultPanel(penzugyesPage);
+
+    // canCorrect = isAdmin() && status Won/Lost → Pénzügyesnél false
+    await expect(
+      penzugyesPage.getByRole('button', { name: /eredmény korrekciója/i }),
+    ).toHaveCount(0);
+  });
+
+  test('Megtekintőnél nem jelenik meg az "Eredmény korrekciója" gomb', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, APP_WON);
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    await expandResultPanel(megtekintosPage);
+
+    // canCorrect = isAdmin() && status Won/Lost → Megtekintőnél false
+    await expect(
+      megtekintosPage.getByRole('button', { name: /eredmény korrekciója/i }),
+    ).toHaveCount(0);
+  });
+});

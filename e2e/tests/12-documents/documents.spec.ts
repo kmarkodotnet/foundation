@@ -678,3 +678,107 @@ test.describe('TS-115 | Dokumentum verziókezelés', () => {
     await expect(versionsSection.getByText('Nincs korábbi verzió.')).toBeVisible();
   });
 });
+
+// ─── TS-110/B | Dokumentum feltöltés – Elnök (nincs feltöltési joga) ──────────
+
+test.describe('TS-110/B | Dokumentum feltöltés – Elnök (nincs feltöltési joga)', () => {
+  test('Elnöknél a "Dokumentum hozzáadása" gomb NEM látható', async ({ elnokPage: page }) => {
+    await mockDetailPage(page, APP_ACTIVE, []);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+
+    // *hasRole direktíva alapján Elnök nem látja az upload gombot
+    await expect(
+      panel.getByRole('button', { name: /dokumentum hozzáadása/i }),
+    ).not.toBeVisible({ timeout: 5_000 });
+  });
+});
+
+// ─── TS-110/C | Dokumentum feltöltés – Pénzügyes (PDF sikeres feltöltés) ──────
+
+test.describe('TS-110/C | Dokumentum feltöltés – Pénzügyes', () => {
+  test('Pénzügyes sikeresen tölt fel PDF dokumentumot', async ({ penzugyesPage: page }) => {
+    await mockDetailPage(page, APP_ACTIVE, []);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/documents`, (route) => {
+      if (route.request().method() === 'POST') return route.fulfill(ok(DOC_PDF));
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+
+    const addBtn = panel.getByRole('button', { name: /dokumentum hozzáadása/i });
+    await expect(addBtn).toBeVisible({ timeout: 5_000 });
+    await addBtn.click();
+
+    await expect(panel.getByText('Dokumentum feltöltése')).toBeVisible({ timeout: 3_000 });
+
+    await panel.locator('mat-select[formcontrolname="documentType"]').click();
+    const option = page.locator('mat-option').filter({ hasText: /beadási dokumentum/i });
+    await expect(option).toBeVisible();
+    await option.click();
+
+    await panel.locator('input[formcontrolname="displayName"]').fill('Pályázati dokumentáció');
+
+    const fileInput = panel.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'palyazat.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 test content'),
+    });
+
+    await expect(panel.getByText('palyazat.pdf')).toBeVisible({ timeout: 3_000 });
+
+    const uploadBtn = panel.getByRole('button', { name: /^feltöltés$/i });
+    await expect(uploadBtn).toBeEnabled({ timeout: 3_000 });
+    await uploadBtn.click();
+
+    const snack = page.locator('mat-snack-bar-container');
+    await expect(snack).toContainText('Dokumentum feltöltve.', { timeout: 8_000 });
+  });
+});
+
+// ─── TS-116 | Dokumentum törlés és feltöltés jog – Admin és Megtekintő ────────
+
+test.describe('TS-116 | Dokumentum törlés és feltöltés jog – Admin és Megtekintő', () => {
+  test('Adminnél a dokumentum archivál (törlés) gombja látható', async ({ adminPage: page }) => {
+    await mockDetailPage(page, APP_ACTIVE, [DOC_PDF]);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+
+    await expect(panel.getByText('Pályázati dokumentáció')).toBeVisible({ timeout: 5_000 });
+
+    // Archiválás/törlés ikon gomb látható Adminnél
+    const docItem = panel.locator('.dl-item').first();
+    const archiveBtn = docItem.locator('button[mattooltip="Archiválás"]');
+    await expect(archiveBtn).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('Megtekintőnél a "Dokumentum hozzáadása" gomb NEM látható', async ({ megtekintosPage: page }) => {
+    await mockDetailPage(page, APP_ACTIVE, [DOC_PDF]);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+
+    // Megtekintő: nincs feltöltési jog
+    await expect(
+      panel.getByRole('button', { name: /dokumentum hozzáadása/i }),
+    ).not.toBeVisible({ timeout: 5_000 });
+  });
+});

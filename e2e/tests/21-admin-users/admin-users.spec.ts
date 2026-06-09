@@ -265,3 +265,46 @@ test.describe('TS-203 | Felhasználó inaktiválása és reaktiválása', () => 
     expect(activateCalled).toBe(true);
   });
 });
+
+// ─── TS-200/B | FS-eltérés vizsgálat – Elnök R jog a felhasználókezelésben ──
+//
+// FS (5.1 jogosultsági mátrix): Elnök → Felhasználók: R
+// A jelenlegi route guard (/admin) csak Admin-t enged → Elnök /403-ra kerül.
+// Ha ez a teszt elbukik, az implementáció szűkebb a FS-nél (app.routes.ts
+// felülvizsgálandó). Ha átmegy, az Elnök olvasási jog implementálva van.
+
+test.describe('TS-200/B | Felhasználókezelés – Elnök R jog (FS-eltérés vizsgálat)', () => {
+  test('Elnök hozzáfér a felhasználókezelés oldalhoz – fejléc látható (FS: R jog)', async ({
+    elnokPage: page,
+  }) => {
+    await mockUsers(page);
+    await page.goto('/admin/users');
+    // FS szerint R jog → oldal elérhető; ha /403-ra kerül, az route guard eltérés
+    await expect(page.getByRole('heading', { name: /felhasználók/i })).toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('Elnöknél NEM látható a szerepkör-módosítás (nincs U jog)', async ({
+    elnokPage: page,
+  }) => {
+    await mockUsers(page);
+    await page.goto('/admin/users');
+    await page.waitForURL(/\/admin\/users/, { timeout: 5_000 });
+    await expect(page.locator('mat-select').first()).not.toBeVisible();
+  });
+});
+
+// ─── TS-203/B | Felhasználókezelés – Pénzügyes és Megtekintő hozzáférés ──────
+
+test.describe('TS-203/B | Felhasználókezelés hozzáférés – Pénzügyes és Megtekintő', () => {
+  test('Pénzügyes nem fér hozzá az admin/users oldalhoz – /403-ra irányítja', async ({ penzugyesPage: page }) => {
+    await page.goto('/admin/users');
+    await expect(page).toHaveURL(/\/403/, { timeout: 5_000 });
+  });
+
+  test('Megtekintő nem fér hozzá az admin/users oldalhoz – /403-ra irányítja', async ({ megtekintosPage: page }) => {
+    await page.goto('/admin/users');
+    await expect(page).toHaveURL(/\/403/, { timeout: 5_000 });
+  });
+});

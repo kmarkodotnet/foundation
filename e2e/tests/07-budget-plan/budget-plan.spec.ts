@@ -710,3 +710,78 @@ test.describe('TS-064 | Elnöki jóváhagyás a költési tervhez', () => {
     ).toBeVisible({ timeout: 8_000 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-064/B | Költési terv tételek kezelése – Admin
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-064/B | Költési terv tételek kezelése – Admin', () => {
+  test('Admin hozzáadhat tételt a költési tervhez', async ({ adminPage }) => {
+    await mockDetailPage(adminPage, APP_WON, null);
+    await adminPage.goto(`/applications/${APP_ID}`);
+    await adminPage.waitForLoadState('networkidle');
+
+    await addItem(adminPage, 'Rendezvény bérlés', 'Rendezvény', 500_000);
+
+    const panel = budgetPanel(adminPage);
+    await expect(panel.getByText('Rendezvény bérlés')).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('Admin mentés után "Költési terv elmentve." snackbar jelenik meg', async ({
+    adminPage,
+  }) => {
+    await mockDetailPage(adminPage, APP_WON, null);
+
+    await adminPage.route(`**/api/v1/applications/${APP_ID}/budget-plan`, async (route) => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill(ok(BUDGET_PLAN_WITH_ONE_ITEM));
+      } else {
+        await route.fulfill(ok(null));
+      }
+    });
+
+    await adminPage.goto(`/applications/${APP_ID}`);
+    await adminPage.waitForLoadState('networkidle');
+
+    await addItem(adminPage, 'Rendezvény bérlés', 'Rendezvény', 500_000);
+
+    const panel = budgetPanel(adminPage);
+    await panel.getByRole('button', { name: /mentés/i }).click();
+
+    await expect(
+      adminPage.locator('mat-snack-bar-container').filter({ hasText: 'Költési terv elmentve.' }),
+    ).toBeVisible({ timeout: 8_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-065 | Tétel hozzáadása gomb – Pénzügyes és Megtekintő (R jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-065 | Tétel hozzáadása gomb – Pénzügyes és Megtekintő (R jog)', () => {
+  test('Pénzügyesnél a "Tétel hozzáadása" gomb NEM látható', async ({
+    penzugyesPage,
+  }) => {
+    await mockDetailPage(penzugyesPage, APP_WON, BUDGET_PLAN_WITH_TWO_ITEMS);
+    await penzugyesPage.goto(`/applications/${APP_ID}`);
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    const panel = budgetPanel(penzugyesPage);
+    // *hasRole="['Admin', 'PalyazatiMunkatars', 'Elnok']" → Pénzügyesnél nem látható
+    await expect(
+      panel.getByRole('button', { name: /tétel hozzáadása/i }),
+    ).toHaveCount(0);
+  });
+
+  test('Megtekintőnél a "Tétel hozzáadása" gomb NEM látható', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, APP_WON, BUDGET_PLAN_WITH_TWO_ITEMS);
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    const panel = budgetPanel(megtekintosPage);
+    // *hasRole="['Admin', 'PalyazatiMunkatars', 'Elnok']" → Megtekintőnél nem látható
+    await expect(
+      panel.getByRole('button', { name: /tétel hozzáadása/i }),
+    ).toHaveCount(0);
+  });
+});

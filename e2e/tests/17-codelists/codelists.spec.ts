@@ -18,6 +18,7 @@
  *   PATCH  /api/v1/code-lists/{id}/items/{itemId}/activate   → CodeListItemDto
  */
 
+import { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures/auth.fixture';
 
 // ─── Konstansok ──────────────────────────────────────────────────────────────
@@ -309,5 +310,40 @@ test.describe('TS-162 | Kódszótár törlése', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByText('Nincsenek kódszótárak.')).toBeVisible({ timeout: 5_000 });
+  });
+});
+
+// ─── TS-163 | Kódszótár "Új elem" gomb – Elnök, Pénzügyes, Megtekintő ────────
+
+test.describe('TS-163 | Kódszótár "Új elem" gomb – Elnök, Pénzügyes, Megtekintő (R jog)', () => {
+  async function setupCodelistPage(page: Page) {
+    await page.route('**/api/v1/code-lists', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([USER_LIST]));
+      return route.continue();
+    });
+    await page.route(`**/api/v1/code-lists/${LIST_ID}/items**`, (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([ACTIVE_ITEM]));
+      return route.continue();
+    });
+    await page.goto('/codelists');
+    await page.waitForLoadState('networkidle');
+    await page.locator('mat-nav-list a[mat-list-item]').filter({ hasText: 'Teszt Kódszótár' }).click();
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('.item-row').filter({ hasText: 'TESZT_01' })).toBeVisible({ timeout: 5_000 });
+  }
+
+  test('Elnöknél az "Új elem" gomb NEM látható', async ({ elnokPage: page }) => {
+    await setupCodelistPage(page);
+    await expect(page.getByRole('button', { name: /^Új elem$/i })).not.toBeVisible();
+  });
+
+  test('Pénzügyesnél az "Új elem" gomb NEM látható', async ({ penzugyesPage: page }) => {
+    await setupCodelistPage(page);
+    await expect(page.getByRole('button', { name: /^Új elem$/i })).not.toBeVisible();
+  });
+
+  test('Megtekintőnél az "Új elem" gomb NEM látható', async ({ megtekintosPage: page }) => {
+    await setupCodelistPage(page);
+    await expect(page.getByRole('button', { name: /^Új elem$/i })).not.toBeVisible();
   });
 });

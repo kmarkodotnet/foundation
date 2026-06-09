@@ -179,3 +179,12 @@ test.describe('TS-192 | Audit napló CSV export', () => {
     expect(download.suggestedFilename()).toContain('audit_naplo_');
   });
 });
+
+// ─── TS-193 | Audit napló hozzáférés – Pénzügyes (R jog hiány) ───────────────
+
+test.describe('TS-193 | Audit napló hozzáférés – Pénzügyes (R jog hiány)', () => {
+  test('Pénzügyes nem fér hozzá az audit naplóhoz – /403-ra irányítja', async ({ penzugyesPage: page }) => {
+    await page.goto('/audit');
+    await expect(page).toHaveURL(/\/403/, { timeout: 5_000 });
+  });
+});

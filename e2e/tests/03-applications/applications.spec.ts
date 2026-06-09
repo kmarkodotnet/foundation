@@ -432,6 +432,157 @@ test.describe('TS-024 | Pályázat archiválása', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TS-023/B | Pályázat szerkesztése – Elnök (U jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-023/B | Pályázat szerkesztése – Elnök (U jog)', () => {
+  test('A "Szerkesztés" gomb látható Draft állapotú pályázatnál', async ({ elnokPage }) => {
+    await elnokPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_DRAFT)),
+    );
+
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    await expect(elnokPage.getByRole('button', { name: /szerkesztés/i })).toBeVisible();
+  });
+
+  test('Az edit form az aktuális adatokkal töltődik be', async ({ elnokPage }) => {
+    await elnokPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_DRAFT)),
+    );
+
+    await elnokPage.goto(`/applications/${APP_ID}/edit`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    const titleInput = elnokPage.getByLabel(/pályázat neve/i);
+    await expect(titleInput).toHaveValue('Teszt Pályázat 2026');
+  });
+
+  test('Mentés után visszanavigál a detail oldalra', async ({ elnokPage }) => {
+    await elnokPage.route(`**/api/v1/applications/${APP_ID}**`, async (route) => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill(ok({ ...TEST_APP_DRAFT, title: 'Módosított Pályázat' }));
+      } else {
+        await route.fulfill(ok(TEST_APP_DRAFT));
+      }
+    });
+
+    await elnokPage.goto(`/applications/${APP_ID}/edit`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    const titleInput = elnokPage.getByLabel(/pályázat neve/i);
+    await titleInput.clear();
+    await titleInput.fill('Módosított Pályázat');
+
+    await elnokPage.getByRole('button', { name: /mentés/i }).click();
+
+    await elnokPage.waitForURL(
+      (url) => url.href.includes(APP_ID) && !url.href.includes('/edit'),
+      { timeout: 10_000 },
+    );
+    expect(elnokPage.url()).not.toContain('/edit');
+  });
+
+  test('A "Mégsem" gomb visszanavigál a detail oldalra mentés nélkül', async ({
+    elnokPage,
+  }) => {
+    await elnokPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_DRAFT)),
+    );
+
+    await elnokPage.goto(`/applications/${APP_ID}/edit`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    await elnokPage.getByRole('button', { name: /mégsem/i }).click();
+
+    await elnokPage.waitForURL(
+      (url) => url.href.includes(APP_ID) && !url.href.includes('/edit'),
+      { timeout: 10_000 },
+    );
+    expect(elnokPage.url()).not.toContain('/edit');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-024/B | Archiválás tiltása – Elnök (nincs D jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-024/B | Archiválás tiltása – Elnök (nincs D jog)', () => {
+  test('Az "Archiválás" gomb nem látható Draft állapotú pályázatnál', async ({ elnokPage }) => {
+    await elnokPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_DRAFT)),
+    );
+
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    await expect(elnokPage.getByRole('button', { name: /archiválás/i })).toHaveCount(0);
+  });
+
+  test('Az "Archiválás" gomb NEM látható ClosedWon állapotú pályázatnál Elnöknek', async ({
+    elnokPage,
+  }) => {
+    await elnokPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_CLOSED_WON)),
+    );
+
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    // Elnöknek nincs D jog → archiválás gomb nem látható ClosedWon állapotban sem
+    await expect(elnokPage.getByRole('button', { name: /archiválás/i })).toHaveCount(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-026 | Olvasási jog – Pénzügyes és Megtekintő (R)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-026 | Olvasási jog – Pénzügyes és Megtekintő (R)', () => {
+  test('Pénzügyes látja a pályázatok listáját', async ({ penzugyesPage }) => {
+    await penzugyesPage.route('**/api/v1/applications**', (route) =>
+      route.fulfill(ok(makeListPage())),
+    );
+
+    await penzugyesPage.goto('/applications');
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    await expect(penzugyesPage.getByText('Teszt Pályázat 2026')).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Pénzügyes látja a pályázat detail oldalát', async ({ penzugyesPage }) => {
+    await penzugyesPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_DRAFT)),
+    );
+
+    await penzugyesPage.goto(`/applications/${APP_ID}`);
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    await expect(penzugyesPage.getByText('Teszt Pályázat 2026')).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Megtekintő látja a pályázatok listáját', async ({ megtekintosPage }) => {
+    await megtekintosPage.route('**/api/v1/applications**', (route) =>
+      route.fulfill(ok(makeListPage())),
+    );
+
+    await megtekintosPage.goto('/applications');
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    await expect(megtekintosPage.getByText('Teszt Pályázat 2026')).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Megtekintő látja a pályázat detail oldalát', async ({ megtekintosPage }) => {
+    await megtekintosPage.route(`**/api/v1/applications/${APP_ID}**`, (route) =>
+      route.fulfill(ok(TEST_APP_DRAFT)),
+    );
+
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    await expect(megtekintosPage.getByText('Teszt Pályázat 2026')).toBeVisible({ timeout: 8_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TS-025 | 7 napos határidő figyelmeztető ikon
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadListWithData(

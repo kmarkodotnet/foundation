@@ -556,3 +556,93 @@ test.describe('TS-092 | Fotó lightbox előnézet', () => {
     await expect(panel.getByRole('button', { name: /összes letöltése/i })).not.toBeVisible();
   });
 });
+
+// ─── TS-090/B | Igazolás rögzítése – Admin ───────────────────────────────────
+
+test.describe('TS-090/B | Igazolás rögzítése – Admin', () => {
+  test('Admin sikeresen rögzít igazolást fotóval', async ({ adminPage: page }) => {
+    await mockDetailPage(page, APP_WON, []);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/proof-records`, (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill(ok(MOCK_RECORD));
+      }
+      if (route.request().method() === 'GET') {
+        return route.fulfill(ok([]));
+      }
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandProofPanel(page);
+    const panel = proofPanel(page);
+
+    const addBtn = panel.getByRole('button', { name: /igazolás hozzáadása/i });
+    await expect(addBtn).toBeVisible();
+    await addBtn.click();
+
+    const dialog = page.locator('mat-dialog-container');
+    await expect(dialog).toBeVisible();
+
+    await dialog.locator('mat-select[formcontrolname="proofType"]').click();
+    const option = page.locator('mat-option').filter({ hasText: /^Esemény$/ });
+    await expect(option).toBeVisible();
+    await option.click();
+
+    const dateInput = dialog.locator('input[formcontrolname="eventDate"]');
+    await dateInput.fill('2026-05-20');
+    await dateInput.press('Tab');
+
+    const fileInput = dialog.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'test.jpg',
+      mimeType: 'image/jpeg',
+      buffer: minimalJpegBuffer(),
+    });
+
+    await expect(dialog.getByText('test.jpg')).toBeVisible();
+
+    const saveBtn = dialog.getByRole('button', { name: /^mentés$/i });
+    await expect(saveBtn).toBeEnabled({ timeout: 5_000 });
+    await saveBtn.click();
+
+    const snack = page.locator('mat-snack-bar-container');
+    await expect(snack).toContainText('Igazolás sikeresen rögzítve.', { timeout: 8_000 });
+  });
+});
+
+// ─── TS-090/C | Igazolás hozzáadása gomb – Elnök ─────────────────────────────
+
+test.describe('TS-090/C | Igazolás hozzáadása gomb – Elnök', () => {
+  test('Elnöknél az "Igazolás hozzáadása" gomb NEM látható', async ({ elnokPage: page }) => {
+    await mockDetailPage(page, APP_WON, []);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandProofPanel(page);
+    const panel = proofPanel(page);
+
+    // *hasRole="['Admin', 'PalyazatiMunkatars']" → Elnöknél nem látható
+    await expect(panel.getByRole('button', { name: /igazolás hozzáadása/i })).not.toBeVisible();
+  });
+});
+
+// ─── TS-093 | Igazolás hozzáadása gomb – Pénzügyes ───────────────────────────
+
+test.describe('TS-093 | Igazolás hozzáadása gomb – Pénzügyes (R jog)', () => {
+  test('Pénzügyesnél az "Igazolás hozzáadása" gomb NEM látható', async ({ penzugyesPage: page }) => {
+    await mockDetailPage(page, APP_WON, []);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandProofPanel(page);
+    const panel = proofPanel(page);
+
+    // *hasRole="['Admin', 'PalyazatiMunkatars']" → Pénzügyesnél nem látható
+    await expect(panel.getByRole('button', { name: /igazolás hozzáadása/i })).not.toBeVisible();
+  });
+});

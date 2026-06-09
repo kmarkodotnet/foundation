@@ -1073,3 +1073,67 @@ test.describe('TS-085 | Számla törlése lezárt pályázatnál tiltva', () => 
     ).toBeVisible({ timeout: 8_000 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-085/B | Számla jóváhagyása – Elnök (U jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-085/B | Számla panel – Elnök (U jog)', () => {
+  test('Elnöknél megjelenik a "Jóváhagyás" gomb Active Invoices lépésnél', async ({
+    elnokPage,
+  }) => {
+    await mockDetailPage(elnokPage, APP_WON, [INVOICE_PAID], SUMMARY_NORMAL);
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    // Az approval panel *hasRole="['Admin', 'Elnok']" → Elnöknél látható
+    await expect(
+      elnokPage.getByRole('button', { name: /^jóváhagyás$/i }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Elnöknél a "Számla hozzáadása" gomb NEM látható', async ({
+    elnokPage,
+  }) => {
+    await mockDetailPage(elnokPage, APP_WON, [], EMPTY_SUMMARY);
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    const panel = invoicePanel(elnokPage);
+    // *hasRole="['Penzugyes', 'Admin']" → Elnöknél nem látható
+    await expect(
+      panel.getByRole('button', { name: /számla hozzáadása/i }),
+    ).toHaveCount(0, { timeout: 8_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-086 | Számla panel – Megtekintő (R jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-086 | Számla panel – Megtekintő (R jog)', () => {
+  test('Megtekintőnél a "Számla hozzáadása" gomb NEM látható', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, APP_WON, [], EMPTY_SUMMARY);
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    const panel = invoicePanel(megtekintosPage);
+    await expect(
+      panel.getByRole('button', { name: /számla hozzáadása/i }),
+    ).toHaveCount(0, { timeout: 8_000 });
+  });
+
+  test('Megtekintőnél a "Megjelölés fizetettnek" gomb NEM látható', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, APP_WON, [INVOICE_UNPAID], SUMMARY_NORMAL);
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    const panel = invoicePanel(megtekintosPage);
+    // Megtekintő R jogú → fizetettnek jelölés nem elérhető
+    await expect(
+      panel.locator('button[mattooltip="Megjelölés fizetettnek"]'),
+    ).toHaveCount(0, { timeout: 8_000 });
+  });
+});

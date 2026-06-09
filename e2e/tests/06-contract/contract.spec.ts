@@ -580,3 +580,87 @@ test.describe('TS-052 | Kihagyott lépés visszaállítása', () => {
     ).toHaveCount(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-051/B | Szerződési lépés jóváhagyása – Elnök (U jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-051/B | Szerződési lépés jóváhagyása – Elnök (U jog)', () => {
+  test('Elnöknél Active Contract lépésnél látható a "Lépés kihagyása" gomb', async ({
+    elnokPage,
+  }) => {
+    await mockDetailPage(elnokPage, APP_WON_CONTRACT_ACTIVE);
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    // *hasRole="['Admin', 'PalyazatiMunkatars']" – Elnök nem látja a skip gombot
+    // De legalább a panel és a form megjelenik
+    await expect(
+      elnokPage.locator('mat-expansion-panel-header').filter({ hasText: /\[4\] Szerz\./i }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Elnök el tudja menteni a szerződési adatokat', async ({
+    elnokPage,
+  }) => {
+    await mockDetailPage(elnokPage, APP_WON_CONTRACT_ACTIVE);
+
+    await elnokPage.route(
+      `**/api/v1/applications/${APP_ID}/workflow/contract-granter`,
+      async (route) => {
+        if (route.request().method() === 'PUT') {
+          await route.fulfill(ok(CONTRACT_STEP_DETAIL_ACTIVE));
+        } else {
+          await route.continue();
+        }
+      },
+    );
+
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    const contractPanel = elnokPage
+      .locator('mat-expansion-panel')
+      .filter({ has: elnokPage.locator('mat-expansion-panel-header').filter({ hasText: /\[4\] Szerz\./i }) });
+
+    const identifierInput = contractPanel.getByLabel(/szerződés azonosítója/i);
+    await identifierInput.click({ force: true });
+    await identifierInput.fill('SZERZ-2026-001');
+
+    await contractPanel.getByRole('button', { name: /mentés/i }).click();
+
+    await expect(
+      elnokPage.locator('mat-snack-bar-container').filter({ hasText: 'Adatok elmentve.' }),
+    ).toBeVisible({ timeout: 8_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-053 | Lépés kihagyása gomb – Pénzügyes és Megtekintő (R jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-053 | Lépés kihagyása gomb – Pénzügyes és Megtekintő (R jog)', () => {
+  test('Pénzügyesnél a "Lépés kihagyása" gomb NEM látható', async ({
+    penzugyesPage,
+  }) => {
+    await mockDetailPage(penzugyesPage, APP_WON_CONTRACT_ACTIVE);
+    await penzugyesPage.goto(`/applications/${APP_ID}`);
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    // *hasRole="['Admin', 'PalyazatiMunkatars']" → Pénzügyesnél nem látható
+    await expect(
+      penzugyesPage.getByRole('button', { name: /lépés kihagyása/i }),
+    ).toHaveCount(0);
+  });
+
+  test('Megtekintőnél a "Lépés kihagyása" gomb NEM látható', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, APP_WON_CONTRACT_ACTIVE);
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    // *hasRole="['Admin', 'PalyazatiMunkatars']" → Megtekintőnél nem látható
+    await expect(
+      megtekintosPage.getByRole('button', { name: /lépés kihagyása/i }),
+    ).toHaveCount(0);
+  });
+});

@@ -487,3 +487,115 @@ test.describe('TS-102 | Pályázat lezárása elnöki jóváhagyással', () => {
     await expect(panel.getByRole('button', { name: /jóváhagyás és lezárás/i })).toBeVisible();
   });
 });
+
+// ─── TS-100/B | Elszámolás rögzítése – Munkatárs ─────────────────────────────
+
+test.describe('TS-100/B | Elszámolás rögzítése – Munkatárs', () => {
+  test('Munkatárs sikeresen rögzíti az elszámolást dátummal', async ({ munkatarsPage: page }) => {
+    await mockDetailPage(page, APP_WON, null);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/settlement`, (route) => {
+      if (route.request().method() === 'PUT') return route.fulfill(ok(SETTLEMENT_SAVED));
+      if (route.request().method() === 'GET') return route.fulfill(ok(null));
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSettlementPanel(page);
+    const panel = settlementPanel(page);
+
+    const dateInput = panel.locator('input[formcontrolname="settlementDate"]');
+    await expect(dateInput).toBeVisible({ timeout: 5_000 });
+    await dateInput.fill('2026-06-01');
+    await dateInput.press('Tab');
+
+    await panel.locator('textarea[formcontrolname="description"]').fill('Rendezvény lebonyolítva');
+
+    const saveBtn = panel.getByRole('button', { name: /^mentés$/i });
+    await expect(saveBtn).toBeEnabled();
+    await saveBtn.click();
+
+    const snack = page.locator('mat-snack-bar-container');
+    await expect(snack).toContainText('Elszámolás adatai elmentve.', { timeout: 8_000 });
+  });
+
+  test('Munkatárs nem látja a jóváhagyás szekciót', async ({ munkatarsPage: page }) => {
+    await mockDetailPage(page, APP_WON, SETTLEMENT_SAVED);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSettlementPanel(page);
+    const panel = settlementPanel(page);
+
+    await expect(panel.locator('input[formcontrolname="settlementDate"]')).toBeVisible({ timeout: 5_000 });
+
+    // Munkatárs canApprove=false → Jóváhagyás és lezárás gomb nem látható
+    await expect(panel.getByRole('button', { name: /jóváhagyás és lezárás/i })).not.toBeVisible();
+    await expect(panel.getByRole('button', { name: /visszautasítás/i })).not.toBeVisible();
+  });
+});
+
+// ─── TS-100/C | Elszámolás rögzítése – Admin ─────────────────────────────────
+
+test.describe('TS-100/C | Elszámolás rögzítése – Admin', () => {
+  test('Admin sikeresen rögzíti az elszámolást dátummal', async ({ adminPage: page }) => {
+    await mockDetailPage(page, APP_WON, null);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/settlement`, (route) => {
+      if (route.request().method() === 'PUT') return route.fulfill(ok(SETTLEMENT_SAVED));
+      if (route.request().method() === 'GET') return route.fulfill(ok(null));
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSettlementPanel(page);
+    const panel = settlementPanel(page);
+
+    const dateInput = panel.locator('input[formcontrolname="settlementDate"]');
+    await expect(dateInput).toBeVisible({ timeout: 5_000 });
+    await dateInput.fill('2026-06-01');
+    await dateInput.press('Tab');
+
+    const saveBtn = panel.getByRole('button', { name: /^mentés$/i });
+    await expect(saveBtn).toBeEnabled();
+    await saveBtn.click();
+
+    const snack = page.locator('mat-snack-bar-container');
+    await expect(snack).toContainText('Elszámolás adatai elmentve.', { timeout: 8_000 });
+  });
+});
+
+// ─── TS-103 | Elszámolás panel – Megtekintő (R jog) ──────────────────────────
+
+test.describe('TS-103 | Elszámolás panel – Megtekintő (R jog)', () => {
+  test('Megtekintőnél nem látható a jóváhagyás szekció', async ({ megtekintosPage: page }) => {
+    await mockDetailPage(page, APP_WON, SETTLEMENT_SAVED);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSettlementPanel(page);
+    const panel = settlementPanel(page);
+
+    // Megtekintő: canApprove=false → Jóváhagyás és lezárás gomb nem látható
+    await expect(panel.getByRole('button', { name: /jóváhagyás és lezárás/i })).not.toBeVisible();
+  });
+
+  test('Megtekintőnél az elszámolás form NEM szerkeszthető (mentés gomb nem látható)', async ({ megtekintosPage: page }) => {
+    await mockDetailPage(page, APP_WON, null);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSettlementPanel(page);
+    const panel = settlementPanel(page);
+
+    // Megtekintő: canModify=false → Mentés gomb nem látható
+    await expect(panel.getByRole('button', { name: /^mentés$/i })).not.toBeVisible();
+  });
+});

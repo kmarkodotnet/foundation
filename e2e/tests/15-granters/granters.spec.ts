@@ -309,3 +309,61 @@ test.describe('TS-143 | Pályáztató részletező oldal', () => {
     await expect(page.getByText('Nincs kapcsolt pályázat.')).toBeVisible();
   });
 });
+
+// ─── TS-142/B | Új pályáztató gomb – Elnök és Pénzügyes ─────────────────────
+
+test.describe('TS-142/B | Új pályáztató gomb – Elnök és Pénzügyes', () => {
+  test('Elnöknél az "Új pályáztató" gomb NEM látható', async ({ elnokPage: page }) => {
+    await page.route('**/api/v1/granters', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto('/granters');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('button', { name: /új pályáztató/i })).toHaveCount(0);
+  });
+
+  test('Pénzügyesnél az "Új pályáztató" gomb NEM látható', async ({ penzugyesPage: page }) => {
+    await page.route('**/api/v1/granters', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto('/granters');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('button', { name: /új pályáztató/i })).toHaveCount(0);
+  });
+});
+
+// ─── TS-144 | Pályáztató részletező oldal – Megtekintő (R jog) ───────────────
+
+test.describe('TS-144 | Pályáztató részletező oldal – Megtekintő (R jog)', () => {
+  test('Megtekintő látja a pályáztató adatait és kapcsolt pályázatait', async ({ megtekintosPage: page }) => {
+    await page.route(`**/api/v1/granters/${GRANTER_ID}`, (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok(ACTIVE_GRANTER));
+      return route.continue();
+    });
+
+    await page.goto(`/granters/${GRANTER_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    // Pályáztató neve
+    await expect(page.getByText('Teszt Alapítvány')).toBeVisible({ timeout: 5_000 });
+    // Státusz chip: Aktív
+    await expect(page.locator('mat-chip').filter({ hasText: 'Aktív' })).toBeVisible();
+    // E-mail cím
+    await expect(page.getByText('info@tesztalapítvány.hu')).toBeVisible();
+    // Telefonszám
+    await expect(page.getByText('+36 1 234 5678')).toBeVisible();
+    // Leírás
+    await expect(page.getByText('Egy tesztelési célú alapítvány leírása.')).toBeVisible();
+    // Kapcsolt pályázat neve
+    await expect(page.getByText('Kultúra Fejlesztési Program')).toBeVisible();
+
+    // Inaktiválás gomb NEM látható Megtekintőnek
+    await expect(page.getByRole('button', { name: /inaktiválás/i })).not.toBeVisible();
+  });
+});

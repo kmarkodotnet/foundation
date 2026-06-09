@@ -220,3 +220,61 @@ test.describe('TS-151 | Szerződő cég inaktiválása', () => {
     await expect(page.getByRole('button', { name: /^inaktiválás$/i })).not.toBeVisible();
   });
 });
+
+// ─── TS-151/B | Új cég gomb – Elnök ─────────────────────────────────────────
+
+test.describe('TS-151/B | Új cég gomb – Elnök', () => {
+  test('Elnöknél az "Új cég" gomb NEM látható', async ({ elnokPage: page }) => {
+    await page.route('**/api/v1/vendors', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto('/vendors');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('button', { name: /új cég/i })).toHaveCount(0);
+  });
+});
+
+// ─── TS-152 | Szerződő cég rögzítése és jogosultság – Pénzügyes ──────────────
+
+test.describe('TS-152 | Szerződő cég rögzítése és jogosultság – Pénzügyes', () => {
+  test('Pénzügyes új céget rögzít – navigál a detail oldalra', async ({ penzugyesPage: page }) => {
+    await page.route('**/api/v1/vendors', (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill(ok({ vendor: { ...NEW_VENDOR_DETAIL }, hasTaxNumberWarning: false }));
+      }
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route(`**/api/v1/vendors/${NEW_VENDOR_ID}`, (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok(NEW_VENDOR_DETAIL));
+      return route.continue();
+    });
+
+    await page.goto('/vendors/new');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('input[formcontrolname="name"]').fill('Új Kft.');
+    const saveBtn = page.getByRole('button', { name: /^mentés$/i });
+    await expect(saveBtn).toBeEnabled({ timeout: 3_000 });
+    await saveBtn.click();
+
+    await expect(page.locator('mat-snack-bar-container')).toContainText('Szerződő cég rögzítve.', { timeout: 8_000 });
+    await expect(page).toHaveURL(new RegExp(`/vendors/${NEW_VENDOR_ID}`), { timeout: 8_000 });
+  });
+
+  test('Pénzügyesnél az "Inaktiválás" gomb NEM látható', async ({ penzugyesPage: page }) => {
+    await page.route(`**/api/v1/vendors/${VENDOR_ID}`, (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok(ACTIVE_VENDOR_DETAIL));
+      return route.continue();
+    });
+
+    await page.goto(`/vendors/${VENDOR_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByText('Teszt Kft.')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /inaktiválás/i })).not.toBeVisible();
+  });
+});

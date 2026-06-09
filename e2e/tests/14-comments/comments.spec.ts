@@ -427,3 +427,95 @@ test.describe('TS-132 | Más felhasználó megjegyzésének szerkesztési kísé
     await expect(commentSection.getByText('[Megjegyzés törölve]')).toBeVisible({ timeout: 8_000 });
   });
 });
+
+// ─── TS-130/B | Megjegyzés hozzáadása – Elnök és Pénzügyes ───────────────────
+
+test.describe('TS-130/B | Megjegyzés hozzáadása – Elnök és Pénzügyes', () => {
+  test('Elnök megjegyzést ad hozzá – megjelenik a listában', async ({ elnokPage: page }) => {
+    await mockDetailPage(page, []);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/comments`, (route) => {
+      if (route.request().method() === 'POST') return route.fulfill(ok(COMMENT_NEW));
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+    const commentSection = panel.locator('gm-comment-section');
+
+    const addBtn = commentSection.getByRole('button', { name: /megjegyzés hozzáadása/i });
+    await expect(addBtn).toBeVisible({ timeout: 5_000 });
+    await addBtn.click();
+
+    const addForm = commentSection.locator('.add-form');
+    await expect(addForm).toBeVisible({ timeout: 3_000 });
+
+    const textarea = addForm.locator('textarea');
+    await textarea.fill('Újonnan hozzáadott megjegyzés.');
+
+    const sendBtn = addForm.getByRole('button', { name: /küldés/i });
+    await expect(sendBtn).toBeEnabled({ timeout: 3_000 });
+    await sendBtn.click();
+
+    await expect(commentSection.getByText('Újonnan hozzáadott megjegyzés.')).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Pénzügyes megjegyzést ad hozzá – megjelenik a listában', async ({ penzugyesPage: page }) => {
+    await mockDetailPage(page, []);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/comments`, (route) => {
+      if (route.request().method() === 'POST') return route.fulfill(ok(COMMENT_NEW));
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+    const commentSection = panel.locator('gm-comment-section');
+
+    const addBtn = commentSection.getByRole('button', { name: /megjegyzés hozzáadása/i });
+    await expect(addBtn).toBeVisible({ timeout: 5_000 });
+    await addBtn.click();
+
+    const addForm = commentSection.locator('.add-form');
+    await expect(addForm).toBeVisible({ timeout: 3_000 });
+
+    const textarea = addForm.locator('textarea');
+    await textarea.fill('Újonnan hozzáadott megjegyzés.');
+
+    const sendBtn = addForm.getByRole('button', { name: /küldés/i });
+    await expect(sendBtn).toBeEnabled({ timeout: 3_000 });
+    await sendBtn.click();
+
+    await expect(commentSection.getByText('Újonnan hozzáadott megjegyzés.')).toBeVisible({ timeout: 8_000 });
+  });
+});
+
+// ─── TS-133 | Megjegyzés hozzáadása tiltva – Megtekintő (R jog) ──────────────
+
+test.describe('TS-133 | Megjegyzés hozzáadása tiltva – Megtekintő (R jog)', () => {
+  test('Megtekintőnél nem látható a szövegmező és Küldés gomb', async ({ megtekintosPage: page }) => {
+    await mockDetailPage(page, [COMMENT_OWN]);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+    const commentSection = panel.locator('gm-comment-section');
+
+    // Megtekintő: a "Megjegyzés hozzáadása" gomb sem látható
+    await expect(commentSection.getByRole('button', { name: /megjegyzés hozzáadása/i })).not.toBeVisible({ timeout: 5_000 });
+
+    // Ha a form valahogy megjelenne, a Küldés gomb sem lenne elérhető
+    const addForm = commentSection.locator('.add-form');
+    await expect(addForm).not.toBeVisible();
+  });
+});

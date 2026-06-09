@@ -369,3 +369,67 @@ test.describe('TS-121 | E-mail törlése – csak saját vagy Admin', () => {
     await expect(snack).toContainText('E-mail rekord törölve.', { timeout: 8_000 });
   });
 });
+
+// ─── TS-120/B | E-mail hozzáadása gomb – Elnök ───────────────────────────────
+
+test.describe('TS-120/B | E-mail hozzáadása gomb – Elnök', () => {
+  test('Elnöknél az "E-mail hozzáadása" gomb NEM látható', async ({ elnokPage: page }) => {
+    await mockDetailPage(page, []);
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+    const emailSection = panel.locator('gm-email-record');
+
+    // *hasRole direktíva alapján Elnök nem látja az e-mail hozzáadása gombot
+    await expect(emailSection.getByRole('button', { name: /e-mail hozzáadása/i })).not.toBeVisible({ timeout: 5_000 });
+  });
+});
+
+// ─── TS-120/C | E-mail rögzítése – Pénzügyes ─────────────────────────────────
+
+test.describe('TS-120/C | E-mail rögzítése – Pénzügyes', () => {
+  test('Pénzügyes sikeresen rögzít e-mailt', async ({ penzugyesPage: page }) => {
+    await mockDetailPage(page, []);
+
+    await page.route(`**/api/v1/applications/${APP_ID}/emails`, (route) => {
+      if (route.request().method() === 'POST') return route.fulfill(ok(EMAIL_OWN));
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto(`/applications/${APP_ID}`);
+    await page.waitForLoadState('networkidle');
+
+    await expandSubmissionPanel(page);
+    const panel = submissionPanel(page);
+    const emailSection = panel.locator('gm-email-record');
+
+    const addBtn = emailSection.getByRole('button', { name: /e-mail hozzáadása/i });
+    await expect(addBtn).toBeVisible({ timeout: 5_000 });
+    await addBtn.click();
+
+    await expect(emailSection.locator('.add-form-card')).toBeVisible({ timeout: 3_000 });
+
+    await emailSection.locator('input[formcontrolname="subject"]').fill('Pályázat státuszáról érdeklődés');
+    await emailSection.locator('input[formcontrolname="senderEmail"]').fill('partner@alapitvany.hu');
+
+    const dateInput = emailSection.locator('input[formcontrolname="sentDate"]');
+    await dateInput.fill('2026-05-15');
+    await dateInput.press('Tab');
+
+    await emailSection.locator('mat-select[formcontrolname="direction"]').click();
+    const bejovOption = page.locator('mat-option').filter({ hasText: /^bejövő$/i });
+    await expect(bejovOption).toBeVisible();
+    await bejovOption.click();
+
+    const saveBtn = emailSection.getByRole('button', { name: /^mentés$/i });
+    await expect(saveBtn).toBeEnabled({ timeout: 3_000 });
+    await saveBtn.click();
+
+    const snack = page.locator('mat-snack-bar-container');
+    await expect(snack).toContainText('E-mail rekord rögzítve.', { timeout: 8_000 });
+  });
+});

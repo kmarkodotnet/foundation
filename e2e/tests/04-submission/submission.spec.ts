@@ -606,3 +606,36 @@ test.describe('TS-031 | Beadás jóváhagyása elnök által', () => {
     ).toBeVisible({ timeout: 8_000 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-031/B | Beadási panel olvasási jog – Pénzügyes és Megtekintő (R)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-031/B | Beadási panel olvasási jog – Pénzügyes és Megtekintő (R)', () => {
+  test('Pénzügyesnél nem jelenik meg az approval panel', async ({
+    penzugyesPage,
+  }) => {
+    await mockDetailPage(penzugyesPage, TEST_APP_DRAFT_WITH_ACTIVE_SUBMISSION);
+
+    await penzugyesPage.goto(`/applications/${APP_ID}`);
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    // A *hasRole="['Admin', 'Elnok']" direktíva elrejti a panelt Pénzügyes elől
+    await expect(
+      penzugyesPage.locator('.gm-approval-panel'),
+    ).toHaveCount(0);
+  });
+
+  test('Megtekintőnél nem jelenik meg az approval panel', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, TEST_APP_DRAFT_WITH_ACTIVE_SUBMISSION);
+
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    // A *hasRole="['Admin', 'Elnok']" direktíva elrejti a panelt Megtekintő elől
+    await expect(
+      megtekintosPage.locator('.gm-approval-panel'),
+    ).toHaveCount(0);
+  });
+});

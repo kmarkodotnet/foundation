@@ -783,3 +783,64 @@ test.describe('TS-072 | Törlés nincs kapcsolt számla esetén', () => {
     ).toBeVisible({ timeout: 8_000 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-070/B | FS-eltérés vizsgálat – Pénzügyes C/U jog alvállalkozói szerz.-nél
+// ─────────────────────────────────────────────────────────────────────────────
+// FS (5.1 jogosultsági mátrix): Pénzügyes → Alvállalkozói szerz.: R,C,U
+// A meglévő TS-070 azt állítja, hogy a gomb NEM látható Pénzügyesnél.
+// Ez a teszt a FS-t követi: ha átmegy, az implementáció hibás (TS-070 javítandó).
+// Ha elbukik, az implementáció helyes és a FS felülvizsgálandó.
+test.describe('TS-070/B | Alvállalkozói szerz. – Pénzügyes (C, U) — FS-eltérés vizsgálat', () => {
+  test('Pénzügyesnél a "Szerződés hozzáadása" gomb LÁTHATÓ (FS: R,C,U jog)', async ({
+    penzugyesPage,
+  }) => {
+    await mockDetailPage(penzugyesPage, APP_WON, []);
+    await penzugyesPage.goto(`/applications/${APP_ID}`);
+    await penzugyesPage.waitForLoadState('networkidle');
+
+    const panel = vendorPanel(penzugyesPage);
+    // FS szerint C jog → gomb látható; ha ez a teszt elbukik, az implementáció
+    // a TS-070 viselkedést tükrözi (gomb nem látható) → FS vs impl eltérés
+    await expect(
+      panel.getByRole('button', { name: /szerződés hozzáadása/i }),
+    ).toBeVisible({ timeout: 8_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-073/B | Alvállalkozói lépés jóváhagyása – Elnök (U jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-073/B | Alvállalkozói lépés jóváhagyása – Elnök (U jog)', () => {
+  test('Elnöknél megjelenik a "Jóváhagyás" gomb Active VendorContracts lépésnél', async ({
+    elnokPage,
+  }) => {
+    await mockDetailPage(elnokPage, APP_WON, [CONTRACT_1]);
+    await elnokPage.goto(`/applications/${APP_ID}`);
+    await elnokPage.waitForLoadState('networkidle');
+
+    // Az approval panel *hasRole="['Admin', 'Elnok']" → Elnöknél látható
+    await expect(
+      elnokPage.getByRole('button', { name: /^jóváhagyás$/i }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-073/C | Alvállalkozói szerz. panel – Megtekintő (R jog)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-073/C | Alvállalkozói szerz. panel – Megtekintő (R jog)', () => {
+  test('Megtekintőnél a "Szerződés hozzáadása" gomb NEM látható', async ({
+    megtekintosPage,
+  }) => {
+    await mockDetailPage(megtekintosPage, APP_WON, []);
+    await megtekintosPage.goto(`/applications/${APP_ID}`);
+    await megtekintosPage.waitForLoadState('networkidle');
+
+    const panel = vendorPanel(megtekintosPage);
+    // Megtekintő R jogú → gomb nem látható
+    await expect(
+      panel.getByRole('button', { name: /szerződés hozzáadása/i }),
+    ).toHaveCount(0, { timeout: 8_000 });
+  });
+});

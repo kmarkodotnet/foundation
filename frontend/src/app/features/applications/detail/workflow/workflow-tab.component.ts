@@ -203,6 +203,15 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                 [isLocked]="isLocked()"
                 (stepUpdated)="onStepUpdated($event)"
               />
+              @if (step.status === 'Active') {
+                <gm-approval-panel
+                  [applicationId]="applicationId()"
+                  stepType="VendorContracts"
+                  approveSuccessMessage="Alvállalkozói szerződések jóváhagyva."
+                  rejectSuccessMessage="Alvállalkozói szerződések visszautasítva."
+                  (stepApproved)="onStepUpdated($event)"
+                />
+              }
               @if (!isLocked() && step.status === 'Active') {
                 <div style="display:flex;gap:8px;padding:8px 0">
                   <button
@@ -236,6 +245,15 @@ const STEP_STATUS_ICONS: Record<string, string> = {
                 [isLocked]="isLocked()"
                 (stepUpdated)="onStepUpdated($event)"
               />
+              @if (step.status === 'Active') {
+                <gm-approval-panel
+                  [applicationId]="applicationId()"
+                  stepType="Invoices"
+                  approveSuccessMessage="Számlák jóváhagyva."
+                  rejectSuccessMessage="Számlák visszautasítva."
+                  (stepApproved)="onStepUpdated($event)"
+                />
+              }
               @if (!isLocked() && step.status === 'Active') {
                 <div style="display:flex;gap:8px;padding:8px 0">
                   <button

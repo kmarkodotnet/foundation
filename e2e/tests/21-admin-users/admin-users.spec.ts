@@ -54,6 +54,13 @@ function ok(body: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify(body) };
 }
 
+async function mockUsers(page: import('@playwright/test').Page) {
+  await page.route('**/api/v1/users**', (route) => {
+    if (route.request().method() === 'GET') return route.fulfill(ok([ACTIVE_USER]));
+    return route.continue();
+  });
+}
+
 // ─── TS-200 | Hozzáférés-vezérlés ─────────────────────────────────────────────
 
 test.describe('TS-200 | Admin felhasználókezelés hozzáférés', () => {
@@ -74,9 +81,11 @@ test.describe('TS-200 | Admin felhasználókezelés hozzáférés', () => {
     await expect(page).toHaveURL(/\/403/, { timeout: 5_000 });
   });
 
-  test('Elnök nem fér hozzá – /403-ra irányítja', async ({ elnokPage: page }) => {
+  test('Elnök hozzáfér – "Felhasználók kezelése" fejléc látható (csak olvasás)', async ({ elnokPage: page }) => {
+    await mockUsers(page);
     await page.goto('/admin/users');
-    await expect(page).toHaveURL(/\/403/, { timeout: 5_000 });
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('heading', { name: 'Felhasználók kezelése' })).toBeVisible({ timeout: 8_000 });
   });
 });
 

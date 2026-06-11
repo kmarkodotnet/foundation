@@ -44,7 +44,7 @@
           color="primary"
           [disabled]="form.invalid || saving()"
           (click)="save()"
-          *hasRole="['Admin', 'PalyazatiMunkatars']"
+          *hasRole="['Admin', 'Elnok', 'PalyazatiMunkatars']"
         >
           @if (saving()) {
             <mat-progress-spinner diameter="18" mode="indeterminate" />

@@ -75,6 +75,10 @@ export class CommentSectionComponent implements OnInit {
 
   readonly currentUserId = computed(() => this.authService.currentUser()?.userId ?? '');
   readonly isAdmin = computed(() => this.authService.currentUser()?.role === 'Admin');
+  readonly canWrite = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role != null && role !== 'Megtekinto';
+  });
 
   canModifyComment(comment: CommentDto): boolean {
     return comment.authorId === this.currentUserId() || this.isAdmin();

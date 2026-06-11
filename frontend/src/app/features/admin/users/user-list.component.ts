@@ -60,15 +60,17 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
               <input matInput formControlName="searchTerm" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Szerepkör</mat-label>
-              <mat-select formControlName="role">
-                <mat-option value="">Mind</mat-option>
-                @for (r of roleOptions; track r.value) {
-                  <mat-option [value]="r.value">{{ r.label }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+            @if (canManageUsers()) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Szerepkör</mat-label>
+                <mat-select formControlName="role">
+                  <mat-option value="">Mind</mat-option>
+                  @for (r of roleOptions; track r.value) {
+                    <mat-option [value]="r.value">{{ r.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
           </form>
         </mat-card-content>
       </mat-card>
@@ -105,15 +107,19 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
               <ng-container matColumnDef="role">
                 <th mat-header-cell *matHeaderCellDef>Szerepkör</th>
                 <td mat-cell *matCellDef="let row">
-                  <mat-select
-                    [value]="row.role"
-                    (selectionChange)="changeRole(row, $event.value)"
-                    style="min-width: 190px"
-                  >
-                    @for (r of roleOptions; track r.value) {
-                      <mat-option [value]="r.value">{{ r.label }}</mat-option>
-                    }
-                  </mat-select>
+                  @if (canManageUsers()) {
+                    <mat-select
+                      [value]="row.role"
+                      (selectionChange)="changeRole(row, $event.value)"
+                      style="min-width: 190px"
+                    >
+                      @for (r of roleOptions; track r.value) {
+                        <mat-option [value]="r.value">{{ r.label }}</mat-option>
+                      }
+                    </mat-select>
+                  } @else {
+                    <span>{{ roleLabels[row.role] || row.role }}</span>
+                  }
                 </td>
               </ng-container>
 
@@ -127,7 +133,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let row">
-                  @if (row.id !== currentUserId()) {
+                  @if (canManageUsers() && row.id !== currentUserId()) {
                     @if (row.isActive) {
                       <button
                         mat-icon-button
@@ -187,6 +193,8 @@ export class UserListComponent implements OnInit {
   readonly loading = signal(false);
   readonly users = signal<AdminUser[]>([]);
   readonly currentUserId = computed(() => this.auth.currentUser()?.userId ?? '');
+  readonly canManageUsers = computed(() => this.auth.currentUser()?.role === 'Admin');
+  readonly roleLabels: Record<string, string> = ROLE_LABELS;
 
   readonly columns = ['name', 'role', 'lastLoginAt', 'actions'];
 

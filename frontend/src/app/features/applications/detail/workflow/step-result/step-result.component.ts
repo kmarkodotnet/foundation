@@ -116,9 +116,10 @@ export class StepResultComponent implements OnInit {
   });
 
   get canCorrect(): boolean {
+    const role = this.auth.currentUser()?.role;
     const status = this.application().status;
     return (
-      this.isAdmin() &&
+      (role === 'Admin' || role === 'Elnok') &&
       (status === 'Won' || status === 'Lost') &&
       !this.correctionMode()
     );

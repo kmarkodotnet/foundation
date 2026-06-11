@@ -13,7 +13,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           duration: 5000,
           panelClass: ['gm-snack-error'],
         });
-      } else if (error.status === 500) {
+      } else if (error.status === 500 && req.method !== 'GET') {
         snackBar.open('Szerverhiba történt. Kérjük, próbálja újra.', 'Bezár', {
           duration: 5000,
           panelClass: ['gm-snack-error'],

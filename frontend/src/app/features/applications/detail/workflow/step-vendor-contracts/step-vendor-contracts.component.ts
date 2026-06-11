@@ -107,7 +107,7 @@ export class StepVendorContractsComponent implements OnInit {
 
     console.debug(role);
 
-    return role === 'Admin' || role === 'PalyazatiMunkatars';
+    return role === 'Admin' || role === 'PalyazatiMunkatars' || role === 'Penzugyes';
   });
 
   onDocumentUploaded(_doc: DocumentDto): void {

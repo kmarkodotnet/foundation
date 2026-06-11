@@ -87,7 +87,7 @@ export class EmailRecordComponent implements OnInit {
 
   readonly canWrite = computed(() => {
     const role = this.currentUserRole();
-    return role === 'Admin' || role === 'PalyazatiMunkatars';
+    return role === 'Admin' || role === 'PalyazatiMunkatars' || role === 'Penzugyes';
   });
 
   readonly emailForm = new FormGroup({

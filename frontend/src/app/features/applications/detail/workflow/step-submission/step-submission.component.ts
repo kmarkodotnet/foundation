@@ -77,7 +77,7 @@ export class StepSubmissionComponent implements OnInit {
 
   readonly canModify = computed(() => {
     const role = this.authService.currentUser()?.role;
-    return role === 'Admin' || role === 'PalyazatiMunkatars';
+    return role === 'Admin' || role === 'PalyazatiMunkatars' || role === 'Penzugyes';
   });
 
   readonly form = new FormGroup({

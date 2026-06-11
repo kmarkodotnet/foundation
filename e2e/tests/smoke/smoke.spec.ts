@@ -107,10 +107,12 @@ test.describe('smoke: user management permissions', () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test('Elnök nem fér hozzá a felhasználókezeléshez (403-ra irányítja)', async ({
+  test('Elnök hozzáfér a felhasználókezeléshez (olvasás jog)', async ({
     realElnokPage,
   }) => {
     await realElnokPage.goto('/admin/users');
-    await expect(realElnokPage).toHaveURL(/\/(403|applications|login)/, { timeout: 10_000 });
+    await expect(
+      realElnokPage.getByRole('heading', { name: /felhasználók/i }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 });

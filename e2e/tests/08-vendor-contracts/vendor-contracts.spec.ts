@@ -423,7 +423,7 @@ test.describe('TS-070 | Új alvállalkozói szerződés rögzítése', () => {
     ).toBeVisible({ timeout: 5_000 });
   });
 
-  test('Pénzügyesnél a "Szerződés hozzáadása" gomb NEM látható', async ({ penzugyesPage }) => {
+  test('Pénzügyesnél a "Szerződés hozzáadása" gomb látható (R,C,U jog)', async ({ penzugyesPage }) => {
     await mockDetailPage(penzugyesPage, APP_WON, []);
     await penzugyesPage.goto(`/applications/${APP_ID}`);
     await penzugyesPage.waitForLoadState('networkidle');
@@ -431,7 +431,7 @@ test.describe('TS-070 | Új alvállalkozói szerződés rögzítése', () => {
     const panel = vendorPanel(penzugyesPage);
     await expect(
       panel.getByRole('button', { name: /szerződés hozzáadása/i }),
-    ).toHaveCount(0, { timeout: 8_000 });
+    ).toBeVisible({ timeout: 8_000 });
   });
 
   test('"Lépés lezárása" gomb megjelenik Active lépésnél Munkatársnak', async ({

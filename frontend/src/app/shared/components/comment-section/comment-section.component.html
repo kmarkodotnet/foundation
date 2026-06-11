@@ -1,7 +1,7 @@
 <div class="comment-section">
   <div class="comment-header">
     <h4 class="section-title">Megjegyzések</h4>
-    @if (!isLocked()) {
+    @if (!isLocked() && canWrite()) {
       <button mat-button class="add-btn" (click)="toggleAddForm()">
         <mat-icon>{{ showAddForm() ? 'close' : 'add_comment' }}</mat-icon>
         {{ showAddForm() ? 'Mégse' : 'Megjegyzés hozzáadása' }}

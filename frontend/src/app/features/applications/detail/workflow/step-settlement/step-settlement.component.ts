@@ -82,7 +82,7 @@ export class StepSettlementComponent implements OnInit {
 
   readonly canModify = computed(() => {
     const role = this.authService.currentUser()?.role;
-    return role === 'Admin' || role === 'Penzugyes';
+    return role === 'Admin' || role === 'Penzugyes' || role === 'PalyazatiMunkatars';
   });
 
   readonly canApprove = computed(() => {

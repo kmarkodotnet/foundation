@@ -375,6 +375,8 @@ test.describe('TS-204 | Meghívó létrehozása és kiküldése', () => {
 
     await page.goto('/admin/users');
     await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('button', { name: /új meghívó/i })).toBeVisible({ timeout: 8_000 });
   });
@@ -390,6 +392,8 @@ test.describe('TS-204 | Meghívó létrehozása és kiküldése', () => {
     });
 
     await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /új meghívó/i }).click();
 
@@ -417,6 +421,8 @@ test.describe('TS-204 | Meghívó létrehozása és kiküldése', () => {
     });
 
     await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /új meghívó/i }).click();
     await page.locator('input[formcontrolname="email"]').fill('uj.munkatars@teszt.hu');
@@ -452,6 +458,8 @@ test.describe('TS-204 | Meghívó létrehozása és kiküldése', () => {
 
     await page.goto('/admin/users');
     await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /új meghívó/i }).click();
     await page.locator('input[formcontrolname="email"]').fill('letezik@teszt.hu');
     const roleSelect = page.locator('mat-select[formcontrolname="role"]');
@@ -476,11 +484,16 @@ test.describe('TS-204 | Meghívó létrehozása és kiküldése', () => {
 
     await page.goto('/admin/users');
     await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /új meghívó/i }).click();
     await page.locator('input[formcontrolname="email"]').fill('nem-valid-email');
     await page.locator('input[formcontrolname="email"]').blur();
 
-    await expect(page.getByRole('button', { name: /küldés|meghívás/i })).toBeDisabled({ timeout: 3_000 });
+    // Scope to dialog to avoid matching the "Új meghívó küldése" button behind the overlay
+    await expect(
+      page.locator('mat-dialog-container').getByRole('button', { name: /küldés/i }),
+    ).toBeDisabled({ timeout: 3_000 });
   });
 });
 
@@ -587,6 +600,10 @@ test.describe('TS-206 | Meghívó visszavonása', () => {
 
     await page.locator('button[mattooltip="Visszavonás"]').click();
 
+    // Confirm dialog megjelenik
+    await expect(page.locator('h2[mat-dialog-title]', { hasText: 'Meghívó visszavonása' })).toBeVisible({ timeout: 5_000 });
+    await page.locator('button', { hasText: 'Visszavonás' }).last().click();
+
     await expect(
       page.locator('mat-snack-bar-container', { hasText: /visszavon/i }),
     ).toBeVisible({ timeout: 5_000 });
@@ -620,6 +637,10 @@ test.describe('TS-206 | Meghívó visszavonása', () => {
     await page.waitForLoadState('networkidle');
 
     await page.locator('button[mattooltip="Visszavonás"]').click();
+
+    // Confirm dialog megjelenik
+    await expect(page.locator('h2[mat-dialog-title]', { hasText: 'Meghívó visszavonása' })).toBeVisible({ timeout: 5_000 });
+    await page.locator('button', { hasText: 'Visszavonás' }).last().click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('mat-chip', { hasText: /visszavon|revoked/i }).first()).toBeVisible({ timeout: 5_000 });

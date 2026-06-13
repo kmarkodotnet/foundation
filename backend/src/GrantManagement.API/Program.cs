@@ -156,6 +156,11 @@ if (!app.Environment.IsEnvironment("Testing"))
         "deadline-check",
         job => job.ExecuteAsync(),
         "0 8 * * *");
+
+    RecurringJob.AddOrUpdate<InvitationExpiryJob>(
+        "invitation-expiry-check",
+        job => job.ExecuteAsync(),
+        Hangfire.Cron.Hourly());
 }
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));

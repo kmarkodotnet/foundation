@@ -24,6 +24,17 @@ export interface SystemSettings {
   spendingWarningDays: number;
   maxFileSizeMb: number;
   organizationName: string;
-  defaultUserRole: UserRole;
+  invitationExpiryHours: number;
   updatedAt: string;
+}
+
+export type InvitationStatus = 'Pending' | 'Accepted' | 'Expired' | 'Revoked';
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: InvitationStatus;
+  createdAt: string;
+  expiresAt: string;
 }

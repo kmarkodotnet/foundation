@@ -12,11 +12,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminUserService } from '../services/admin-user.service';
-import { ROLE_LABELS } from '../models/admin-user.model';
-import { UserRole } from '../../../core/auth/models/user.model';
 
 @Component({
   selector: 'gm-system-settings',
@@ -30,7 +27,6 @@ import { UserRole } from '../../../core/auth/models/user.model';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    MatSelectModule,
   ],
   template: `
     <div class="gm-page-container">
@@ -56,14 +52,6 @@ import { UserRole } from '../../../core/auth/models/user.model';
                 }
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="gm-full-width">
-                <mat-label>Alapértelmezett szerepkör (új felhasználóknak)</mat-label>
-                <mat-select formControlName="defaultUserRole">
-                  @for (r of roleOptions; track r.value) {
-                    <mat-option [value]="r.value">{{ r.label }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
             </mat-card-content>
           </mat-card>
 
@@ -111,6 +99,23 @@ import { UserRole } from '../../../core/auth/models/user.model';
             </mat-card-content>
           </mat-card>
 
+          <mat-card class="gm-settings-card">
+            <mat-card-header>
+              <mat-card-title>Meghívók</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-form-field appearance="outline">
+                <mat-label>Meghívó lejárata (óra)</mat-label>
+                <input matInput type="number" formControlName="invitationExpiryHours" min="1" max="168" />
+                <mat-hint>1–168 óra (max. 1 hét). Default: 72 óra.</mat-hint>
+                @if (form.controls.invitationExpiryHours.errors?.['min'] ||
+                     form.controls.invitationExpiryHours.errors?.['max']) {
+                  <mat-error>1–168 óra között.</mat-error>
+                }
+              </mat-form-field>
+            </mat-card-content>
+          </mat-card>
+
           <div class="gm-form-actions">
             <button
               mat-flat-button
@@ -144,16 +149,11 @@ export class SystemSettingsComponent implements OnInit {
   readonly loading = signal(false);
   readonly saving = signal(false);
 
-  readonly roleOptions: { value: UserRole; label: string }[] = Object.entries(ROLE_LABELS).map(
-    ([value, label]) => ({ value: value as UserRole, label })
-  );
-
   readonly form = new FormGroup({
     organizationName: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.maxLength(200)],
     }),
-    defaultUserRole: new FormControl<UserRole>('Megtekinto', { nonNullable: true }),
     notificationWarningDays: new FormControl(7, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(1), Validators.max(90)],
@@ -166,6 +166,10 @@ export class SystemSettingsComponent implements OnInit {
       nonNullable: true,
       validators: [Validators.required, Validators.min(1), Validators.max(500)],
     }),
+    invitationExpiryHours: new FormControl(72, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(1), Validators.max(168)],
+    }),
   });
 
   ngOnInit(): void {
@@ -174,10 +178,10 @@ export class SystemSettingsComponent implements OnInit {
       next: (s) => {
         this.form.patchValue({
           organizationName: s.organizationName,
-          defaultUserRole: s.defaultUserRole,
           notificationWarningDays: s.notificationWarningDays,
           spendingWarningDays: s.spendingWarningDays,
           maxFileSizeMb: s.maxFileSizeMb,
+          invitationExpiryHours: s.invitationExpiryHours,
         });
         this.loading.set(false);
       },
@@ -191,10 +195,10 @@ export class SystemSettingsComponent implements OnInit {
     this.saving.set(true);
     this.service.updateSettings({
       organizationName: v.organizationName,
-      defaultUserRole: v.defaultUserRole,
       notificationWarningDays: v.notificationWarningDays,
       spendingWarningDays: v.spendingWarningDays,
       maxFileSizeMb: v.maxFileSizeMb,
+      invitationExpiryHours: v.invitationExpiryHours,
     }).subscribe({
       next: () => {
         this.saving.set(false);

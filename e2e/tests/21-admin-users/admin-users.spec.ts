@@ -1,6 +1,8 @@
 /**
  * 21. kategória – Admin: Felhasználók kezelése
- * Forgatókönyvek: TS-200, TS-201, TS-202, TS-203
+ * Forgatókönyvek: TS-200, TS-201, TS-202, TS-203, TS-204, TS-205, TS-206, TS-207
+ *
+ * Kapcsolódó US-ok: US-160, US-161, US-162, US-164, US-165
  *
  * Stratégia:
  *  - TS-200: Hozzáférés – Admin eléri, Munkatárs /403-ra kerül
@@ -8,12 +10,20 @@
  *  - TS-202: Szerepkör módosítása – PUT hívás, snackbar megjelenik
  *  - TS-203: Inaktiválás – dialog megerősítés, PUT hívás, snackbar;
  *            Reaktiválás – közvetlen PUT hívás, snackbar
+ *  - TS-204: Meghívó létrehozása és kiküldése (US-164)
+ *  - TS-205: Meghívók listázása státuszokkal (US-165)
+ *  - TS-206: Meghívó visszavonása (US-165)
+ *  - TS-207: Meghívó újraküldése (US-165)
  *
  * API végpontok:
- *   GET  /api/v1/users                 → AdminUser[]
- *   PUT  /api/v1/users/{id}/role       → 200
- *   PUT  /api/v1/users/{id}/deactivate → 200
- *   PUT  /api/v1/users/{id}/activate   → 200
+ *   GET  /api/v1/users                    → AdminUser[]
+ *   PUT  /api/v1/users/{id}/role          → 200
+ *   PUT  /api/v1/users/{id}/deactivate    → 200
+ *   PUT  /api/v1/users/{id}/activate      → 200
+ *   POST /api/v1/invitations              → 201
+ *   GET  /api/v1/invitations              → Invitation[]
+ *   PUT  /api/v1/invitations/{id}/revoke  → 200
+ *   POST /api/v1/invitations/{id}/resend  → 200
  *
  * Megjegyzés:
  *   Az Admin teszt felhasználó ID-ja: 00000000-0000-0000-0000-000000000001
@@ -315,5 +325,402 @@ test.describe('TS-203/B | Felhasználókezelés hozzáférés – Pénzügyes é
   test('Megtekintő nem fér hozzá az admin/users oldalhoz – /403-ra irányítja', async ({ megtekintosPage: page }) => {
     await page.goto('/admin/users');
     await expect(page).toHaveURL(/\/403/, { timeout: 5_000 });
+  });
+});
+
+// ─── Mock adatok – meghívók ───────────────────────────────────────────────────
+
+const INVITE_ID_1 = 'aaaaaaaa-0000-0000-0000-000000000201';
+const INVITE_ID_2 = 'bbbbbbbb-0000-0000-0000-000000000202';
+
+const PENDING_INVITATION = {
+  id: INVITE_ID_1,
+  email: 'uj.munkatars@teszt.hu',
+  role: 'PalyazatiMunkatars',
+  status: 'Pending',
+  createdAt: '2026-06-10T10:00:00Z',
+  expiresAt: '2026-06-13T10:00:00Z',
+};
+
+const EXPIRED_INVITATION = {
+  id: INVITE_ID_2,
+  email: 'regi.penzugyes@teszt.hu',
+  role: 'Penzugyes',
+  status: 'Expired',
+  createdAt: '2026-06-01T10:00:00Z',
+  expiresAt: '2026-06-04T10:00:00Z',
+};
+
+const ACCEPTED_INVITATION = {
+  id: 'cccccccc-0000-0000-0000-000000000203',
+  email: 'elfogadott@teszt.hu',
+  role: 'Megtekinto',
+  status: 'Accepted',
+  createdAt: '2026-06-05T10:00:00Z',
+  expiresAt: '2026-06-08T10:00:00Z',
+};
+
+// ─── TS-204 | Meghívó létrehozása és kiküldése (US-164) ──────────────────────
+
+test.describe('TS-204 | Meghívó létrehozása és kiküldése', () => {
+  test('"Új meghívó" gomb elérhető a felhasználókezelés oldalon', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([ACTIVE_USER]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('button', { name: /új meghívó/i })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Meghívó űrlap tartalmaz email és szerepkör mezőt', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /új meghívó/i }).click();
+
+    await expect(page.locator('input[formcontrolname="email"]')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('mat-select[formcontrolname="role"]')).toBeVisible();
+  });
+
+  test('Sikeres meghívó küldés – POST hívás és "Meghívó elküldve" snackbar', async ({ adminPage: page }) => {
+    let postCalled = false;
+    let postedBody: unknown = null;
+
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      if (method === 'GET') return route.fulfill(ok([]));
+      if (method === 'POST') {
+        postCalled = true;
+        postedBody = JSON.parse(route.request().postData() ?? '{}');
+        return route.fulfill(ok({ ...PENDING_INVITATION, id: 'new-id' }));
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /új meghívó/i }).click();
+    await page.locator('input[formcontrolname="email"]').fill('uj.munkatars@teszt.hu');
+    const roleSelect = page.locator('mat-select[formcontrolname="role"]');
+    await roleSelect.click();
+    await page.locator('mat-option', { hasText: 'Pályázati munkatárs' }).click();
+    await page.getByRole('button', { name: /küldés|meghívás/i }).click();
+
+    await expect(
+      page.locator('mat-snack-bar-container', { hasText: /meghívó elküldve/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    expect(postCalled).toBe(true);
+    expect((postedBody as Record<string, unknown>)['email']).toBe('uj.munkatars@teszt.hu');
+  });
+
+  test('Már létező aktív fiókhoz küldött meghívónál hibaüzenet jelenik meg', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      if (method === 'GET') return route.fulfill(ok([]));
+      if (method === 'POST') {
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Az e-mail cím már regisztrált felhasználóhoz tartozik.' }),
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /új meghívó/i }).click();
+    await page.locator('input[formcontrolname="email"]').fill('letezik@teszt.hu');
+    const roleSelect = page.locator('mat-select[formcontrolname="role"]');
+    await roleSelect.click();
+    await page.locator('mat-option', { hasText: 'Megtekintő' }).click();
+    await page.getByRole('button', { name: /küldés|meghívás/i }).click();
+
+    await expect(
+      page.locator('mat-snack-bar-container, [role="alert"]').filter({ hasText: /már regisztrált/i }),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('Érvénytelen email formátumnál a Küldés gomb disabled', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /új meghívó/i }).click();
+    await page.locator('input[formcontrolname="email"]').fill('nem-valid-email');
+    await page.locator('input[formcontrolname="email"]').blur();
+
+    await expect(page.getByRole('button', { name: /küldés|meghívás/i })).toBeDisabled({ timeout: 3_000 });
+  });
+});
+
+// ─── TS-205 | Meghívók listázása (US-165) ────────────────────────────────────
+
+test.describe('TS-205 | Meghívók listázása', () => {
+  test('Meghívók tab elérhető a felhasználókezelés oldalon', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([PENDING_INVITATION]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('tab', { name: /meghívók/i })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('PENDING meghívó email-je és szerepköre megjelenik a listában', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([PENDING_INVITATION]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+
+    await expect(page.locator('td', { hasText: 'uj.munkatars@teszt.hu' }).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.locator('td', { hasText: /pályázati munkatárs/i }).first()).toBeVisible();
+  });
+
+  test('EXPIRED chip megjelenik a lejárt meghívónál', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([EXPIRED_INVITATION]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+
+    await expect(page.locator('mat-chip', { hasText: /lejárt|expired/i }).first()).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('ACCEPTED meghívónál nincs visszavonás vagy újraküldés gomb', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([ACCEPTED_INVITATION]));
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const acceptedRow = page.locator('tr').filter({ hasText: 'elfogadott@teszt.hu' });
+    await expect(acceptedRow.locator('button[mattooltip="Visszavonás"]')).toHaveCount(0);
+    await expect(acceptedRow.locator('button[mattooltip="Újraküldés"]')).toHaveCount(0);
+  });
+});
+
+// ─── TS-206 | Meghívó visszavonása (US-165) ──────────────────────────────────
+
+test.describe('TS-206 | Meghívó visszavonása', () => {
+  test('PENDING meghívó visszavonása – PUT /revoke hívás és "Meghívó visszavonva" snackbar', async ({ adminPage: page }) => {
+    let revokeCalled = false;
+
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      const url = route.request().url();
+      if (method === 'GET') return route.fulfill(ok([PENDING_INVITATION]));
+      if (method === 'PUT' && url.includes('/revoke')) {
+        revokeCalled = true;
+        return route.fulfill(ok({ ...PENDING_INVITATION, status: 'REVOKED' }));
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('button[mattooltip="Visszavonás"]').click();
+
+    await expect(
+      page.locator('mat-snack-bar-container', { hasText: /visszavon/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    expect(revokeCalled).toBe(true);
+  });
+
+  test('Visszavonás után a meghívó státusza REVOKED chip-pel jelenik meg', async ({ adminPage: page }) => {
+    const REVOKED_INVITATION = { ...PENDING_INVITATION, status: 'Revoked' };
+    let callCount = 0;
+
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      const url = route.request().url();
+      if (method === 'GET') {
+        callCount++;
+        return route.fulfill(ok(callCount === 1 ? [PENDING_INVITATION] : [REVOKED_INVITATION]));
+      }
+      if (method === 'PUT' && url.includes('/revoke')) {
+        return route.fulfill(ok(REVOKED_INVITATION));
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('button[mattooltip="Visszavonás"]').click();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('mat-chip', { hasText: /visszavon|revoked/i }).first()).toBeVisible({ timeout: 5_000 });
+  });
+});
+
+// ─── TS-207 | Meghívó újraküldése (US-165) ───────────────────────────────────
+
+test.describe('TS-207 | Meghívó újraküldése', () => {
+  test('Lejárt meghívó újraküldése – POST /resend hívás és "Meghívó újraküldve" snackbar', async ({ adminPage: page }) => {
+    let resendCalled = false;
+
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      const url = route.request().url();
+      if (method === 'GET') return route.fulfill(ok([EXPIRED_INVITATION]));
+      if (method === 'POST' && url.includes('/resend')) {
+        resendCalled = true;
+        return route.fulfill(ok({ ...EXPIRED_INVITATION, status: 'PENDING' }));
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('button[mattooltip="Újraküldés"]').click();
+
+    await expect(
+      page.locator('mat-snack-bar-container', { hasText: /újraküld/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    expect(resendCalled).toBe(true);
+  });
+
+  test('Újraküldés után a meghívó státusza PENDING-re vált', async ({ adminPage: page }) => {
+    let callCount = 0;
+
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      const url = route.request().url();
+      if (method === 'GET') {
+        callCount++;
+        return route.fulfill(ok(callCount === 1 ? [EXPIRED_INVITATION] : [{ ...EXPIRED_INVITATION, status: 'Pending' }]));
+      }
+      if (method === 'POST' && url.includes('/resend')) {
+        return route.fulfill(ok({ ...EXPIRED_INVITATION, status: 'Pending' }));
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('button[mattooltip="Újraküldés"]').click();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('mat-chip', { hasText: /függő|pending/i }).first()).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('PENDING meghívónál is elérhető az újraküldés (pl. elveszett email esetén)', async ({ adminPage: page }) => {
+    let resendCalled = false;
+
+    await page.route('**/api/v1/users**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok([]));
+      return route.continue();
+    });
+    await page.route('**/api/v1/invitations**', async (route) => {
+      const method = route.request().method();
+      const url = route.request().url();
+      if (method === 'GET') return route.fulfill(ok([PENDING_INVITATION]));
+      if (method === 'POST' && url.includes('/resend')) {
+        resendCalled = true;
+        return route.fulfill(ok(PENDING_INVITATION));
+      }
+      return route.continue();
+    });
+
+    await page.goto('/admin/users');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: /meghívók/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const resendBtn = page.locator('button[mattooltip="Újraküldés"]');
+    await expect(resendBtn).toBeVisible({ timeout: 5_000 });
+    await resendBtn.click();
+
+    await expect(
+      page.locator('mat-snack-bar-container', { hasText: /újraküld/i }),
+    ).toBeVisible({ timeout: 5_000 });
+    expect(resendCalled).toBe(true);
   });
 });

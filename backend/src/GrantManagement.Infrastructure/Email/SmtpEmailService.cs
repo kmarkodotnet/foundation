@@ -29,6 +29,18 @@ public class SmtpEmailService : IEmailService
         await SendInternalAsync(mimeMessage, ct);
     }
 
+    public async Task SendInvitationAsync(string toEmail, string invitationUrl, CancellationToken ct = default)
+    {
+        var message = new EmailMessage(
+            toEmail,
+            "Meghívó a GrantManagement rendszerbe",
+            $"<p>Meghívót kaptál a GrantManagement rendszerbe.</p>" +
+            $"<p><a href=\"{invitationUrl}\">Kattints ide a regisztrációhoz</a></p>" +
+            $"<p>A meghívó korlátozott ideig érvényes.</p>",
+            $"Meghívót kaptál a GrantManagement rendszerbe. Regisztrációhoz nyisd meg: {invitationUrl}");
+        await SendAsync(message, ct);
+    }
+
     public async Task SendBulkAsync(IEnumerable<EmailMessage> messages, CancellationToken ct = default)
     {
         using var client = await CreateConnectedClientAsync(ct);

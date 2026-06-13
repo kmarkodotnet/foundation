@@ -8,6 +8,7 @@ using GrantManagement.Domain.Interfaces.Services;
 using GrantManagement.Integration.Tests.Infrastructure;
 using Moq;
 using Microsoft.EntityFrameworkCore;
+using GrantManagement.Domain.Interfaces;
 
 namespace GrantManagement.Integration.Tests.Auth;
 
@@ -18,18 +19,25 @@ public class AuthEndpointTests
 
     public AuthEndpointTests(WebApiFixture fx) => _fx = fx;
 
-    // ─── US-001: Google OAuth Callback ──────────────────────────────────────
+    // ─── US-001 / US-006: Google OAuth Callback ─────────────────────────────
 
     [SkippableFact]
-    public async Task GoogleCallback_ValidCode_Returns200WithAccessToken()
+    public async Task GoogleCallback_ExistingActiveUser_Returns200WithAccessToken()
     {
         _fx.SkipIfDockerUnavailable();
-        _fx.GoogleAuthMock.Reset();
 
         var googleId = $"gid-{Guid.NewGuid():N}";
+        var email = $"existing-{Guid.NewGuid():N}@gmail.com";
+
+        await using var seedCtx = _fx.CreateDbContext();
+        var user = AppUser.CreateFromGoogle(googleId, email, "Existing User", null, UserRole.PalyazatiMunkatars);
+        seedCtx.AppUsers.Add(user);
+        await seedCtx.SaveChangesAsync();
+
+        _fx.GoogleAuthMock.Reset();
         _fx.GoogleAuthMock
             .Setup(s => s.ExchangeCodeAsync("valid-code", "http://localhost", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new GoogleUserInfo(googleId, "newuser@gmail.com", "New User", null));
+            .ReturnsAsync(new GoogleUserInfo(googleId, email, "Existing User", null));
 
         using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/google-callback",
             new { authorizationCode = "valid-code", redirectUri = "http://localhost" });
@@ -41,36 +49,27 @@ public class AuthEndpointTests
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         json.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
         json.GetProperty("expiresIn").GetInt32().Should().Be(28800);
-        json.GetProperty("user").GetProperty("email").GetString().Should().Be("newuser@gmail.com");
+        json.GetProperty("user").GetProperty("email").GetString().Should().Be(email);
     }
 
     [SkippableFact]
-    public async Task GoogleCallback_FirstNewUserAfterExistingAdmin_CreatesWithMegtekintoRole()
+    public async Task GoogleCallback_UnknownEmail_Returns403WithNoInvitationDetail()
     {
         _fx.SkipIfDockerUnavailable();
 
-        // Seed an Admin so the next user is NOT the first ever
-        await using var seedCtx = _fx.CreateDbContext();
-        var admin = AppUser.CreateFromGoogle(
-            $"admin-{Guid.NewGuid():N}", "admin-seed@test.local", "Admin Seed", null, UserRole.Admin);
-        seedCtx.AppUsers.Add(admin);
-        await seedCtx.SaveChangesAsync();
-
-        var newGoogleId = $"new-{Guid.NewGuid():N}";
         _fx.GoogleAuthMock.Reset();
         _fx.GoogleAuthMock
             .Setup(s => s.ExchangeCodeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new GoogleUserInfo(newGoogleId, "newcomer@gmail.com", "New Comer", null));
+            .ReturnsAsync(new GoogleUserInfo($"new-{Guid.NewGuid():N}", "noinvite@gmail.com", "No Invite", null));
 
         using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/google-callback",
             new { authorizationCode = "any-code", redirectUri = "http://localhost" });
 
         var response = await _fx.Client.SendAsync(req);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await using var verifyCtx = _fx.CreateDbContext();
-        var created = await verifyCtx.AppUsers.FirstAsync(u => u.GoogleId == newGoogleId);
-        created.Role.Should().Be(UserRole.Megtekinto);
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().ContainEquivalentOf("no-invitation");
     }
 
     [SkippableFact]
@@ -239,5 +238,184 @@ public class AuthEndpointTests
         var response = await _fx.Client.SendAsync(req);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    // ─── US-007: Accept Invitation ──────────────────────────────────────────────
+
+    [SkippableFact]
+    public async Task AcceptInvitation_ValidTokenAndMatchingEmail_Returns200WithAccessToken()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        var invitationEmail = $"invite-{Guid.NewGuid():N}@test.local";
+        var googleId = $"gid-accept-{Guid.NewGuid():N}";
+
+        await using var seedCtx = _fx.CreateDbContext();
+        var invitation = Invitation.Create(invitationEmail, UserRole.Megtekinto, 72);
+        seedCtx.Invitations.Add(invitation);
+        await seedCtx.SaveChangesAsync();
+
+        _fx.GoogleAuthMock.Reset();
+        _fx.GoogleAuthMock
+            .Setup(s => s.ExchangeCodeAsync("accept-code", "http://localhost", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GoogleUserInfo(googleId, invitationEmail, "New User", null));
+
+        _fx.EmailServiceMock.Reset();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "accept-code", redirectUri = "http://localhost",
+                  invitationToken = invitation.Token });
+
+        var response = await _fx.Client.SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
+        json.GetProperty("user").GetProperty("email").GetString().Should().Be(invitationEmail);
+        json.GetProperty("user").GetProperty("role").GetString().Should().Be("Megtekinto");
+    }
+
+    [SkippableFact]
+    public async Task AcceptInvitation_ValidToken_CreatesUserWithInvitationRole()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        var invitationEmail = $"role-{Guid.NewGuid():N}@test.local";
+        var googleId = $"gid-role-{Guid.NewGuid():N}";
+
+        await using var seedCtx = _fx.CreateDbContext();
+        var invitation = Invitation.Create(invitationEmail, UserRole.PalyazatiMunkatars, 72);
+        seedCtx.Invitations.Add(invitation);
+        await seedCtx.SaveChangesAsync();
+
+        _fx.GoogleAuthMock.Reset();
+        _fx.GoogleAuthMock
+            .Setup(s => s.ExchangeCodeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GoogleUserInfo(googleId, invitationEmail, "New Worker", null));
+
+        _fx.EmailServiceMock.Reset();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "code", redirectUri = "http://localhost",
+                  invitationToken = invitation.Token });
+
+        await _fx.Client.SendAsync(req);
+
+        await using var verifyCtx = _fx.CreateDbContext();
+        var user = await verifyCtx.AppUsers.FirstOrDefaultAsync(u => u.Email == invitationEmail);
+        user.Should().NotBeNull();
+        user!.Role.Should().Be(UserRole.PalyazatiMunkatars);
+
+        var acceptedInvitation = await verifyCtx.Invitations.FindAsync(invitation.Id);
+        acceptedInvitation!.Status.Should().Be(InvitationStatus.Accepted);
+    }
+
+    [SkippableFact]
+    public async Task AcceptInvitation_UnknownToken_Returns404()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "code", redirectUri = "http://localhost",
+                  invitationToken = "nonexistenttoken00000000000000000" });
+
+        var response = await _fx.Client.SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [SkippableFact]
+    public async Task AcceptInvitation_ExpiredToken_Returns410()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        await using var seedCtx = _fx.CreateDbContext();
+        var invitation = Invitation.Create($"exp-{Guid.NewGuid():N}@test.local", UserRole.Megtekinto, 72);
+        invitation.MarkAsExpired();
+        seedCtx.Invitations.Add(invitation);
+        await seedCtx.SaveChangesAsync();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "code", redirectUri = "http://localhost",
+                  invitationToken = invitation.Token });
+
+        var response = await _fx.Client.SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Gone);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().ContainEquivalentOf("invitation-expired");
+    }
+
+    [SkippableFact]
+    public async Task AcceptInvitation_RevokedToken_Returns410()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        await using var seedCtx = _fx.CreateDbContext();
+        var invitation = Invitation.Create($"rev-{Guid.NewGuid():N}@test.local", UserRole.Megtekinto, 72);
+        invitation.Revoke();
+        seedCtx.Invitations.Add(invitation);
+        await seedCtx.SaveChangesAsync();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "code", redirectUri = "http://localhost",
+                  invitationToken = invitation.Token });
+
+        var response = await _fx.Client.SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Gone);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().ContainEquivalentOf("invitation-revoked");
+    }
+
+    [SkippableFact]
+    public async Task AcceptInvitation_AlreadyAcceptedToken_Returns409()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        await using var seedCtx = _fx.CreateDbContext();
+        var invitation = Invitation.Create($"acc-{Guid.NewGuid():N}@test.local", UserRole.Megtekinto, 72);
+        invitation.Accept();
+        seedCtx.Invitations.Add(invitation);
+        await seedCtx.SaveChangesAsync();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "code", redirectUri = "http://localhost",
+                  invitationToken = invitation.Token });
+
+        var response = await _fx.Client.SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().ContainEquivalentOf("invitation-already-accepted");
+    }
+
+    [SkippableFact]
+    public async Task AcceptInvitation_EmailMismatch_Returns422()
+    {
+        _fx.SkipIfDockerUnavailable();
+
+        var invitationEmail = $"mismatch-{Guid.NewGuid():N}@test.local";
+        await using var seedCtx = _fx.CreateDbContext();
+        var invitation = Invitation.Create(invitationEmail, UserRole.Megtekinto, 72);
+        seedCtx.Invitations.Add(invitation);
+        await seedCtx.SaveChangesAsync();
+
+        _fx.GoogleAuthMock.Reset();
+        _fx.GoogleAuthMock
+            .Setup(s => s.ExchangeCodeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GoogleUserInfo("gid-wrong", "different@test.local", "Wrong User", null));
+
+        _fx.EmailServiceMock.Reset();
+
+        using var req = WebApiFixture.BuildRequest(HttpMethod.Post, "/api/v1/auth/accept-invitation",
+            new { authorizationCode = "code", redirectUri = "http://localhost",
+                  invitationToken = invitation.Token });
+
+        var response = await _fx.Client.SendAsync(req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().ContainEquivalentOf("email-mismatch");
     }
 }

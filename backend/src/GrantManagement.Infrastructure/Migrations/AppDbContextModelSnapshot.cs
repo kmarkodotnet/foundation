@@ -22,57 +22,6 @@ namespace GrantManagement.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("GrantManagement.Domain.Entities.AuditLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("FieldName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("IpAddress")
-                        .HasMaxLength(45)
-                        .HasColumnType("character varying(45)");
-
-                    b.Property<string>("NewValue")
-                        .HasColumnType("text");
-
-                    b.Property<string>("OldValue")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("AuditLogs");
-                });
-
             modelBuilder.Entity("GrantManagement.Domain.Entities.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -168,12 +117,6 @@ namespace GrantManagement.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -857,6 +800,51 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.ToTable("Granters", (string)null);
                 });
 
+            modelBuilder.Entity("GrantManagement.Domain.Entities.Invitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("Email", "Status");
+
+                    b.ToTable("Invitations", (string)null);
+                });
+
             modelBuilder.Entity("GrantManagement.Domain.Entities.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1091,10 +1079,8 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<int>("Id")
                         .HasColumnType("integer");
 
-                    b.Property<string>("DefaultUserRole")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
+                    b.Property<int>("InvitationExpiryHours")
+                        .HasColumnType("integer");
 
                     b.Property<int>("MaxFileSizeMb")
                         .HasColumnType("integer");
@@ -1121,12 +1107,12 @@ namespace GrantManagement.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            DefaultUserRole = "Megtekinto",
+                            InvitationExpiryHours = 72,
                             MaxFileSizeMb = 50,
                             NotificationWarningDays = 7,
                             OrganizationName = "Alapítvány",
                             SpendingWarningDays = 14,
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 5, 22, 20, 46, 30, 186, DateTimeKind.Unspecified).AddTicks(9158), new TimeSpan(0, 0, 0, 0, 0))
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 6, 13, 7, 7, 11, 590, DateTimeKind.Unspecified).AddTicks(9416), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 

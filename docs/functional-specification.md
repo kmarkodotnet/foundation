@@ -974,10 +974,34 @@ A bejelentkezett felhasználó saját adatainak megtekintése és korlátozott m
 - Felhasználó inaktiválása (nem tud bejelentkezni, de adatai megmaradnak).
 - Inaktivált felhasználó reaktiválása.
 - Felhasználó törlése nem lehetséges, ha van hozzá tartozó adat a rendszerben.
+- Meghívók kezelése: új meghívó kiküldése, lejárt meghívó újraküldése, függőben lévő meghívó visszavonása.
 
-> **Szakmai feltételezés:** Az első bejelentkezés automatikusan regisztrál, de alapértelmezett szerepkörrel (Megtekintő) indul, amíg Admin szerepkört nem rendel hozzá.
+#### Meghívásos regisztrációs folyamat
+
+A rendszerbe kizárólag meghívott felhasználók léphetnek be. Automatikus önregisztráció nem engedélyezett.
+
+**A meghívási folyamat lépései:**
+1. Admin létrehoz egy meghívót: megadja a felhasználó e-mail címét és a szándékolt szerepkört.
+2. A rendszer meghívó e-mailt küld egy egyszer használatos, időkorlátozott tokennel.
+3. A felhasználó a meghívó linkre kattint, és Google OAuth-on hitelesíti magát.
+4. A rendszer ellenőrzi, hogy a Google-fiók e-mail címe megegyezik-e a meghívott e-mail címmel.
+5. Egyezés esetén a fiók aktiválódik az előre beállított szerepkörrel.
+6. Eltérés esetén a bejelentkezés megtagadva; hibaüzenet jelenik meg: „A Google-fiókod e-mail címe nem egyezik a meghívóban szereplő címmel."
+
+**Meghívó státuszok:**
+
+| Státusz | Leírás |
+|---|---|
+| `PENDING` | Kiküldve, a felhasználó még nem fogadta el |
+| `ACCEPTED` | A felhasználó aktiválta a fiókját |
+| `EXPIRED` | Lejárt (érvényességi idő eltelt, újraküldhető) |
+| `REVOKED` | Admin visszavonta elfogadás előtt |
 
 #### Üzleti szabályok
+- Meghívó nélkül a Google OAuth sikeres hitelesítés ellenére sem jön létre felhasználói fiók.
+- Egy e-mail címre egyszerre csak egy aktív (`PENDING`) meghívó létezhet.
+- Lejárt meghívó újraküldhető; az újraküldés új tokent generál és visszaállítja az érvényességi időt.
+- Meghívó visszavonható mindaddig, amíg a felhasználó el nem fogadta (`PENDING` státusz).
 - Legalább 1 aktív Admin felhasználónak mindig léteznie kell.
 - Admin nem inaktiválhatja saját magát.
 
@@ -987,7 +1011,7 @@ A bejelentkezett felhasználó saját adatainak megtekintése és korlátozott m
 |---|---|
 | Értesítési határidők | Hány nappal előre küldjön figyelmeztetőt (default: 7 nap) |
 | Fájlméret korlát | Maximum feltöltési méret MB-ban |
-| Alapértelmezett szerepkör | Új Google-fiókos belépőknek adott szerepkör |
+| Meghívó érvényességi ideje | Hány óráig érvényes a kiküldött meghívó link (default: 72 óra) |
 | Szervezet neve | Megjelenik a UI-ban és az exportált dokumentumokon |
 
 ### 26.3 Audit napló megtekintése
@@ -1059,6 +1083,9 @@ A bejelentkezett felhasználó saját adatainak megtekintése és korlátozott m
 | Elszámolás jóváhagyásra vár | Elnök | Rendszer értesítés + e-mail |
 | Új megjegyzés rögzítve | Érintett lépés utolsó módosítója | Rendszer értesítés |
 | Dokumentum feltöltve | Érintett pályázat felelőse | Rendszer értesítés |
+| Meghívó kiküldve | Meghívott felhasználó | E-mail |
+| Meghívó 24 órán belül lejár | Meghívott felhasználó | E-mail |
+| Meghívó elfogadva (fiók aktiválva) | Admin | Rendszer értesítés |
 
 ### 28.2 Rendszer értesítések
 - A navigációs sávon értesítési harang ikon, számlálóval.
@@ -1152,6 +1179,8 @@ Minden adatmódosítás visszakövethetőségének biztosítása.
 - Munkamenet token (JWT) alapú; lejárat: 8 óra (konfigurálható).
 - Refresh token biztonságos HttpOnly cookie-ban tárolva.
 - Jelszókezelés, jelszómegadás nincs; a hitelesítés teljes egészében Google-nál.
+- Minden bejelentkezési kísérletkor a rendszer ellenőrzi, hogy az autentikált Google-fiók e-mail címéhez létezik-e aktív, `ACCEPTED` státuszú felhasználói fiók. Ha nem létezik, a bejelentkezés megtagadva és a felhasználó tájékoztató üzenetet kap: „Hozzáféréshez meghívó szükséges. Kérj segítséget az adminisztrátortól."
+- Meghívó nélküli belépési kísérlet naplózódik (e-mail cím, IP, időbélyeg).
 
 ### 31.2 Jogosultságkezelés
 - Minden API végponton backend-oldali RBAC ellenőrzés (nem csak frontend).
@@ -1245,7 +1274,7 @@ Az alábbi pontok üzleti döntést igényelnek, vagy pontosításra szorulnak a
 | NK-08 | A számlánál a „szállító" mezőt kötelezően a Szerződő cégek entitásból kell-e kitölteni, vagy szabadon szövegesen is megadható? | Szabadon szöveges (de opcionálisan linkelhető entitáshoz) | Igen |
 | NK-09 | Szükséges-e a pályázatok között kapcsolatot kezelni (pl. alap- és kiegészítő pályázat)? | Nem tervezett | Igen |
 | NK-10 | Milyen riport/statisztikai nézetek szükségesek (pl. éves összesítő, pályáztatónkénti statisztika)? | Nincs részletezve; bővítési lehetőség | Igen |
-| NK-11 | A Google-fiók domain korlátozott-e? (Csak az alapítvány Google Workspace domainjéről lehet belépni?) | Nem korlátozott (bármelyik Gmail-fiók engedélyezhető Admin által) | Igen |
+| NK-11 | A Google-fiók domain korlátozott-e? (Csak az alapítvány Google Workspace domainjéről lehet belépni?) | **LEZÁRVA:** A meghívásos modell bevezetésével domain-korlátozás helyett konkrét e-mail cím szintű hozzáférés-kezelés valósul meg. Bármelyik Gmail-fiók meghívható, de csak meghívott e-mail cím tud belépni. | – |
 | NK-12 | Szükséges-e a fájlok vírusellenőrzése (antivirus scan) feltöltéskor? | Nem tervezett az alap verzióban | Igen |
 
 ---

@@ -1,5 +1,3 @@
-using GrantManagement.Domain.Enums;
-
 namespace GrantManagement.Domain.Entities;
 
 public class SystemSettings
@@ -9,7 +7,7 @@ public class SystemSettings
     public int SpendingWarningDays { get; private set; }
     public int MaxFileSizeMb { get; private set; }
     public string OrganizationName { get; private set; } = null!;
-    public UserRole DefaultUserRole { get; private set; }
+    public int InvitationExpiryHours { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
     private SystemSettings() { }
@@ -21,7 +19,7 @@ public class SystemSettings
         SpendingWarningDays = 14,
         MaxFileSizeMb = 50,
         OrganizationName = "Alapítvány",
-        DefaultUserRole = UserRole.Megtekinto,
+        InvitationExpiryHours = 72,
         UpdatedAt = DateTimeOffset.UtcNow
     };
 
@@ -30,13 +28,13 @@ public class SystemSettings
         int spendingWarningDays,
         int maxFileSizeMb,
         string organizationName,
-        UserRole defaultUserRole)
+        int invitationExpiryHours)
     {
         NotificationWarningDays = notificationWarningDays;
         SpendingWarningDays = spendingWarningDays;
         MaxFileSizeMb = maxFileSizeMb;
         OrganizationName = organizationName.Trim();
-        DefaultUserRole = defaultUserRole;
+        InvitationExpiryHours = invitationExpiryHours;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

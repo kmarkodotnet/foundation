@@ -19,7 +19,7 @@ import { test, expect } from '../../fixtures/auth.fixture';
 
 const SETTINGS = {
   organizationName: 'Teszt Alapítvány',
-  defaultUserRole: 'Megtekinto',
+  invitationExpiryHours: 72,
   notificationWarningDays: 7,
   spendingWarningDays: 14,
   maxFileSizeMb: 50,
@@ -97,9 +97,13 @@ test.describe('TS-211 | Beállítások betöltése', () => {
     // Maximum fájlméret
     const maxFile = page.locator('input[formcontrolname="maxFileSizeMb"]');
     await expect(maxFile).toHaveValue('50');
+
+    // Meghívó érvényességi ideje (US-163 + FS 26.2 módosítás: defaultUserRole helyett)
+    const inviteExpiry = page.locator('input[formcontrolname="invitationExpiryHours"]');
+    await expect(inviteExpiry).toHaveValue('72');
   });
 
-  test('Három kártya-szekció látható: Szervezet, Értesítések, Fájlkezelés', async ({ adminPage: page }) => {
+  test('Négy kártya-szekció látható: Szervezet, Hozzáférés, Értesítések, Fájlkezelés', async ({ adminPage: page }) => {
     await page.route('**/api/v1/system-settings**', (route) => {
       if (route.request().method() === 'GET') return route.fulfill(ok(SETTINGS));
       return route.continue();
@@ -109,6 +113,7 @@ test.describe('TS-211 | Beállítások betöltése', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('mat-card-title', { hasText: 'Szervezet' })).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('mat-card-title', { hasText: /hozzáférés|meghívó/i })).toBeVisible();
     await expect(page.locator('mat-card-title', { hasText: 'Értesítések' })).toBeVisible();
     await expect(page.locator('mat-card-title', { hasText: 'Fájlkezelés' })).toBeVisible();
   });
@@ -222,6 +227,24 @@ test.describe('TS-213 | Validáció', () => {
     await maxFile.blur();
 
     await expect(page.locator('mat-error', { hasText: '1–500 MB között' })).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByRole('button', { name: /mentés/i })).toBeDisabled();
+  });
+
+  test('Meghívó érvényességi idő 0 óra értéknél validációs hiba és Mentés disabled', async ({ adminPage: page }) => {
+    await page.route('**/api/v1/system-settings**', (route) => {
+      if (route.request().method() === 'GET') return route.fulfill(ok(SETTINGS));
+      return route.continue();
+    });
+
+    await page.goto('/admin/settings');
+    await page.waitForLoadState('networkidle');
+
+    const inviteExpiry = page.locator('input[formcontrolname="invitationExpiryHours"]');
+    await inviteExpiry.clear();
+    await inviteExpiry.fill('0');
+    await inviteExpiry.blur();
+
+    await expect(page.locator('mat-error', { hasText: /1–168 óra között|legalább 1/i })).toBeVisible({ timeout: 3_000 });
     await expect(page.getByRole('button', { name: /mentés/i })).toBeDisabled();
   });
 });

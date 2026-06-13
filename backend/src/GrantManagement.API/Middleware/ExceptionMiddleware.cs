@@ -47,11 +47,41 @@ public class ExceptionMiddleware
                 Title = "Validációs hiba",
                 Type = "https://tools.ietf.org/html/rfc4918#section-11.2"
             },
+            NoInvitationException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Forbidden,
+                Title = "Forbidden",
+                Detail = "no-invitation"
+            },
             InactiveUserException => new ProblemDetails
             {
                 Status = (int)HttpStatusCode.Forbidden,
                 Title = "Inaktív felhasználó.",
-                Detail = exception.Message
+                Detail = "inactive"
+            },
+            InvitationExpiredException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Gone,
+                Title = "A meghívó lejárt.",
+                Detail = "invitation-expired"
+            },
+            InvitationRevokedException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Gone,
+                Title = "A meghívó vissza lett vonva.",
+                Detail = "invitation-revoked"
+            },
+            InvitationAlreadyAcceptedException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Conflict,
+                Title = "A meghívó már el lett fogadva.",
+                Detail = "invitation-already-accepted"
+            },
+            EmailMismatchException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.UnprocessableEntity,
+                Title = "Email-cím eltérés.",
+                Detail = "email-mismatch"
             },
             NotFoundException => new ProblemDetails
             {

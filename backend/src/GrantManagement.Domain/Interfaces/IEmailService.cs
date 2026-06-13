@@ -10,4 +10,5 @@ public interface IEmailService
 {
     Task SendAsync(EmailMessage message, CancellationToken ct = default);
     Task SendBulkAsync(IEnumerable<EmailMessage> messages, CancellationToken ct = default);
+    Task SendInvitationAsync(string toEmail, string invitationUrl, CancellationToken ct = default);
 }

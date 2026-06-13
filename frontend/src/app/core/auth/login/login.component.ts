@@ -25,6 +25,16 @@ export class LoginComponent implements OnInit {
     const error = this.route.snapshot.queryParamMap.get('error');
     if (error === 'inactive') {
       this.errorMessage.set('A fiókod inaktív. Kérj segítséget az adminisztrátortól.');
+    } else if (error === 'no-invitation') {
+      this.errorMessage.set('Ez az e-mail cím nincs meghívva. Kérj meghívót az adminisztrátortól.');
+    } else if (error === 'invitation-expired') {
+      this.errorMessage.set('A meghívód lejárt. Kérj új meghívót az adminisztrátortól.');
+    } else if (error === 'invitation-revoked') {
+      this.errorMessage.set('A meghívódat visszavonták. Kérj új meghívót az adminisztrátortól.');
+    } else if (error === 'invitation-already-accepted') {
+      this.errorMessage.set('Ez a meghívó már felhasználásra került. Próbálj meg bejelentkezni.');
+    } else if (error === 'email-mismatch') {
+      this.errorMessage.set('A bejelentkező Google fiók e-mail címe nem egyezik a meghívóban szereplővel.');
     } else if (error === 'auth_failed') {
       this.errorMessage.set('Bejelentkezés sikertelen. Kérjük, próbálja újra.');
     }

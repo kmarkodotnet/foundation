@@ -1,4 +1,5 @@
 using GrantManagement.API.Common;
+using GrantManagement.Application.Auth.Commands.AcceptInvitation;
 using GrantManagement.Application.Auth.Commands.GoogleLogin;
 using GrantManagement.Application.Auth.Commands.Logout;
 using GrantManagement.Application.Auth.Commands.TestLogin;
@@ -46,8 +47,35 @@ public class AuthController : ApiControllerBase
     }
 
     /// <summary>
+    /// Accepts an invitation: exchanges a Google authorization code and invitation token for a JWT.
+    /// Creates the user account with the role specified in the invitation.
+    /// </summary>
+    /// <param name="command">Authorization code, redirect URI, and invitation token.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>JWT access token and user profile.</returns>
+    /// <response code="200">Invitation accepted, JWT returned.</response>
+    /// <response code="404">Invitation token not found.</response>
+    /// <response code="409">Invitation already accepted.</response>
+    /// <response code="410">Invitation expired or revoked.</response>
+    /// <response code="422">Email mismatch or validation error.</response>
+    [HttpPost("accept-invitation")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<AuthResultDto>> AcceptInvitation(
+        [FromBody] AcceptInvitationCommand command,
+        CancellationToken ct = default)
+    {
+        var result = await Sender.Send(command, ct);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Exchanges a Google OAuth authorization code for a JWT access token.
-    /// Creates a new user account with the Megtekinto role if the user does not exist yet.
+    /// Requires an active accepted user account — no auto-registration.
     /// </summary>
     /// <param name="command">The authorization code and redirect URI from the Google OAuth flow.</param>
     /// <param name="ct">Cancellation token.</param>

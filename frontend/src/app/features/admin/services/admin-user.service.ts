@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { AdminUser, SystemSettings } from '../models/admin-user.model';
+import { AdminUser, Invitation, InvitationStatus, SystemSettings } from '../models/admin-user.model';
 import { UserRole } from '../../../core/auth/models/user.model';
 import { environment } from '../../../../environments/environment';
 
@@ -9,6 +9,7 @@ export class AdminUserService {
   private readonly http = inject(HttpClient);
   private readonly usersBase = `${environment.apiUrl}/users`;
   private readonly settingsBase = `${environment.apiUrl}/system-settings`;
+  private readonly invitationsBase = `${environment.apiUrl}/invitations`;
 
   getAll(searchTerm?: string, role?: UserRole) {
     let params = new HttpParams();
@@ -35,5 +36,23 @@ export class AdminUserService {
 
   updateSettings(settings: Omit<SystemSettings, 'updatedAt'>) {
     return this.http.put<SystemSettings>(this.settingsBase, settings);
+  }
+
+  getInvitations(status?: InvitationStatus) {
+    let params = new HttpParams();
+    if (status) params = params.set('status', status);
+    return this.http.get<Invitation[]>(this.invitationsBase, { params });
+  }
+
+  createInvitation(email: string, role: UserRole) {
+    return this.http.post<Invitation>(this.invitationsBase, { email, role });
+  }
+
+  revokeInvitation(id: string) {
+    return this.http.put<Invitation>(`${this.invitationsBase}/${id}/revoke`, {});
+  }
+
+  resendInvitation(id: string) {
+    return this.http.post<Invitation>(`${this.invitationsBase}/${id}/resend`, {});
   }
 }

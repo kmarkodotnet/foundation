@@ -13,7 +13,7 @@ public class SystemSettingsConfiguration : IEntityTypeConfiguration<SystemSettin
 
         builder.Property(s => s.Id).ValueGeneratedNever();
         builder.Property(s => s.OrganizationName).HasMaxLength(200).IsRequired();
-        builder.Property(s => s.DefaultUserRole).HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(s => s.InvitationExpiryHours).IsRequired();
 
         builder.HasData(SystemSettings.CreateDefault());
     }

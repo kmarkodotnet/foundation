@@ -5,5 +5,5 @@ public record SystemSettingsDto(
     int SpendingWarningDays,
     int MaxFileSizeMb,
     string OrganizationName,
-    string DefaultUserRole,
+    int InvitationExpiryHours,
     DateTimeOffset UpdatedAt);

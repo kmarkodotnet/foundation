@@ -49,6 +49,7 @@ public static class DependencyInjection
 
         services.AddHangfireServer();
         services.AddScoped<DeadlineCheckJob>();
+        services.AddScoped<InvitationExpiryJob>();
         services.AddScoped<INotificationService, NotificationService>();
 
         services.AddHttpClient();

@@ -9,6 +9,7 @@ namespace GrantManagement.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    DbSet<Invitation> Invitations { get; }
     DbSet<GrantApp> Applications { get; }
     DbSet<WorkflowStep> WorkflowSteps { get; }
     DbSet<Document> Documents { get; }

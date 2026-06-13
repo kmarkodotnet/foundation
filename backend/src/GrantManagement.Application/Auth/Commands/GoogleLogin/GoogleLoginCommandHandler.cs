@@ -6,6 +6,7 @@ using GrantManagement.Domain.Exceptions;
 using GrantManagement.Domain.Interfaces.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GrantManagement.Application.Auth.Commands.GoogleLogin;
 
@@ -15,17 +16,20 @@ public sealed class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginComma
     private readonly IGoogleAuthService _googleAuthService;
     private readonly IJwtService _jwtService;
     private readonly IMapper _mapper;
+    private readonly ILogger<GoogleLoginCommandHandler> _logger;
 
     public GoogleLoginCommandHandler(
         IApplicationDbContext context,
         IGoogleAuthService googleAuthService,
         IJwtService jwtService,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<GoogleLoginCommandHandler> logger)
     {
         _context = context;
         _googleAuthService = googleAuthService;
         _jwtService = jwtService;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<AuthResultDto> Handle(GoogleLoginCommand request, CancellationToken cancellationToken)
@@ -36,35 +40,20 @@ public sealed class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginComma
             cancellationToken);
 
         var appUser = await _context.AppUsers
-            .FirstOrDefaultAsync(u => u.GoogleId == googleUser.GoogleId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email == googleUser.Email, cancellationToken);
 
         if (appUser is null)
         {
-            var settings = await _context.SystemSettings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(cancellationToken);
-
-            var defaultRole = settings?.DefaultUserRole ?? Domain.Enums.UserRole.Megtekinto;
-
-            // First user ever becomes Admin automatically
-            var anyUserExists = await _context.AppUsers.AsNoTracking().AnyAsync(cancellationToken);
-            if (!anyUserExists) defaultRole = Domain.Enums.UserRole.Admin;
-
-            appUser = AppUser.CreateFromGoogle(
-                googleUser.GoogleId,
-                googleUser.Email,
-                googleUser.FullName,
-                googleUser.PictureUrl,
-                defaultRole);
-
-            _context.AppUsers.Add(appUser);
-        }
-        else
-        {
-            EnsureUserIsActive(appUser);
-            appUser.SyncFromGoogle(googleUser.FullName, googleUser.PictureUrl);
+            _logger.LogWarning(
+                "No-invitation login attempt: {Email}",
+                googleUser.Email);
+            throw new NoInvitationException(googleUser.Email);
         }
 
+        if (appUser.Status == UserStatus.Inactive)
+            throw new InactiveUserException();
+
+        appUser.SyncFromGoogle(googleUser.FullName, googleUser.PictureUrl);
         appUser.RecordLogin(DateTimeOffset.UtcNow);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -72,11 +61,5 @@ public sealed class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginComma
         var userProfile = _mapper.Map<UserProfileDto>(appUser);
 
         return new AuthResultDto(token, _jwtService.ExpiresInSeconds, userProfile);
-    }
-
-    private static void EnsureUserIsActive(AppUser user)
-    {
-        if (user.Status == UserStatus.Inactive)
-            throw new InactiveUserException();
     }
 }

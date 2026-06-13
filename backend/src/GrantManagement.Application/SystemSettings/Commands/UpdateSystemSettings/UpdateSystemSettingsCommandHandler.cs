@@ -33,7 +33,7 @@ public class UpdateSystemSettingsCommandHandler
             request.SpendingWarningDays,
             request.MaxFileSizeMb,
             request.OrganizationName,
-            request.DefaultUserRole);
+            request.InvitationExpiryHours);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -42,7 +42,7 @@ public class UpdateSystemSettingsCommandHandler
             settings.SpendingWarningDays,
             settings.MaxFileSizeMb,
             settings.OrganizationName,
-            settings.DefaultUserRole.ToString(),
+            settings.InvitationExpiryHours,
             settings.UpdatedAt);
     }
 }

@@ -1,6 +1,5 @@
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Application.SystemSettings.DTOs;
-using GrantManagement.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,7 +29,7 @@ public class GetSystemSettingsQueryHandler
             settings.SpendingWarningDays,
             settings.MaxFileSizeMb,
             settings.OrganizationName,
-            settings.DefaultUserRole.ToString(),
+            settings.InvitationExpiryHours,
             settings.UpdatedAt);
     }
 }

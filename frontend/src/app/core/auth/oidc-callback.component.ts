@@ -35,17 +35,35 @@ export class OidcCallbackComponent implements OnInit {
 
     this.authService.clearOAuthState();
 
-    this.authService
-      .handleGoogleCallback(code, environment.google.redirectUri)
-      .subscribe({
-        next: () => this.router.navigate(['/applications']),
-        error: (err) => {
-          if (err?.status === 403) {
-            this.router.navigate(['/login'], { queryParams: { error: 'inactive' } });
-          } else {
-            this.router.navigate(['/login'], { queryParams: { error: 'auth_failed' } });
-          }
-        },
-      });
+    const invitationToken = this.authService.getStoredInvitationToken();
+    const call$ = invitationToken
+      ? this.authService.acceptInvitation(code, environment.google.redirectUri, invitationToken)
+      : this.authService.handleGoogleCallback(code, environment.google.redirectUri);
+
+    if (invitationToken) {
+      this.authService.clearInvitationToken();
+    }
+
+    call$.subscribe({
+      next: () => this.router.navigate(['/applications']),
+      error: (err) => {
+        const detail: string = err?.error?.detail ?? '';
+        if (detail === 'no-invitation') {
+          this.router.navigate(['/login'], { queryParams: { error: 'no-invitation' } });
+        } else if (detail === 'invitation-expired') {
+          this.router.navigate(['/login'], { queryParams: { error: 'invitation-expired' } });
+        } else if (detail === 'invitation-revoked') {
+          this.router.navigate(['/login'], { queryParams: { error: 'invitation-revoked' } });
+        } else if (detail === 'invitation-already-accepted') {
+          this.router.navigate(['/login'], { queryParams: { error: 'invitation-already-accepted' } });
+        } else if (detail === 'email-mismatch') {
+          this.router.navigate(['/login'], { queryParams: { error: 'email-mismatch' } });
+        } else if (err?.status === 403) {
+          this.router.navigate(['/login'], { queryParams: { error: 'inactive' } });
+        } else {
+          this.router.navigate(['/login'], { queryParams: { error: 'auth_failed' } });
+        }
+      },
+    });
   }
 }

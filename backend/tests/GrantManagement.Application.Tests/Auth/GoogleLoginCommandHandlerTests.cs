@@ -9,6 +9,7 @@ using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Exceptions;
 using GrantManagement.Domain.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace GrantManagement.Application.Tests.Auth;
@@ -18,6 +19,7 @@ public class GoogleLoginCommandHandlerTests
     private readonly Mock<IApplicationDbContext> _contextMock = new();
     private readonly Mock<IGoogleAuthService> _googleAuthServiceMock = new();
     private readonly Mock<IJwtService> _jwtServiceMock = new();
+    private readonly Mock<ILogger<GoogleLoginCommandHandler>> _loggerMock = new();
     private readonly IMapper _mapper;
     private readonly GoogleLoginCommandHandler _sut;
 
@@ -33,73 +35,53 @@ public class GoogleLoginCommandHandlerTests
             _contextMock.Object,
             _googleAuthServiceMock.Object,
             _jwtServiceMock.Object,
-            _mapper);
+            _mapper,
+            _loggerMock.Object);
     }
 
     [Fact]
-    public async Task Handle_WhenNewGoogleUserAndOthersExist_ShouldCreateWithMegtekintoRole()
+    public async Task Handle_WhenUnknownEmail_ShouldThrowNoInvitationException()
     {
         // Arrange
-        var existingUser = AppUser.CreateFromGoogle("google-id-other", "other@test.com", "Other", null);
-        var googleInfo = new GoogleUserInfo("google-id-new", "new@test.com", "New User", null);
+        var googleInfo = new GoogleUserInfo("google-id-new", "unknown@test.com", "Unknown User", null);
         var command = new GoogleLoginCommand("valid-code", "https://example.com/callback");
 
         _googleAuthServiceMock
             .Setup(g => g.ExchangeCodeAsync(command.AuthorizationCode, command.RedirectUri, It.IsAny<CancellationToken>()))
             .ReturnsAsync(googleInfo);
 
-        // Pre-existing user ensures AnyAsync() returns true → default Megtekinto role applied
-        var appUsers = new List<AppUser> { existingUser };
-        var mockDbSet = CreateMockDbSet(appUsers);
-
-        _contextMock.Setup(c => c.AppUsers).Returns(mockDbSet.Object);
-        _contextMock.Setup(c => c.SystemSettings).Returns(CreateEmptySystemSettingsMock().Object);
-        _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        var appUsers = new List<AppUser>(); // no matching user
+        _contextMock.Setup(c => c.AppUsers).Returns(CreateMockDbSet(appUsers).Object);
 
         // Act
-        var result = await _sut.Handle(command, CancellationToken.None);
+        Func<Task> act = () => _sut.Handle(command, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result.AccessToken.Should().Be("test-jwt-token");
-        result.ExpiresIn.Should().Be(28800);
-        result.User.Email.Should().Be("new@test.com");
-        result.User.Role.Should().Be("Megtekinto");
-
-        mockDbSet.Verify(d => d.Add(It.Is<AppUser>(u =>
-            u.GoogleId == "google-id-new" &&
-            u.Email == "new@test.com" &&
-            u.Role == GrantManagement.Domain.Enums.UserRole.Megtekinto)), Times.Once);
-
-        _contextMock.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        await act.Should().ThrowAsync<NoInvitationException>();
+        _contextMock.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WhenFirstEverGoogleUser_ShouldCreateWithAdminRole()
+    public async Task Handle_WhenUnknownEmail_ShouldNotCallAppUsersAdd()
     {
         // Arrange
-        var googleInfo = new GoogleUserInfo("google-id-first", "first@test.com", "First User", null);
+        var googleInfo = new GoogleUserInfo("google-id-new", "unknown@test.com", "Unknown User", null);
         var command = new GoogleLoginCommand("valid-code", "https://example.com/callback");
 
         _googleAuthServiceMock
             .Setup(g => g.ExchangeCodeAsync(command.AuthorizationCode, command.RedirectUri, It.IsAny<CancellationToken>()))
             .ReturnsAsync(googleInfo);
 
-        var appUsers = new List<AppUser>(); // empty DB → first user
+        var appUsers = new List<AppUser>();
         var mockDbSet = CreateMockDbSet(appUsers);
-
         _contextMock.Setup(c => c.AppUsers).Returns(mockDbSet.Object);
-        _contextMock.Setup(c => c.SystemSettings).Returns(CreateEmptySystemSettingsMock().Object);
-        _contextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        var result = await _sut.Handle(command, CancellationToken.None);
+        Func<Task> act = () => _sut.Handle(command, CancellationToken.None);
 
         // Assert
-        result.User.Role.Should().Be("Admin");
-
-        mockDbSet.Verify(d => d.Add(It.Is<AppUser>(u =>
-            u.Role == GrantManagement.Domain.Enums.UserRole.Admin)), Times.Once);
+        await act.Should().ThrowAsync<NoInvitationException>();
+        mockDbSet.Verify(d => d.Add(It.IsAny<AppUser>()), Times.Never);
     }
 
     [Fact]
@@ -148,9 +130,7 @@ public class GoogleLoginCommandHandlerTests
             .ReturnsAsync(googleInfo);
 
         var appUsers = new List<AppUser> { inactiveUser };
-        var mockDbSet = CreateMockDbSet(appUsers);
-
-        _contextMock.Setup(c => c.AppUsers).Returns(mockDbSet.Object);
+        _contextMock.Setup(c => c.AppUsers).Returns(CreateMockDbSet(appUsers).Object);
 
         // Act
         Func<Task> act = () => _sut.Handle(command, CancellationToken.None);
@@ -180,26 +160,5 @@ public class GoogleLoginCommandHandlerTests
         mockDbSet.As<IQueryable<AppUser>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
 
         return mockDbSet;
-    }
-
-    private static Mock<DbSet<GrantManagement.Domain.Entities.SystemSettings>> CreateEmptySystemSettingsMock()
-    {
-        var data = new List<GrantManagement.Domain.Entities.SystemSettings>();
-        var queryable = data.AsQueryable();
-        var mock = new Mock<DbSet<GrantManagement.Domain.Entities.SystemSettings>>();
-
-        mock.As<IAsyncEnumerable<GrantManagement.Domain.Entities.SystemSettings>>()
-            .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-            .Returns(new TestAsyncEnumerator<GrantManagement.Domain.Entities.SystemSettings>(data.GetEnumerator()));
-
-        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>()
-            .Setup(m => m.Provider)
-            .Returns(new TestAsyncQueryProvider<GrantManagement.Domain.Entities.SystemSettings>(queryable.Provider));
-
-        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>().Setup(m => m.Expression).Returns(queryable.Expression);
-        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
-        mock.As<IQueryable<GrantManagement.Domain.Entities.SystemSettings>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
-
-        return mock;
     }
 }

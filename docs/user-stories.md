@@ -41,7 +41,7 @@ Kapcsolódó FS fejezet: [X.X]
 
 ## Tartalomjegyzék
 
-- [EPIC-01: Hitelesítés és felhasználókezelés](#epic-01-hitelesítés-és-felhasználókezelés)
+- [EPIC-01: Hitelesítés és felhasználókezelés](#epic-01-hitelesítés-és-felhasználókezelés) *(US-001 – US-007)*
 - [EPIC-02: Pályázati felhívások kezelése](#epic-02-pályázati-felhívások-kezelése)
 - [EPIC-03: Pályázati anyag és beadás](#epic-03-pályázati-anyag-és-beadás)
 - [EPIC-04: Pályázati eredmény kezelése](#epic-04-pályázati-eredmény-kezelése)
@@ -60,7 +60,7 @@ Kapcsolódó FS fejezet: [X.X]
 - [EPIC-17: Keresés, szűrés, listázás](#epic-17-keresés-szűrés-listázás)
 - [EPIC-18: Értesítések és határidőfigyelés](#epic-18-értesítések-és-határidőfigyelés)
 - [EPIC-19: Audit napló](#epic-19-audit-napló)
-- [EPIC-20: Adminisztrációs funkciók](#epic-20-adminisztrációs-funkciók)
+- [EPIC-20: Adminisztrációs funkciók](#epic-20-adminisztrációs-funkciók) *(US-160 – US-165)*
 
 ---
 
@@ -77,10 +77,11 @@ hogy ne kelljen külön jelszót kezelnem, és biztonságosan hozzáférhessek a
 **Elfogadási kritériumok:**
 - AC1: A bejelentkezési oldalon megjelenik a „Bejelentkezés Google-fiókkal" gomb.
 - AC2: A gombra kattintva Google OAuth 2.0 folyamat indul.
-- AC3: Sikeres hitelesítés után a felhasználó átkerül a főoldalra (dashboard).
-- AC4: Ha a felhasználó Google-fiókja még nincs regisztrálva a rendszerben, automatikusan létrejön egy fiók „Megtekintő" alapértelmezett szerepkörrel.
+- AC3: Sikeres hitelesítés után a rendszer ellenőrzi, hogy az e-mail cím rendelkezik-e aktív fiókkal; ha igen, a felhasználó átkerül a főoldalra (dashboard).
+- AC4: Ha a bejelentkező Google-fiók e-mail cím nem rendelkezik aktív, elfogadott fiókkal, a bejelentkezés megtagadva és a következő üzenet jelenik meg: „Hozzáféréshez meghívó szükséges. Kérj segítséget az adminisztrátortól."
 - AC5: Ha a felhasználó fiókja inaktív, bejelentkezési kísérlet után hibaüzenet jelenik meg: „A fiókod inaktív. Kérj segítséget az adminisztrátortól."
 - AC6: A munkamenet 8 óra inaktivitás után automatikusan lejár, és a felhasználó visszakerül a bejelentkezési oldalra.
+- AC7: Meghívó nélküli belépési kísérlet naplózódik (e-mail cím, IP, időbélyeg).
 
 **Prioritás:** Magas  
 **Méret:** M  
@@ -162,6 +163,48 @@ hogy csak a számomra releváns értesítések érkezzenek.
 **Méret:** S  
 **Függőségek:** US-004  
 **FS fejezet:** 25, 28.3
+
+---
+
+### US-006 | [Auth] Meghívó-alapú belépési feltétel érvényesítése
+
+Mint **rendszer**,  
+szeretném megakadályozni, hogy meghívó nélküli Google-fiókkal bárki hozzáférjen a rendszerhez,  
+hogy kizárólag az Admin által jóváhagyott személyek férhessenek hozzá az alkalmazáshoz.
+
+**Elfogadási kritériumok:**
+- AC1: Google OAuth sikeres hitelesítése után a backend ellenőrzi, hogy az autentikált e-mail cím szerepel-e aktív (`ACCEPTED`) fiókként az adatbázisban.
+- AC2: Ha nem szerepel, a backend 403-as választ ad; a frontend a következő hibaoldalt jeleníti meg: „Hozzáféréshez meghívó szükséges. Kérj segítséget az adminisztrátortól."
+- AC3: A sikertelen belépési kísérlet naplózódik az audit naplóban (e-mail cím, IP-cím, időbélyeg).
+- AC4: Az elutasított felhasználó Google-fiókjából nem kerül sor semmilyen adat tárolására a rendszerben.
+- AC5: A bejelentkezési oldalon nem jelenik meg regisztrációs lehetőség; csak a „Bejelentkezés Google-fiókkal" gomb érhető el.
+
+**Prioritás:** Magas  
+**Méret:** S  
+**Függőségek:** US-001  
+**FS fejezet:** 26.1, 31.1
+
+---
+
+### US-007 | [Auth] Meghívó elfogadása és fiók aktiválása
+
+Mint **meghívott felhasználó**,  
+szeretnék a kapott meghívó linken keresztül regisztrálni a rendszerbe,  
+hogy hozzáférhessek az alkalmazáshoz a számomra előre beállított szerepkörrel.
+
+**Elfogadási kritériumok:**
+- AC1: A meghívó e-mailben szereplő link a bejelentkezési oldalra irányít, ahol a Google OAuth folyamat indul el.
+- AC2: Sikeres Google-hitelesítés után a rendszer ellenőrzi, hogy a bejelentkezett e-mail cím megegyezik-e a meghívóban szereplővel.
+- AC3: Egyezés esetén a fiók automatikusan létrejön az előre beállított szerepkörrel, és a felhasználó átkerül a főoldalra.
+- AC4: Eltérés esetén hibaüzenet jelenik meg: „A Google-fiókod e-mail címe nem egyezik a meghívóban szereplő címmel. Jelentkezz be azzal a fiókkal, amelyre a meghívót kaptad."
+- AC5: Lejárt meghívó linkre kattintva a felhasználó tájékoztató oldalt lát: „Ez a meghívó lejárt. Kérj új meghívót az adminisztrátortól."
+- AC6: Visszavont (`REVOKED`) meghívó esetén a felhasználó tájékoztató üzenetet kap.
+- AC7: Sikeres aktiválás után a meghívó státusza `ACCEPTED`-re vált; a link többé nem használható.
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-006, US-164  
+**FS fejezet:** 26.1, 31.1
 
 ---
 
@@ -1309,7 +1352,7 @@ hogy a rendszer viselkedése az alapítvány igényeihez igazítható legyen.
 
 **Elfogadási kritériumok:**
 - AC1: A Rendszerbeállítások oldal elérhető az Admin menüből.
-- AC2: Módosítható beállítások: értesítési előfigyelmeztetés napjainak száma (default: 7), maximum fájlméret MB-ban (default: 50), szervezet neve (megjelenik a UI-ban), alapértelmezett szerepkör új felhasználóknak.
+- AC2: Módosítható beállítások: értesítési előfigyelmeztetés napjainak száma (default: 7), maximum fájlméret MB-ban (default: 50), szervezet neve (megjelenik a UI-ban), meghívó érvényességi ideje órában (default: 72).
 - AC3: Módosítás mentése után az értékek azonnal érvénybe lépnek.
 - AC4: Érvénytelen értékek (pl. negatív szám) esetén validációs hibaüzenet jelenik meg.
 
@@ -1317,6 +1360,50 @@ hogy a rendszer viselkedése az alapítvány igényeihez igazítható legyen.
 **Méret:** S  
 **Függőségek:** –  
 **FS fejezet:** 26.2
+
+---
+
+### US-164 | [Admin] Felhasználói meghívó létrehozása és kiküldése
+
+Mint **adminisztrátor**,  
+szeretnék új felhasználót meghívni a rendszerbe e-mail cím és szerepkör megadásával,  
+hogy csak általam jóváhagyott személyek férhessenek hozzá az alkalmazáshoz.
+
+**Elfogadási kritériumok:**
+- AC1: Az „Új meghívó" gomb elérhető a Felhasználók listázása oldalon.
+- AC2: A meghívó űrlap tartalmazza: e-mail cím (kötelező, érvényes formátum), szerepkör (kötelező, legördülő: Admin / Elnök / Pályázati munkatárs / Pénzügyes / Megtekintő).
+- AC3: Ha az adott e-mail cím már rendelkezik aktív fiókkal, a rendszer hibaüzenetet jelenít meg és nem küld meghívót.
+- AC4: Ha az adott e-mail cím már rendelkezik `PENDING` státuszú meghívóval, a rendszer figyelmezteti az Admint és felajánlja az újraküldést.
+- AC5: Sikeres meghívó létrehozás után a rendszer elküldi a meghívó e-mailt az időkorlátozott, egyszer használatos tokennel.
+- AC6: A meghívó e-mail tartalmazza a rendszer nevét, a meghívott szerepkört és az elfogadási linket.
+- AC7: Sikeres küldés után visszajelzés jelenik meg: „Meghívó elküldve: [e-mail cím]".
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-160  
+**FS fejezet:** 26.1, 28.1
+
+---
+
+### US-165 | [Admin] Meghívók listázása és kezelése
+
+Mint **adminisztrátor**,  
+szeretném áttekinteni a kiküldött meghívókat és kezelni a függőben lévőket,  
+hogy nyomon követhessem, ki fogadta el a meghívást, és szükség esetén újra küldhessek vagy visszavonhassak.
+
+**Elfogadási kritériumok:**
+- AC1: A Felhasználók oldalon elérhető egy „Meghívók" tab vagy szekció, amely listázza az összes meghívót.
+- AC2: A lista oszlopai: e-mail cím, szerepkör, státusz (`PENDING` / `ACCEPTED` / `EXPIRED` / `REVOKED`), kiküldés időpontja, lejárat időpontja.
+- AC3: Szűrés lehetséges státusz szerint.
+- AC4: `PENDING` státuszú meghívónál elérhető a „Visszavonás" gomb; visszavonás után a státusz `REVOKED`-ra vált.
+- AC5: `EXPIRED` vagy `REVOKED` státuszú meghívónál elérhető az „Újraküldés" gomb; újraküldés új tokent generál, az érvényességi idő visszaáll, a státusz `PENDING`-re vált.
+- AC6: `ACCEPTED` státuszú meghívónál semmilyen módosítási lehetőség nem érhető el.
+- AC7: Visszavonás és újraküldés naplózódik az audit naplóban.
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-164  
+**FS fejezet:** 26.1
 
 ---
 
@@ -1329,6 +1416,8 @@ hogy a rendszer viselkedése az alapítvány igényeihez igazítható legyen.
 | US-003 | Auth | Jogosultság megakadályozása | Magas | M | Rendszer |
 | US-004 | Profil | Saját profil megtekintése | Közepes | S | Minden |
 | US-005 | Profil | Értesítési beállítások | Közepes | S | Minden |
+| US-006 | Auth | Meghívó-alapú belépési feltétel | Magas | S | Rendszer |
+| US-007 | Auth | Meghívó elfogadása és fiók aktiválás | Magas | M | Meghívott |
 | US-010 | Felhívás | Új felhívás rögzítése | Magas | M | Munkatárs |
 | US-011 | Felhívás | Felhívás szerkesztése | Magas | S | Munkatárs |
 | US-012 | Felhívás | Felhívás megtekintése | Magas | M | Minden |
@@ -1384,13 +1473,15 @@ hogy a rendszer viselkedése az alapítvány igényeihez igazítható legyen.
 | US-161 | Admin | Szerepkör hozzárendelése | Magas | S | Admin |
 | US-162 | Admin | Inaktiválás/reaktiválás | Közepes | S | Admin |
 | US-163 | Admin | Rendszerbeállítások | Közepes | S | Admin |
+| US-164 | Admin | Meghívó létrehozása és küldése | Magas | M | Admin |
+| US-165 | Admin | Meghívók listázása és kezelése | Magas | M | Admin |
 
 ---
 
 ## Javasolt sprint-csoportosítás (MVP-re fókuszálva)
 
 ### Sprint 1 – Alapinfrastruktúra és hitelesítés
-US-001, US-002, US-003, US-160, US-161, US-162
+US-001, US-002, US-003, US-006, US-007, US-160, US-161, US-162, US-164, US-165
 
 ### Sprint 2 – Pályázatkezelés alapjai
 US-010, US-011, US-012, US-100, US-101, US-120

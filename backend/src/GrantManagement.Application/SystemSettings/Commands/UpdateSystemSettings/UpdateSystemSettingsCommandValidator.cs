@@ -22,5 +22,9 @@ public class UpdateSystemSettingsCommandValidator
         RuleFor(x => x.OrganizationName)
             .NotEmpty().WithMessage("A szervezet neve kötelező.")
             .MaximumLength(200).WithMessage("A szervezet neve legfeljebb 200 karakter lehet.");
+
+        RuleFor(x => x.InvitationExpiryHours)
+            .InclusiveBetween(1, 168)
+            .WithMessage("A meghívó érvényességi ideje 1 és 168 óra között lehet.");
     }
 }

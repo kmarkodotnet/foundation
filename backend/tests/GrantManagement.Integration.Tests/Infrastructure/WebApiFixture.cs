@@ -31,6 +31,7 @@ public sealed class WebApiFixture : IAsyncLifetime
     private WebApplicationFactory<Program>? _factory;
 
     public Mock<IGoogleAuthService> GoogleAuthMock { get; } = new();
+    public Mock<IEmailService> EmailServiceMock { get; } = new();
     public HttpClient Client { get; private set; } = null!;
     public string ConnectionString { get; private set; } = string.Empty;
     public bool DockerAvailable => _dockerAvailable;
@@ -111,6 +112,14 @@ public sealed class WebApiFixture : IAsyncLifetime
                     services.AddSingleton<IFileStorageService>(_ => new LocalFileStorageService(testUploadsPath));
 
                     services.AddScoped<IGoogleAuthService>(_ => GoogleAuthMock.Object);
+
+                    // Override email service to prevent real SMTP calls in tests
+                    var emailDescriptor = services.SingleOrDefault(
+                        d => d.ServiceType == typeof(IEmailService));
+                    if (emailDescriptor is not null)
+                        services.Remove(emailDescriptor);
+
+                    services.AddScoped<IEmailService>(_ => EmailServiceMock.Object);
                 });
             });
 

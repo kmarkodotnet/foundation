@@ -8,6 +8,7 @@ import { environment } from '../../../environments/environment';
 
 const TOKEN_KEY = 'gm_token';
 const OAUTH_STATE_KEY = 'gm_oauth_state';
+const INVITATION_TOKEN_KEY = 'gm_invitation_token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -72,6 +73,34 @@ export class AuthService {
         }),
         map(() => undefined as void)
       );
+  }
+
+  acceptInvitation(code: string, redirectUri: string, invitationToken: string): Observable<void> {
+    return this.http
+      .post<AuthResultDto>(`${environment.apiUrl}/auth/accept-invitation`, {
+        authorizationCode: code,
+        redirectUri,
+        invitationToken,
+      })
+      .pipe(
+        tap((result: AuthResultDto) => {
+          sessionStorage.setItem(TOKEN_KEY, result.accessToken);
+          this.setProfile(result.user);
+        }),
+        map(() => undefined as void)
+      );
+  }
+
+  storeInvitationToken(token: string): void {
+    sessionStorage.setItem(INVITATION_TOKEN_KEY, token);
+  }
+
+  getStoredInvitationToken(): string | null {
+    return sessionStorage.getItem(INVITATION_TOKEN_KEY);
+  }
+
+  clearInvitationToken(): void {
+    sessionStorage.removeItem(INVITATION_TOKEN_KEY);
   }
 
   // -----------------------------------------------------------------------

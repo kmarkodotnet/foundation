@@ -28,6 +28,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<CodeList> CodeLists => Set<CodeList>();
     public DbSet<CodeListItem> CodeListItems => Set<CodeListItem>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Domain.Entities.SystemSettings> SystemSettings => Set<Domain.Entities.SystemSettings>();

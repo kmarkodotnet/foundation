@@ -1,6 +1,8 @@
 /**
  * 1. kategória – Hitelesítés és munkamenet
- * Forgatókönyvek: TS-001 … TS-007
+ * Forgatókönyvek: TS-001 … TS-008
+ *
+ * Kapcsolódó US-ok: US-001, US-002, US-003, US-006, US-007
  *
  * Stratégia:
  *  - Google OAuth flow: OidcCallbackComponent-en keresztül szimulálva
@@ -8,6 +10,8 @@
  *  - Hitelesített állapot: JWT-t injektálunk az addInitScript-tel
  *    (az APP_INITIALIZER restoreSession() előtt fut)
  *  - Backend API-k: page.route()-tal mockoljuk ahol szükséges
+ *  - Meghívó flow: /auth/accept-invitation?token=... útvonal, backend
+ *    POST /api/v1/auth/accept-invitation végponton keresztül aktivál
  */
 
 import { test, expect, simulateOAuthLogin, TEST_USERS } from '../../fixtures/auth.fixture';
@@ -83,23 +87,76 @@ test.describe('TS-001 | Sikeres Google-bejelentkezés', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TS-002 | Első bejelentkezés – Megtekintő szerepkör automatikus kiosztása
+// TS-002 | Meghívó nélküli belépési kísérlet visszautasítása (US-006)
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe('TS-002 | Első bejelentkezés – Megtekintő alapértelmezett szerepkör', () => {
-  test('Új felhasználó Megtekintő szerepkörrel jön létre', async ({ page }) => {
-    const newUser = TEST_USERS['Megtekinto'];
+test.describe('TS-002 | Meghívó nélküli belépési kísérlet visszautasítása', () => {
+  test('Meghívó nélküli Google-fiók esetén a backend 403-at ad és /login?error=no-invitation-re irányít', async ({
+    page,
+  }) => {
+    const testState = 'e2e-no-invite-state-test';
 
-    await simulateOAuthLogin(page, newUser, async () => {
-      await mockApplicationsList(page);
-      await mockSignalR(page);
+    // Backend visszautasítja: nincs aktív meghívó ehhez az email-hez
+    await page.route('**/api/v1/auth/google-callback', async (route) => {
+      await route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'Forbidden', detail: 'no-invitation' }),
+      });
     });
 
-    await page.waitForURL('**/applications**', { timeout: 10_000 });
+    await page.goto('/login');
+    await page.evaluate(
+      ({ key, value }: { key: string; value: string }) => sessionStorage.setItem(key, value),
+      { key: 'gm_oauth_state', value: testState },
+    );
 
-    // Open profile menu to see the user info
-    await page.getByRole('button', { name: /profil menü/i }).click();
-    const profileName = page.getByText(newUser.name);
-    await expect(profileName).toBeVisible();
+    await page.goto(`/auth/callback?code=uninvited-code&state=${testState}`);
+
+    // OidcCallbackComponent 403 + detail=no-invitation → /login?error=no-invitation
+    await page.waitForURL('**/login**', { timeout: 10_000 });
+    expect(page.url()).toContain('error=no-invitation');
+  });
+
+  test('/login?error=no-invitation URL-n megjelenik a helyes hibaüzenet', async ({ page }) => {
+    await page.goto('/login?error=no-invitation');
+
+    const errorDiv = page.locator('[role="alert"]');
+    await expect(errorDiv).toBeVisible();
+    await expect(errorDiv).toContainText('nincs meghívva');
+    await expect(errorDiv).toContainText('adminisztrátortól');
+  });
+
+  test('Bejelentkezés gomb látható a meghívó hibaüzenet után is', async ({ page }) => {
+    await page.goto('/login?error=no-invitation');
+
+    const loginBtn = page.getByRole('button', { name: /bejelentkezés google-fiókkal/i });
+    await expect(loginBtn).toBeVisible();
+  });
+
+  test('Meghívó nélküli kísérletnél fiók nem jön létre (nincs GET /api/v1/users/me hívás)', async ({
+    page,
+  }) => {
+    const testState = 'e2e-no-invite-me-check';
+    let meCalled = false;
+
+    await page.route('**/api/v1/auth/google-callback', async (route) => {
+      await route.fulfill({ status: 403, contentType: 'application/json', body: '{}' });
+    });
+
+    await page.route('**/api/v1/users/me', async (route) => {
+      meCalled = true;
+      await route.continue();
+    });
+
+    await page.goto('/login');
+    await page.evaluate(
+      ({ key, value }: { key: string; value: string }) => sessionStorage.setItem(key, value),
+      { key: 'gm_oauth_state', value: testState },
+    );
+    await page.goto(`/auth/callback?code=uninvited-code&state=${testState}`);
+    await page.waitForURL('**/login**', { timeout: 10_000 });
+
+    expect(meCalled).toBe(false);
   });
 });
 
@@ -346,5 +403,179 @@ test.describe('TS-007 | Jogosulatlan hozzáférés megakadályozása', () => {
   test('Bejelentkezés nélküli API-hívás 401-et kap', async ({ page }) => {
     const response = await page.request.get(`${BASE}/api/v1/applications`);
     expect(response.status()).toBe(401);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TS-008 | Meghívó elfogadása és fiók aktiválása (US-007)
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('TS-008 | Meghívó elfogadása és fiók aktiválása', () => {
+  const VALID_TOKEN = 'valid-invite-token-abc123456789012';
+
+  /**
+   * Szimulál egy teljes meghívó-elfogadási flow-t:
+   * 1. Beállítja a gm_oauth_state-t és gm_invitation_token-t sessionStorage-ban
+   * 2. Navigál az /auth/callback?code=...&state=... URL-re
+   * Az OidcCallbackComponent észleli a gm_invitation_token-t és acceptInvitation()-t hív.
+   */
+  async function simulateInvitationCallback(
+    page: import('@playwright/test').Page,
+    invitationToken: string,
+    code: string,
+  ) {
+    const testState = `e2e-invite-state-${invitationToken}`;
+    await page.goto('/login');
+    await page.evaluate(
+      ({ state, invToken }: { state: string; invToken: string }) => {
+        sessionStorage.setItem('gm_oauth_state', state);
+        sessionStorage.setItem('gm_invitation_token', invToken);
+      },
+      { state: testState, invToken: invitationToken },
+    );
+    await page.goto(`/auth/callback?code=${code}&state=${testState}`);
+  }
+
+  test('Érvényes meghívó linkre navigálva (AcceptInvitationComponent) Google OAuth indul', async ({ page }) => {
+    let capturedUrl = '';
+    page.on('request', (req) => {
+      if (req.url().includes('accounts.google.com')) capturedUrl = req.url();
+    });
+    await page.route('https://accounts.google.com/**', (route) => route.abort());
+
+    // Az /auth/accept?token=... az AcceptInvitationComponent-et tölti be
+    await page.goto(`/auth/accept?token=${VALID_TOKEN}`);
+    // A komponens ngOnInit után automatikusan nem indítja az OAuth-ot,
+    // de a gomb kattintásra igen
+    await page.getByRole('button', { name: /elfogadás google-lel/i }).click();
+    await page.waitForTimeout(1000);
+
+    expect(capturedUrl).toContain('accounts.google.com/o/oauth2/v2/auth');
+  });
+
+  test('/auth/accept token nélkül – hibaüzenet jelenik meg', async ({ page }) => {
+    await page.goto('/auth/accept');
+
+    await expect(page.getByText(/érvénytelen meghívó link/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /elfogadás/i })).toHaveCount(0);
+  });
+
+  test('Érvényes meghívó és egyező email – alkalmazások oldalra navigál', async ({ page }) => {
+    await page.route('**/api/v1/auth/accept-invitation', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5LCJlbWFpbCI6InVqQHRlc3QuaHUiLCJuYW1lIjoiVWogRmVsc3puYWzDsyIsInJvbGUiOiJQYWx5YXphdGlNdW5rYXRhcnMiLCJ1c2VySWQiOiJuZXctdXNlci1pZCJ9.sig',
+            expiresIn: 28800,
+            user: {
+              id: 'new-user-id',
+              fullName: 'Új Felhasználó',
+              email: 'uj@teszt.hu',
+              role: 'PalyazatiMunkatars',
+            },
+          }),
+        });
+      }
+    });
+
+    await mockApplicationsList(page);
+    await mockSignalR(page);
+
+    await simulateInvitationCallback(page, VALID_TOKEN, 'invite-code');
+
+    await page.waitForURL('**/applications**', { timeout: 10_000 });
+    expect(page.url()).toContain('/applications');
+  });
+
+  test('Lejárt meghívó tokennél a login oldalon lejárt-hibaüzenet jelenik meg', async ({ page }) => {
+    await page.route('**/api/v1/auth/accept-invitation', async (route) => {
+      await route.fulfill({
+        status: 410,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'Gone', detail: 'invitation-expired' }),
+      });
+    });
+
+    await simulateInvitationCallback(page, 'expired-token-0000000000000000000', 'exp-code');
+
+    await page.waitForURL('**/login**', { timeout: 10_000 });
+    expect(page.url()).toContain('error=invitation-expired');
+    await expect(page.locator('[role="alert"]')).toContainText('lejárt');
+    await expect(page.locator('[role="alert"]')).toContainText('adminisztrátortól');
+  });
+
+  test('Visszavont meghívó tokennél a login oldalon visszavonás-hibaüzenet jelenik meg', async ({ page }) => {
+    await page.route('**/api/v1/auth/accept-invitation', async (route) => {
+      await route.fulfill({
+        status: 410,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'Gone', detail: 'invitation-revoked' }),
+      });
+    });
+
+    await simulateInvitationCallback(page, 'revoked-token-0000000000000000000', 'rev-code');
+
+    await page.waitForURL('**/login**', { timeout: 10_000 });
+    expect(page.url()).toContain('error=invitation-revoked');
+    await expect(page.locator('[role="alert"]')).toContainText('visszavon');
+  });
+
+  test('E-mail eltérés esetén a login oldalon email-mismatch hibaüzenet jelenik meg', async ({ page }) => {
+    await page.route('**/api/v1/auth/accept-invitation', async (route) => {
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'Unprocessable Entity', detail: 'email-mismatch' }),
+      });
+    });
+
+    await simulateInvitationCallback(page, 'mismatch-token-000000000000000000', 'mis-code');
+
+    await page.waitForURL('**/login**', { timeout: 10_000 });
+    expect(page.url()).toContain('error=email-mismatch');
+    await expect(page.locator('[role="alert"]')).toContainText('nem egyezik');
+    await expect(page.locator('[role="alert"]')).toContainText('meghívóban');
+  });
+
+  test('Már elfogadott meghívó tokennél a login oldalon conflict-hibaüzenet jelenik meg', async ({ page }) => {
+    await page.route('**/api/v1/auth/accept-invitation', async (route) => {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'Conflict', detail: 'invitation-already-accepted' }),
+      });
+    });
+
+    await simulateInvitationCallback(page, 'accepted-token-00000000000000000', 'acc-code');
+
+    await page.waitForURL('**/login**', { timeout: 10_000 });
+    expect(page.url()).toContain('error=invitation-already-accepted');
+    await expect(page.locator('[role="alert"]')).toContainText('már');
+  });
+
+  test('A gm_invitation_token törlődik a sessionStorage-ból sikeres elfogadás után', async ({ page }) => {
+    await page.route('**/api/v1/auth/accept-invitation', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5LCJlbWFpbCI6InVqQHRlc3QuaHUiLCJuYW1lIjoiVWogRmVsc3puYWzDsyIsInJvbGUiOiJNZWd0ZWtpbnRvIiwidXNlcklkIjoibmV3LWlkIn0.sig',
+            expiresIn: 28800,
+            user: { id: 'new-id', fullName: 'Új User', email: 'uj@teszt.hu', role: 'Megtekinto' },
+          }),
+        });
+      }
+    });
+
+    await mockApplicationsList(page);
+    await mockSignalR(page);
+
+    await simulateInvitationCallback(page, VALID_TOKEN, 'clean-code');
+    await page.waitForURL('**/applications**', { timeout: 10_000 });
+
+    const invToken = await page.evaluate(() => sessionStorage.getItem('gm_invitation_token'));
+    expect(invToken).toBeNull();
   });
 });

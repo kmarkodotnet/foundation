@@ -3,6 +3,7 @@ import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
 import { OidcCallbackComponent } from './core/auth/oidc-callback.component';
 import { LoginComponent } from './core/auth/login/login.component';
+import { AcceptInvitationComponent } from './core/auth/accept-invitation/accept-invitation.component';
 import { LayoutComponent } from './layout/layout.component';
 import { ForbiddenComponent } from './features/error/forbidden/forbidden.component';
 
@@ -14,6 +15,10 @@ export const routes: Routes = [
   {
     path: 'auth/callback',
     component: OidcCallbackComponent,
+  },
+  {
+    path: 'auth/accept',
+    component: AcceptInvitationComponent,
   },
   {
     path: '403',

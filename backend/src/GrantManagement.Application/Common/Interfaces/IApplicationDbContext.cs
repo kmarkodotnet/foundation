@@ -1,4 +1,6 @@
 using GrantManagement.Domain.Entities;
+using GrantManagement.Domain.Tenancy;
+using GrantManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 using BudgetPlanEntity = GrantManagement.Domain.Entities.BudgetPlan;
@@ -31,6 +33,14 @@ public interface IApplicationDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<SystemSettingsEntity> SystemSettings { get; }
+    DbSet<PlatformSettings> PlatformSettings { get; }
+
+    // CR2 Tenancy
+    DbSet<Owner> Owners { get; }
+    DbSet<Foundation> Foundations { get; }
+    DbSet<BreakGlassGrant> BreakGlassGrants { get; }
+    DbSet<OwnerCodeListTemplate> OwnerCodeListTemplates { get; }
+    DbSet<FoundationUserAssignment> FoundationUserAssignments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

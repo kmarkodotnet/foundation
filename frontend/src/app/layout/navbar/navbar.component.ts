@@ -8,6 +8,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
 import { GlobalSearchComponent } from '../../shared/components/global-search/global-search.component';
+import { FoundationSwitcherComponent } from '../../shared/components/foundation-switcher/foundation-switcher.component';
 
 @Component({
   selector: 'gm-navbar',
@@ -22,6 +23,7 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
     MatDividerModule,
     NotificationBellComponent,
     GlobalSearchComponent,
+    FoundationSwitcherComponent,
   ],
   template: `
     <mat-toolbar color="primary">
@@ -33,6 +35,7 @@ import { GlobalSearchComponent } from '../../shared/components/global-search/glo
         }
         <span class="gm-navbar-title">Pályázatkezelő</span>
         <span class="gm-spacer"></span>
+        <gm-foundation-switcher />
         @if (!isMobile()) {
           <gm-global-search />
         }

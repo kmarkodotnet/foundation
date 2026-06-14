@@ -31,10 +31,10 @@ public class CodeListConfiguration : IEntityTypeConfiguration<CodeList>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasData(
-            new { Id = DocumentTypeId, Name = "Dokumentum típusa", Description = (string?)null, IsSystem = true, IsDeleted = false, CreatedAt = SeedDate, UpdatedAt = SeedDate },
-            new { Id = SubmissionMethodId, Name = "Beadási mód", Description = (string?)null, IsSystem = true, IsDeleted = false, CreatedAt = SeedDate, UpdatedAt = SeedDate },
-            new { Id = SettlementMethodId, Name = "Elszámolási mód", Description = (string?)null, IsSystem = true, IsDeleted = false, CreatedAt = SeedDate, UpdatedAt = SeedDate },
-            new { Id = ApplicationTypeId, Name = "Pályázat típusa", Description = (string?)null, IsSystem = true, IsDeleted = false, CreatedAt = SeedDate, UpdatedAt = SeedDate }
+            new { Id = DocumentTypeId, Name = "Dokumentum típusa", Description = (string?)null, IsSystem = true, IsDeleted = false, OwnerId = Guid.Empty, FoundationId = Guid.Empty, CreatedAt = SeedDate, UpdatedAt = SeedDate },
+            new { Id = SubmissionMethodId, Name = "Beadási mód", Description = (string?)null, IsSystem = true, IsDeleted = false, OwnerId = Guid.Empty, FoundationId = Guid.Empty, CreatedAt = SeedDate, UpdatedAt = SeedDate },
+            new { Id = SettlementMethodId, Name = "Elszámolási mód", Description = (string?)null, IsSystem = true, IsDeleted = false, OwnerId = Guid.Empty, FoundationId = Guid.Empty, CreatedAt = SeedDate, UpdatedAt = SeedDate },
+            new { Id = ApplicationTypeId, Name = "Pályázat típusa", Description = (string?)null, IsSystem = true, IsDeleted = false, OwnerId = Guid.Empty, FoundationId = Guid.Empty, CreatedAt = SeedDate, UpdatedAt = SeedDate }
         );
     }
 }

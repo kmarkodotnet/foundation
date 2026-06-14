@@ -1,4 +1,5 @@
 using GrantManagement.Domain.Entities;
+using GrantManagement.Domain.Tenancy;
 
 namespace GrantManagement.Domain.Interfaces.Services;
 
@@ -9,6 +10,20 @@ public interface IJwtService
     /// Token lifetime is configured via <c>Jwt:ExpirationHours</c>.
     /// </summary>
     string GenerateToken(AppUser user);
+
+    /// <summary>
+    /// Generates a scoped JWT access token for the given user, audience and optional owner/foundation context.
+    /// </summary>
+    string GenerateTokenForScope(
+        AppUser user,
+        string audience,
+        Guid? ownerId = null,
+        Guid? foundationId = null);
+
+    /// <summary>
+    /// Generates a break-glass JWT token scoped to the target owner, valid for the grant lifetime.
+    /// </summary>
+    string GenerateBreakGlassToken(AppUser platformAdmin, BreakGlassGrant grant);
 
     /// <summary>
     /// Returns the token lifetime in seconds (e.g. 28800 for 8 hours).

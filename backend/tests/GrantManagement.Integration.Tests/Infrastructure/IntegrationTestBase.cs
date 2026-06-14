@@ -1,3 +1,5 @@
+using GrantManagement.Application.Common.Scope;
+using GrantManagement.Domain.Tenancy.Enums;
 using GrantManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
@@ -45,7 +47,21 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_connectionString)
             .Options;
-        return new AppDbContext(options);
+        return new AppDbContext(options, new NoOpCurrentScopeService());
+    }
+
+    private sealed class NoOpCurrentScopeService : ICurrentScopeService
+    {
+        public string Audience => "business";
+        public Guid? OwnerId => null;
+        public Guid? FoundationId => null;
+        public PlatformRole? PlatformRole => null;
+        public OwnerRole? OwnerRole => null;
+        public IReadOnlyDictionary<Guid, FoundationRole> FoundationRoles =>
+            new Dictionary<Guid, FoundationRole>();
+        public Guid? BreakGlassGrantId => null;
+        public bool CanAccessOwner(Guid ownerId) => true;
+        public bool CanAccessFoundation(Guid foundationId) => true;
     }
 
     // Tesztek hívják az első sorban — ha Docker nincs, azonnal skippelik

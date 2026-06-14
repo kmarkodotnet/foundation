@@ -17,6 +17,11 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   PalyazatiMunkatars: 'Pályázati munkatárs',
   Penzugyes: 'Pénzügyes',
   Megtekinto: 'Megtekintő',
+  FoundationAdmin: 'Alapítvány admin',
+  PlatformAdmin: 'Platform admin',
+  PlatformAuditor: 'Platform auditor',
+  OwnerAdmin: 'Szervező admin',
+  OwnerMember: 'Szervező tag',
 };
 
 export interface SystemSettings {

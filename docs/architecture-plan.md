@@ -1638,8 +1638,373 @@ Environment változók        → titkos értékek (DB jelszó, JWT kulcs, stb.)
 
 ---
 
+---
+
+## CR2 — Multi-tenant architektúra (Change Request 2)
+
+**Kapcsolódó dokumentumok:** `functional-specification.md` v1.1 (CR2), `domain-model.md` v1.1 (CR2).  
+**Hatókör:** ez a fejezet a meglévő architektúrát (1–19. fejezet) **kiegészíti** a háromszintű Platform → Owner → Foundation tenancy-réteggel. A meglévő réteghatárok (`Domain`, `Application`, `Infrastructure`, `API`), a Clean Architecture elvek, a MediatR pipeline, a SignalR notification és a Hangfire job-kezelés változatlanok maradnak; csak a scope-tudatosság, a JWT, az audit, a fájltároló és néhány új API-modul érintett.
+
+### CR2.A Architektúrális elvek frissítése
+
+| Elv | CR2 hatása |
+|---|---|
+| 2.1 **Bővíthetőség** elv | A multi-tenant **már nem bővítmény**, hanem a magtermék része. A 35. fejezet B-04 sora áthelyezve. |
+| Új elv: **Scope-tudatos design** | Minden lekérdezés, command és infrastruktúra-művelet egy explicit `OwnerId`/`FoundationId` hatókörhöz kötött. A scope a JWT-claim-ekből származtatott, soha nem a kliens által megadott. |
+| Új elv: **Hatókör-fail-safe** | Az adatbázis-szintű global query filter a végső védvonal. Ha alkalmazás-szintű scope-check kimarad, a query filter akkor sem enged át scope-szegő rekordot. |
+
+### CR2.B Multi-tenancy stratégia
+
+**Választott modell:** shared-database / shared-schema discriminator columnnal (`OwnerId`, `FoundationId`).
+
+Alternatívák és elvetésük indoka:
+
+| Alternatíva | Elvetés indoka |
+|---|---|
+| Adatbázis-szintű izoláció (DB / tenant) | Üzemeltetési overhead nagy (sok DB → migráció, backup, monitoring); a méretarány (max 100 user/Owner) nem indokolja. |
+| Schema-szintű izoláció (PG schema / tenant) | PostgreSQL-en működik, de EF Core támogatás gyenge; a connection pool-bonyolódás magas. |
+| Shared schema discriminator-ral | **Választott**: legegyszerűbb üzemeltetés, EF Core global query filterek természetesen támogatják, az architecture-tesztekkel biztosítható a hatókör-szivárgásmentesség. |
+
+**Védelmi rétegek (defense in depth):**
+
+1. **JWT scope-claim** (egyetlen igazságforrás, lásd CR2.D)
+2. **MediatR `AuthorizationBehaviour`** scope-check minden command/query előtt
+3. **EF Core global query filter** minden tenant-scope entitáson
+4. **Architecture teszt** (ld. CR2.M): minden gyökéraggregátum-DbSet hivatkozás kötelezően scope-szűrésen keresztül érhető el
+5. **Integrációs teszt** (ld. CR2.M): cross-Owner adatszivárgás regressziós teszt
+
+### CR2.C Bővülő projekt-struktúra
+
+A CR2 nem vezet be új projekteket. A meglévő rétegek bővülnek:
+
+```
+GrantManagement.Domain/
+  Tenancy/                          (új)
+    Owner.cs
+    Foundation.cs
+    BreakGlassGrant.cs
+    Enums/{PlatformRole, OwnerRole, FoundationRole, AssignmentScope}.cs
+    Events/{OwnerProvisioned, FoundationCreated, BreakGlassActivated, ...}.cs
+  Users/
+    AppUser.cs                      (bővítve: PlatformRole, OwnerRole, FoundationAssignments)
+    FoundationUserAssignment.cs     (új entitás az AppUser aggregátumon belül)
+
+GrantManagement.Application/
+  Common/Scope/
+    ICurrentScopeService.cs         (új) — IsPlatform, OwnerId, FoundationId, BreakGlass
+    CurrentScope.cs                 (record)
+  Common/Behaviours/
+    AuthorizationBehaviour.cs       (bővítve: scope-check + meglévő locked-application check)
+  Platform/                          (új modul, csak PlatformAdmin)
+    Owners/{Provision, Suspend, Archive, List}/...
+    BreakGlass/{Issue, Revoke}/...
+  OwnerAdministration/               (új modul, OwnerAdmin scope)
+    Foundations/{Create, Archive, List}/...
+    Users/{Invite, AssignRole, Revoke}/...
+    Reports/{CrossFoundationDashboard}/...
+  Authentication/
+    ScopeSwitch/                    (új) — foundation switcher
+    LoginGoogle/                    (bővítve: scope-claim kiállítás)
+
+GrantManagement.Infrastructure/
+  Persistence/
+    AppDbContext.cs                 (bővítve: global query filterek scope-mezőkre)
+    Configurations/{Owner, Foundation, BreakGlassGrant, ...}.cs (új)
+  Auth/
+    CurrentUserService.cs           (bővítve: scope-claim olvasás)
+    CurrentScopeService.cs          (új implementáció)
+    JwtTokenService.cs              (bővítve: scope-claim kiállítás)
+  BackgroundJobs/
+    BreakGlassExpirationJob.cs      (új, óránként fut)
+
+GrantManagement.API/
+  Controllers/
+    Platform/                       (új, /api/v1/platform/*)
+      OwnersController.cs
+      PlatformUsersController.cs
+      BreakGlassController.cs
+    Owner/                          (új, /api/v1/owner/*)
+      FoundationsController.cs
+      OwnerUsersController.cs
+      ReportsController.cs
+    Me/
+      ScopeSwitchController.cs      (új, /api/v1/me/scope-switch)
+  Middleware/
+    ScopeValidationMiddleware.cs    (új, az ExceptionMiddleware mellett)
+```
+
+### CR2.D JWT és Authorization frissítése
+
+#### CR2.D.1 Új JWT-claim-ek
+
+A meglévő `sub`, `email`, `name`, `role` claim-ek mellé:
+
+| Claim | Típus | Tartalom |
+|---|---|---|
+| `scope` | `"platform"` \| `"owner"` \| `"foundation"` | A JWT „audience" jellegű hatóköre |
+| `owner_id` | `Guid?` | Owner azonosítója (`null` Platform-szinten) |
+| `foundation_id` | `Guid?` | Aktuálisan kiválasztott alapítvány (`null`, ha még nincs választva vagy Owner-szintű kontextus) |
+| `platform_role` | `string?` | `PlatformAdmin` / `PlatformAuditor` / `null` |
+| `owner_role` | `string?` | `OwnerAdmin` / `OwnerAuditor` / `null` |
+| `foundation_roles` | `Dictionary<Guid,string>` | FoundationId → FoundationRole map (összes hozzárendelés) |
+| `break_glass_grant_id` | `Guid?` | Break-glass mód aktív ezzel a grant-ID-vel |
+
+A `foundation_roles` méretkorlát miatt: ha egy felhasználó több mint 50 alapítványban dolgozik, a claim helyett egy szerver-oldali cache (Redis vagy in-memory) tárolja a teljes mappát, és a JWT csak a `roles_ref` claim-et tartalmazza. **MVP-ben** ez a határérték nem reális, ezért a teljes map a JWT-ben marad.
+
+#### CR2.D.2 JWT „audience" szétválasztás
+
+Három különböző JWT signing scope:
+
+| Audience | Endpoint prefix | Kiállítás |
+|---|---|---|
+| `business` | `/api/v1/applications/*`, `/api/v1/documents/*`, üzleti API-k | Foundation-context bejelentkezés után |
+| `owner` | `/api/v1/owner/*` | OwnerAdmin/OwnerAuditor bejelentkezés után |
+| `platform` | `/api/v1/platform/*` | PlatformAdmin/PlatformAuditor bejelentkezés után |
+
+Egy felhasználó egyszerre több audience-szel rendelkező JWT-t is birtokolhat (különböző böngészőfül vagy `/scope-switch` használata után), de egy adott JWT mindig pontosan egy audience-szel érvényes. A `[Authorize]` attribútum a `audience` érték alapján szűri a kéréseket.
+
+#### CR2.D.3 Új Authorization policies
+
+A meglévő policies (CanCreateApplication, CanApproveApplication, CanManageInvoices, CanManageUsers, CanViewAuditLog) **változatlanok**, de mindegyik mostantól implicit `[FoundationScoped]` (lásd CR2.D.4). Új policies:
+
+| Policy | Audience | Szerepek |
+|---|---|---|
+| `IsPlatformAdmin` | `platform` | `PlatformAdmin` |
+| `CanReadPlatform` | `platform` | `PlatformAdmin`, `PlatformAuditor` |
+| `IsOwnerAdmin` | `owner` | `OwnerAdmin` |
+| `CanReadOwner` | `owner` | `OwnerAdmin`, `OwnerAuditor` |
+| `CanManageFoundations` | `owner` | `OwnerAdmin` |
+| `CanIssueBreakGlass` | `platform` | `PlatformAdmin` |
+
+#### CR2.D.4 `AuthorizationBehaviour` scope-check bővítése
+
+A meglévő MediatR pipeline behaviour (`AuthorizationBehaviour`, lásd 5.4) most két ellenőrzést végez egymás után:
+
+```csharp
+public async Task<TResponse> Handle(TRequest request, ...)
+{
+    // 1. Eredeti: locked-application check IApplicationCommand-en
+    if (request is IApplicationCommand applicationCmd)
+        await EnsureApplicationNotLocked(applicationCmd, ...);
+
+    // 2. ÚJ: scope-check IScopedRequest-en
+    if (request is IScopedRequest scopedRequest)
+    {
+        var currentScope = _currentScopeService.GetScope();
+        var requestScope = scopedRequest.GetScope();
+
+        if (!currentScope.IsCompatibleWith(requestScope))
+            throw new ForbiddenException(
+                $"Scope mismatch: current={currentScope}, requested={requestScope}");
+    }
+
+    return await next();
+}
+```
+
+Az `IScopedRequest` interfész minden command/query-n megjelenik, ami egy konkrét Owner-hez vagy Foundation-hoz kötött. A `GetScope()` a request payload-jából vagy az URL-route-paraméterből szedi ki a hatókört.
+
+#### CR2.D.5 `ICurrentScopeService`
+
+```csharp
+public interface ICurrentScopeService
+{
+    string Audience { get; }                  // "platform" | "owner" | "business"
+    Guid? OwnerId { get; }
+    Guid? FoundationId { get; }
+    PlatformRole? PlatformRole { get; }
+    OwnerRole? OwnerRole { get; }
+    IReadOnlyDictionary<Guid, FoundationRole> FoundationRoles { get; }
+    Guid? BreakGlassGrantId { get; }
+
+    bool CanAccessOwner(Guid ownerId);
+    bool CanAccessFoundation(Guid foundationId);
+}
+```
+
+Implementáció (`CurrentScopeService`) az `IHttpContextAccessor`-on keresztül olvassa a JWT-claim-eket. A platform-szintű break-glass felhasználó `CanAccessOwner(targetId)` `true`-t ad vissza, ha van érvényes `BreakGlassGrant` az adott Owner-re — ezt mindig audit-bejegyzéssel kíséri.
+
+### CR2.E EF Core multi-tenant integráció
+
+#### CR2.E.1 Global query filterek
+
+Az `AppDbContext.OnModelCreating()` minden tenant-scope entitásra a meglévő `!IsArchived` filter mellé hozzáadja a scope-feltételt:
+
+```csharp
+modelBuilder.Entity<Application>().HasQueryFilter(a =>
+    !a.IsArchived
+    && a.OwnerId == _scope.OwnerId
+    && (_scope.FoundationId == null || a.FoundationId == _scope.FoundationId));
+```
+
+**Owner-szintű kontextus** (`FoundationId == null` az `ICurrentScopeService`-ben): a filter csak az `OwnerId`-re szűr, így OwnerAdmin/OwnerAuditor cross-foundation jelentéseket tud lekérdezni.
+
+**Platform-szintű kontextus:** a tenancy aggregátumok (Owners, AuditLogs platform-szintű részei) nem kapnak query filtert; minden más entitás `OwnerId == null` filtert kap, amire normál query nem találhat, csak `IgnoreQueryFilters()`-szel (break-glass) lehet elérni.
+
+#### CR2.E.2 `IgnoreQueryFilters()` használati szabály
+
+Az `IgnoreQueryFilters()` használata **kizárólag** három esetben engedélyezett:
+
+1. **PlatformAdmin platform-szintű query** (Owners listája, platform audit napló).
+2. **Aktív break-glass grant** mellett, kötelező `OwnerId` filterrel kiegészítve.
+3. **Háttér-job** (`BreakGlassExpirationJob`), amely cross-tenant kell hogy fusson, és minden iterációban explicit Owner kontextusra állítja át a scope-ot.
+
+Architecture teszt (`NoUnscopedQueryFiltersAreBypassedTest`) ellenőrzi, hogy az `IgnoreQueryFilters` csak egy whitelisten szereplő callsite-okon hívódik.
+
+#### CR2.E.3 Save-time scope-injection
+
+A meglévő `SaveChangesAsync` override (CreatedAt/UpdatedAt) kiegészül: minden új `BaseEntity<Guid>` aggregátum létrehozásakor a `OwnerId` és `FoundationId` automatikusan a `_scope` aktuális értékéből származtatódik, ha az aggregátum nem adta meg explicit. Az inkonzisztencia (`aggregate.OwnerId != _scope.OwnerId`) `InvalidOperationException`-t dob.
+
+### CR2.F Fájltárolás multi-tenant útvonal
+
+A meglévő `LocalFileStorageService` (9. fejezet) útvonal-konvenciója:
+
+```
+/uploads/{owner_id}/{foundation_id}/{év}/{pályázat_id}/{lépés_id}/{fájlnév_uuid}
+```
+
+Az `IFileStorageService` API változatlan; az implementáció a path-építéshez az `ICurrentScopeService`-ből olvassa az `OwnerId` és `FoundationId` értéket. Cross-foundation file-hozzáférés (path-traversal vagy közvetlen URL) backend szinten kizárt: minden file-download endpoint az adott file rekord `OwnerId`/`FoundationId` mezőjét validálja a scope-pal.
+
+**Migráció a CR2 előtti adatbázisra:** egy egyszeri job a meglévő `/uploads/{év}/...` útvonalakat átmozgatja `/uploads/{default_owner_id}/{default_foundation_id}/{év}/...` alá, és a `Document` rekordok `FilePath` mezőit frissíti.
+
+### CR2.G Audit naplózás architektúrális hatása
+
+Az `IAuditLogger` interfész változatlan; a CR2 csak annyit változtat, hogy minden audit-bejegyzés automatikusan kapja az aktuális `_scope.OwnerId` és `_scope.FoundationId` értékét. Új művelettípusok (`SCOPE_SWITCH`, `BREAK_GLASS_ACCESS`, `OWNER_PROVISIONED`, `FOUNDATION_CREATED`, `FOUNDATION_ARCHIVED`) az `AuditAction` enum-on belül.
+
+A 11.3 napló-lekérdezés bővül: a `GET /api/v1/audit-logs` mostantól implicit scope szerint szűr (Foundation kontextusban csak az adott alapítvány eseményei jelennek meg), az Owner-kontextus cross-foundation szűrést enged, a Platform-kontextus a teljes platform-naplót látja.
+
+### CR2.H Új API-modul: Platform
+
+| Endpoint | Method | Auth | Leírás |
+|---|---|---|---|
+| `/api/v1/platform/owners` | GET | `CanReadPlatform` | Owners listázása |
+| `/api/v1/platform/owners` | POST | `IsPlatformAdmin` | Új Owner provisioning |
+| `/api/v1/platform/owners/{id}` | GET | `CanReadPlatform` | Owner részletek |
+| `/api/v1/platform/owners/{id}` | PATCH | `IsPlatformAdmin` | Owner módosítás |
+| `/api/v1/platform/owners/{id}/suspend` | POST | `IsPlatformAdmin` | Owner felfüggesztése |
+| `/api/v1/platform/owners/{id}/reactivate` | POST | `IsPlatformAdmin` | Felfüggesztés visszavonása |
+| `/api/v1/platform/owners/{id}/archive` | POST | `IsPlatformAdmin` | Owner archiválása |
+| `/api/v1/platform/users` | GET, POST | `IsPlatformAdmin` | Platform-szintű felhasználók |
+| `/api/v1/platform/audit-logs` | GET | `CanReadPlatform` | Platform audit napló |
+| `/api/v1/platform/break-glass` | POST | `CanIssueBreakGlass` | Break-glass grant kiállítása |
+| `/api/v1/platform/break-glass/{id}/revoke` | POST | `CanIssueBreakGlass` | Break-glass visszavonása |
+| `/api/v1/platform/settings` | GET, PATCH | `IsPlatformAdmin` | Platform technikai beállítások |
+
+### CR2.I Új API-modul: Owner
+
+| Endpoint | Method | Auth | Leírás |
+|---|---|---|---|
+| `/api/v1/owner/foundations` | GET, POST | `IsOwnerAdmin` | Alapítványok listázása / létrehozása |
+| `/api/v1/owner/foundations/{id}` | GET, PATCH | `IsOwnerAdmin` | Alapítvány részletek / módosítás |
+| `/api/v1/owner/foundations/{id}/archive` | POST | `IsOwnerAdmin` | Alapítvány archiválása |
+| `/api/v1/owner/foundations/{id}/admins` | POST | `IsOwnerAdmin` | FoundationAdmin kinevezése |
+| `/api/v1/owner/users` | GET, POST | `IsOwnerAdmin` | Owner-szintű felhasználói lista, meghívás |
+| `/api/v1/owner/users/{id}/assignments` | POST, DELETE | `IsOwnerAdmin` | Foundation-szintű hozzárendelések |
+| `/api/v1/owner/code-list-templates` | GET, POST, PATCH | `IsOwnerAdmin` | Kódszótár-sablonok |
+| `/api/v1/owner/reports/dashboard` | GET | `CanReadOwner` | Cross-foundation dashboard |
+| `/api/v1/owner/audit-logs` | GET | `CanReadOwner` | Owner-szintű audit napló |
+
+### CR2.J Új API-végpont: foundation switcher
+
+| Endpoint | Method | Auth | Leírás |
+|---|---|---|---|
+| `/api/v1/me/scope-switch` | POST | bármely auth-olt | `{ targetFoundationId }` payload-dal új JWT-t kér (audience: business) |
+| `/api/v1/me/available-scopes` | GET | bármely auth-olt | Felhasználó által elérhető hatókörök listája (UI dropdownhoz) |
+
+A `/scope-switch` egy új JWT-t állít ki a kiválasztott Foundation `audience: business` kontextusban. Audit-esemény: `SCOPE_SWITCH`.
+
+### CR2.K Háttér-job: `BreakGlassExpirationJob`
+
+Hangfire recurring job (óránként): minden `BreakGlassGrant` rekordon ellenőrzi, hogy `ExpiresAt < now && Status == ACTIVE`, és átállítja `Status = EXPIRED` értékre. A módosítás külön audit-bejegyzéssel jár (`BREAK_GLASS_EXPIRED`). A job a `JobScope` middleware-rel cross-tenant kontextusban fut, de minden iterációban explicit `_scope.SwitchTo(grant.TargetOwnerId)` után.
+
+### CR2.L Bővülő rendszer-séma diagram
+
+A meglévő 3. fejezet rendszer-architektúra diagramja kiegészül:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Angular SPA                                                  │
+│    ├── Platform UI    (route: /platform/*)                   │
+│    ├── Owner UI       (route: /owner/*)                      │
+│    └── Foundation UI  (route: /app/*, foundation switcher)   │
+└────────────────────┬─────────────────────────────────────────┘
+                     │ JWT (audience: platform | owner | business)
+┌────────────────────▼─────────────────────────────────────────┐
+│  ASP.NET Core API                                             │
+│    /api/v1/platform/*    [audience: platform]                 │
+│    /api/v1/owner/*       [audience: owner]                    │
+│    /api/v1/applications/*, /documents/*, ... [audience: business] │
+│    /api/v1/me/scope-switch                                    │
+│                                                                │
+│  ScopeValidationMiddleware → AuthorizationBehaviour →         │
+│  CommandHandler → AppDbContext (global query filterek)         │
+└────────────────────┬─────────────────────────────────────────┘
+                     │
+┌────────────────────▼─────────────────────────────────────────┐
+│  PostgreSQL                                                    │
+│    Owners, Foundations, AppUsers, FoundationUserAssignments,  │
+│    BreakGlassGrants, OwnerCodeListTemplates                   │
+│    + meglévő táblák (OwnerId, FoundationId oszlopokkal)       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### CR2.M Bővülő tesztelési stratégia
+
+A meglévő 17. fejezet tesztelési stratégia kiegészül négy új teszt-kategóriával:
+
+| Teszt-kategória | Cél | Eszköz |
+|---|---|---|
+| **Cross-tenant adatszivárgás regressziós teszt** | Minden tenant-scope command/query nem ad vissza idegen Owner adatot. | xUnit + Testcontainers PostgreSQL (két Owner-rel feltöltve) |
+| **Scope-claim manipuláció biztonsági teszt** | A JWT-claim-ek hamisítása 401/403 választ ad. | xUnit + WebApplicationFactory + módosított token |
+| **Architecture teszt: query filter** | Minden gyökéraggregátum `DbSet`-en kötelező a global query filter. | NetArchTest + reflection |
+| **Architecture teszt: IgnoreQueryFilters whitelist** | `IgnoreQueryFilters` csak engedélyezett callsite-okon hívódik. | NetArchTest + Roslyn analyzer |
+| **Break-glass workflow teszt** | Grant kiállítás → hozzáférés → audit → lejárat → automatikus visszavonás. | xUnit integráció |
+
+### CR2.N Architektúrális kockázatok kiegészítése
+
+| Kockázat | Súlyosság | Valószínűség | Mitigáció |
+|---|---|---|---|
+| Cross-Owner adatszivárgás (forgotten query filter) | Kritikus | Közepes | EF global filter + architecture teszt + CR2.M regressziós teszt |
+| Scope-claim hamisítás | Kritikus | Alacsony | JWT aszimmetrikus aláírás, claim validáció, audience-szétválasztás |
+| Privilege escalation OwnerAdmin → PlatformAdmin | Kritikus | Alacsony | Külön JWT audience, külön controller, policy-szint |
+| Break-glass visszaélés | Magas | Alacsony | Kötelező indoklás, Owner értesítés, audit, időkorlát, lejárat-job |
+| Tenant-onboarding hibás scope-claim | Közepes | Közepes | Migráció-után smoke teszt, az első login automatikus scope-validációval |
+| Foundation switcher race condition (két fülön) | Alacsony | Közepes | JWT független fülönként; az utolsó switcher-eredmény nyer az adott fülön |
+
+### CR2.O Architektúrális döntési napló (ADR) bővítése
+
+| ADR | Döntés | Indok | Alternatíva |
+|---|---|---|---|
+| ADR-08 | Shared schema discriminator (OwnerId, FoundationId) | EF query filterek + arch-teszt elég biztonságos a méretarányhoz, üzemeltetés egyszerű. | DB / Schema per tenant (elutasítva) |
+| ADR-09 | JWT „audience" szétválasztás (business/owner/platform) | Vertikális escalation védelem, tisztább policy-felépítés, könnyebb monitorozás. | Egyetlen JWT minden scope-pal (elutasítva: nehezebb auditálni) |
+| ADR-10 | Break-glass aggregátumként, nem session flag-ként | Lifecycle, lejárat, visszavonás explicit; audit-trail tiszta. | Session-flag + audit log (elutasítva) |
+| ADR-11 | OwnerCodeListTemplate snapshot (másolás), nem referencia | Egyszerűbb adatmodell, alapítvány-szintű felülírás természetes. | Owner-szintű kódszótár felülírható alapítvány-szinten (elutasítva: nehezebb mentális modell) |
+
+### CR2.P Mapping az FS CR2-szakaszaira
+
+| FS szakasz | architecture-plan CR2 alszekció |
+|---|---|
+| FS 4.1 Platform-szintű szerepkörök | CR2.D.2 audience + CR2.H Platform API |
+| FS 4.2 Owner-szintű szerepkörök | CR2.D.2 audience + CR2.I Owner API |
+| FS 4.3 Foundation-szintű szerepkörök | CR2.D.3 policies + meglévő üzleti API |
+| FS 4.4 Felhasználó-hozzárendelés | CR2.D.1 claim-ek (`foundation_roles`) |
+| FS 5.1–5.3 mátrixok | CR2.D.3 policies |
+| FS 5.4 hatókör-izoláció | CR2.E.1 query filterek + CR2.D.4 scope-check |
+| FS 5.5 utolsó admin / break-glass | CR2.H break-glass endpointok + CR2.K job |
+| FS 26.1 Platform admin | CR2.H Platform API |
+| FS 26.2 Owner admin | CR2.I Owner API |
+| FS 26.3 Foundation admin | meglévő üzleti API (változatlan struktúrával, scope-olva) |
+| FS 26.4 Foundation switcher | CR2.J scope-switch endpoint |
+| FS 26.1.5 break-glass | CR2.D.5 scope, CR2.K job |
+| FS 29. audit | CR2.G audit naplózás |
+| FS 31.2 jogosultság | CR2.D.4 scope-check + CR2.E query filterek |
+| FS 32.1 multi-tenant | CR2.B stratégia |
+| FS 32.3 fájltároló | CR2.F útvonal |
+
+---
+
 *— Dokumentum vége —*
 
-**Verzió:** 1.0  
-**Kapcsolódó dokumentumok:** `functional-specification.md` v1.0, `user-stories.md` v1.0  
+**Verzió:** 1.1 (CR2 alkalmazva)  
+**Kapcsolódó dokumentumok:** `functional-specification.md` v1.1 (CR2), `user-stories.md` v1.0, `domain-model.md` v1.1 (CR2)  
 **Állapot:** Tervezet – jóváhagyásra vár  

@@ -14,6 +14,8 @@ public class AuditLog
     public Guid UserId { get; private set; }
     public string? IpAddress { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
+    public Guid? OwnerId { get; private set; }
+    public Guid? FoundationId { get; private set; }
 
     private AuditLog() { }
 
@@ -25,7 +27,9 @@ public class AuditLog
         string? ipAddress,
         string? fieldName = null,
         string? oldValue = null,
-        string? newValue = null)
+        string? newValue = null,
+        Guid? ownerId = null,
+        Guid? foundationId = null)
     {
         return new AuditLog
         {
@@ -37,6 +41,8 @@ public class AuditLog
             FieldName = fieldName,
             OldValue = oldValue,
             NewValue = newValue,
+            OwnerId = ownerId,
+            FoundationId = foundationId,
             CreatedAt = DateTimeOffset.UtcNow
         };
     }

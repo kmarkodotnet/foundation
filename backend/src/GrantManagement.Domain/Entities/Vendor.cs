@@ -6,13 +6,15 @@ namespace GrantManagement.Domain.Entities;
 
 public enum VendorStatus { Active, Inactive }
 
-public class Vendor : AggregateRoot<Guid>
+public class Vendor : AggregateRoot<Guid>, IOwnedEntity
 {
     public string Name { get; private set; } = null!;
     public TaxNumber? TaxNumber { get; private set; }
     public string? Address { get; private set; }
     public ContactInfo Contact { get; private set; } = null!;
     public VendorStatus Status { get; private set; }
+    public Guid OwnerId { get; private set; }
+    public Guid FoundationId { get; private set; }
 
     private Vendor() { }
 
@@ -20,7 +22,9 @@ public class Vendor : AggregateRoot<Guid>
         string name,
         TaxNumber? taxNumber,
         string? address,
-        ContactInfo contact)
+        ContactInfo contact,
+        Guid ownerId = default,
+        Guid foundationId = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("A szerződő cég neve kötelező.");
@@ -33,6 +37,8 @@ public class Vendor : AggregateRoot<Guid>
             Address = address?.Trim(),
             Contact = contact,
             Status = VendorStatus.Active,
+            OwnerId = ownerId,
+            FoundationId = foundationId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

@@ -7,5 +7,22 @@ public enum AuditAction
     Delete,
     StatusChange,
     Approve,
-    Login
+    Login,
+    // CR2
+    ScopeSwitch,
+    BreakGlassAccess,
+    BreakGlassRevoked,
+    BreakGlassExpired,
+    OwnerProvisioned,
+    OwnerSuspended,
+    OwnerReactivated,
+    OwnerArchived,
+    FoundationCreated,
+    FoundationRenamed,
+    FoundationArchived,
+    ScopeViolation,
+    FoundationAssignmentCreated,
+    FoundationAssignmentRevoked,
+    OwnerCodeListTemplateModified,
+    OwnerUserInvited
 }

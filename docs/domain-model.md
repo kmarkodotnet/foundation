@@ -3353,8 +3353,347 @@ Lépés visszaállítás = Admin/Elnök        Hard     Application.ReactivateSt
 
 ---
 
+---
+
+## CR2 — Multi-tenant Owner/Foundation hierarchia (Change Request 2)
+
+**Kapcsolódó FS-szakaszok:** 4. (szerepkörök), 5. (jogosultsági modell), 26. (admin funkciók), 29. (audit), 31.2 (jogosultság), 32.1 (adatkezelés), NK-04 + NK-13..NK-20 lezárt döntések.
+
+**Hatókör:** ez a fejezet a meglévő (1–12.) domain modellt **kiegészíti** egy háromszintű tenancy-réteggel (Platform → Owner → Foundation). A korábban single-tenantként értelmezett aggregátumok (`Application`, `Granter`, `Vendor`, `CodeList`, `Notification`, `AuditLog`) változatlan struktúrával működnek, de mostantól mind **egy konkrét Foundation kontextusában** élnek, és minden gyökéraggregátum kötelező `OwnerId` és `FoundationId` mezővel rendelkezik. A `AppUser` aggregátum jelentősen kibővül a felhasználó↔hatókör hozzárendelésekkel.
+
+### CR2.1 Új Bounded Context: Tenancy
+
+A CR2 egy új, vékony Bounded Context-et vezet be `Tenancy` néven, amely a többi Bounded Context felett áll. A Tenancy felelőssége:
+
+- Owners (tulajdonosok) lifecycle-kezelése
+- Foundations (alapítványok) lifecycle-kezelése egy Owner-en belül
+- Felhasználói hatókör-hozzárendelések (Platform/Owner/Foundation) kezelése
+- Break-glass hozzáférés-engedélyek kiállítása és visszavonása
+
+A Tenancy Bounded Context **nem ismer** üzleti fogalmakat (pályázat, számla, dokumentum stb.). A meglévő Application/Granter/Vendor/CodeList Bounded Context-ek a Tenancy felé csak a `FoundationId` discriminátoron keresztül kapcsolódnak.
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  Tenancy BC (új)                                           │
+│    Platform                                                │
+│      └── Owner (1 → N Foundation)                          │
+│             └── Foundation                                 │
+│                    ↑                                       │
+│           FoundationId / OwnerId discriminator             │
+│                    ↓                                       │
+│  Application / Granter / Vendor / CodeList / Notification  │
+│  (meglévő Bounded Context-ek, scope-olva)                  │
+└────────────────────────────────────────────────────────────┘
+```
+
+### CR2.2 Új aggregátumok
+
+#### CR2.2.1 `Owner` aggregátum (Tenancy BC)
+
+**Aggregát gyökér.** Egy tulajdonos szervezetet képvisel, amely egy vagy több alapítványt birtokol.
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Aggregát gyökér ID |
+| `Name` | `string` | Tulajdonos szervezet neve |
+| `ContactEmail` | `EmailAddress` (VO) | Technikai kapcsolattartó |
+| `Status` | `OwnerStatus` enum | `ACTIVE`, `SUSPENDED`, `ARCHIVED` |
+| `CreatedAt`, `UpdatedAt` | `DateTimeOffset` | Audit-mezők |
+
+**Domain műveletek:** `Owner.Create()`, `Suspend()`, `Reactivate()`, `Archive()`.
+
+**Invariánsok:**
+- Csak `ACTIVE` állapotú Owner alá hozható létre új Foundation.
+- `Archive()` csak akkor engedélyezett, ha minden alá tartozó Foundation előzőleg `ARCHIVED` vagy migrált.
+
+**Domain események:** `OwnerProvisioned`, `OwnerSuspended`, `OwnerReactivated`, `OwnerArchived`.
+
+#### CR2.2.2 `Foundation` aggregátum (Tenancy BC)
+
+**Aggregát gyökér.** Egy konkrét alapítványt képvisel, amely egy Owner alá tartozik.
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Aggregát gyökér ID |
+| `OwnerId` | `Guid` | A szülő Owner referenciája |
+| `Name` | `string` | Megjelenítendő alapítványnév |
+| `LogoUri` | `string?` | Branding (NK-19 alapján csak ezen a szinten) |
+| `Status` | `FoundationStatus` enum | `ACTIVE`, `ARCHIVED` |
+| `CreatedAt`, `UpdatedAt` | `DateTimeOffset` | Audit-mezők |
+
+**Domain műveletek:** `Foundation.Create(ownerId, name, logoUri)`, `Rename()`, `UpdateLogo()`, `Archive()`.
+
+**Invariánsok:**
+- Egy Foundation legfeljebb egy Owner-hez tartozhat (immutable `OwnerId`).
+- `Archive()` csak akkor engedélyezett, ha nincs aktív (nem lezárt) `Application` az alapítványon belül.
+- `Foundation.Create()` során az Owner-szintű kódszótár-sablon automatikusan átmásolódik (lásd CR2.2.4).
+
+**Domain események:** `FoundationCreated`, `FoundationRenamed`, `FoundationArchived`.
+
+#### CR2.2.3 `FoundationUserAssignment` (entitás `AppUser` aggregáton belül)
+
+A meglévő `AppUser` aggregátumon belüli entitás. Egy felhasználó és egy alapítvány közti hozzárendelést képvisel, megadva a felhasználó szerepkörét az adott alapítványon belül.
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Hozzárendelés ID |
+| `FoundationId` | `Guid` | Az érintett alapítvány |
+| `FoundationRole` | `FoundationRole` enum | `FoundationAdmin`, `Elnok`, `PalyazatiMunkatars`, `Penzugyes`, `Megtekinto` |
+| `AssignedAt` | `DateTimeOffset` | Mikor lett kiosztva |
+| `AssignedByUserId` | `Guid` | Ki osztotta ki |
+| `IsActive` | `bool` | Inaktiválás támogatása |
+
+**Invariánsok:** lásd CR2.4.
+
+#### CR2.2.4 Owner-szintű kódszótár-sablon (`OwnerCodeListTemplate`)
+
+A `CodeList` aggregátum mellett, **Owner-szintű** sablonok az új alapítványok alapértelmezett kódszótárainak forrása (NK-16). Új Foundation létrehozásakor a sablon tételei átmásolódnak (snapshot, nem referencia).
+
+A meglévő `CodeList` aggregátum struktúrája változatlan; a sablonok **különálló entitások** ugyanazzal a sémával, csak Owner-scope-pal.
+
+### CR2.3 Meglévő aggregátumok scope-kiterjesztése
+
+Minden meglévő gyökéraggregátum (`Application`, `Granter`, `Vendor`, `CodeList`, `Notification`) új kötelező mezőket kap:
+
+| Új mező | Típus | Megjegyzés |
+|---|---|---|
+| `OwnerId` | `Guid` | Származtatott a `FoundationId`-ből, de kötelezően denormalizálva az EF Core query filter optimalizációhoz |
+| `FoundationId` | `Guid` | Kötelező hivatkozás a tartalmazó alapítványra |
+
+Az `AuditLog` rekord is megkapja mindkettőt (lásd CR2.6).
+
+A létező invariánsok mind érvényesek maradnak; a scope-mezők **immutability** szabályai:
+
+- Egy aggregátum `FoundationId` mezője a létrehozás után **nem módosítható**. „Pályázat áthelyezése másik alapítványba" nem támogatott művelet az MVP-ben (későbbi CR-be sorolható).
+- A `FoundationId` és az `OwnerId` konzisztenciáját az aggregátum létrehozásakor a domain service ellenőrzi: `OwnerId` mindig megegyezik a `Foundation.OwnerId`-vel.
+
+### CR2.4 AppUser aggregátum bővítése
+
+A meglévő `AppUser` aggregátum jelentős bővítésen megy keresztül a felhasználó↔hatókör hozzárendelések érdekében.
+
+**Új mezők és entitások a `AppUser` aggregátumon belül:**
+
+| Mező / entitás | Típus | Megjegyzés |
+|---|---|---|
+| `OwnerId` | `Guid?` | Az Owner, amelyhez a felhasználó tartozik. `null` Platform-szintű felhasználónál. |
+| `PlatformRole` | `PlatformRole?` enum | `PlatformAdmin`, `PlatformAuditor` vagy `null` |
+| `OwnerRole` | `OwnerRole?` enum | `OwnerAdmin`, `OwnerAuditor` vagy `null` |
+| `FoundationAssignments` | `IReadOnlyCollection<FoundationUserAssignment>` | Alapítvány-szintű hozzárendelések listája |
+
+**Új domain műveletek:**
+
+- `AppUser.AssignPlatformRole(PlatformRole role)`
+- `AppUser.AssignOwnerRole(Guid ownerId, OwnerRole role)`
+- `AppUser.AssignToFoundation(Guid foundationId, FoundationRole role, Guid assignedBy)`
+- `AppUser.RevokeFoundationAssignment(Guid foundationId)`
+- `AppUser.ChangeFoundationRole(Guid foundationId, FoundationRole newRole, Guid changedBy)`
+
+**Új invariánsok (Hard):**
+
+| Invariáns | Érvényesítés |
+|---|---|
+| Platform-szintű és Owner/Foundation-szintű szerepkör ugyanazon felhasználón nem keveredhet | `AppUser.AssignPlatformRole()` ellenőrzi, hogy `OwnerId == null` és `FoundationAssignments` üres; megfordítva is. |
+| Egy felhasználó legfeljebb egy Owner-hez tartozhat (NK-13) | Az `OwnerId` immutable a létrehozás után; cserélni csak a teljes `AppUser` újra-provisioningjával lehet. |
+| Foundation-hozzárendelés csak ugyanahhoz az Owner-hez tartozó Foundation-höz adható | `AssignToFoundation()` lekéri a `Foundation.OwnerId`-t és összeveti az `AppUser.OwnerId`-vel. |
+| OwnerAdmin nem oszthat ki Owner-szintű szerepkört (NK-17 előfeltétele) | Application Service szinten ellenőrizve, nem a domain aggregátumban (mert ott a hívó identitása nincs jelen). |
+| Utolsó admin szabály minden szinten | Application Service szint: `PlatformAdminCountService`, `OwnerAdminCountService`, `FoundationAdminCountService`. |
+| Self-demotion tiltása | Application Service szint: kérelmező identitása ≠ érintett `AppUser.Id`. |
+
+**Új domain események:**
+
+- `PlatformRoleAssigned`, `PlatformRoleRevoked`
+- `OwnerRoleAssigned`, `OwnerRoleRevoked`
+- `FoundationAssignmentCreated`, `FoundationAssignmentRevoked`, `FoundationRoleChanged`
+
+### CR2.5 Új enumok
+
+```csharp
+public enum OwnerStatus { Active, Suspended, Archived }
+public enum FoundationStatus { Active, Archived }
+
+public enum PlatformRole { PlatformAdmin, PlatformAuditor }
+public enum OwnerRole { OwnerAdmin, OwnerAuditor }
+public enum FoundationRole
+{
+    FoundationAdmin,     // korábban: Admin
+    Elnok,
+    PalyazatiMunkatars,
+    Penzugyes,
+    Megtekinto
+}
+
+public enum AssignmentScope { Platform, Owner, Foundation }
+```
+
+A korábbi `UserRole` enum (`Admin`, `Elnok`, ...) **deprecated**: a CR2 utáni rendszerben az `AppUser` mostantól `PlatformRole?` + `OwnerRole?` + `FoundationAssignments` kombinációval írja le a hozzáférési jogokat. A meghívási folyamatban a `AssignmentScope` jelzi, hogy melyik szintre szól a meghívó.
+
+### CR2.6 Audit napló kiterjesztése
+
+A meglévő `AuditLog` rekord (lásd 4.7) két kötelező új mezőt kap: `OwnerId` (`Guid?`) és `FoundationId` (`Guid?`). Mindkettő `null` lehet platform-szintű eseményeknél.
+
+**Új művelettípusok:**
+
+| Művelettípus | Naplózott extra adatok |
+|---|---|
+| `SCOPE_SWITCH` | Kiinduló és új hatókör (Owner+Foundation), felhasználó |
+| `BREAK_GLASS_ACCESS` | PlatformAdmin, érintett Owner, indoklás, kezdő/lejárati időbélyeg |
+| `OWNER_PROVISIONED` | Owner ID, név, kezdő OwnerAdmin |
+| `FOUNDATION_CREATED` | Foundation ID, név, Owner |
+| `FOUNDATION_ARCHIVED` | Foundation ID, archiváló felhasználó |
+
+A meglévő művelettípusok (C/U/D, állapotváltás, bejelentkezés, szerepkör-módosítás) változatlanok, csak az új `OwnerId`/`FoundationId` mezőkkel egészülnek ki.
+
+### CR2.7 Break-glass hozzáférés mint aggregátum
+
+A break-glass hozzáférés a Tenancy BC-n belül önálló aggregátumként van modellezve, hogy az életciklusa, lejárata és visszavonása jól nyomon követhető legyen.
+
+**Aggregát neve:** `BreakGlassGrant`
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Aggregát gyökér |
+| `PlatformAdminUserId` | `Guid` | Ki indította |
+| `TargetOwnerId` | `Guid` | Melyik Owner-hez |
+| `Reason` | `string` | Kötelező indoklás |
+| `IssuedAt` | `DateTimeOffset` | Kiállítás |
+| `ExpiresAt` | `DateTimeOffset` | Lejárat (default: kiállítás + 24 óra) |
+| `Status` | `BreakGlassStatus` enum | `ACTIVE`, `EXPIRED`, `REVOKED` |
+| `RevokedAt` | `DateTimeOffset?` | Ha visszavonva |
+
+**Domain műveletek:** `BreakGlassGrant.Issue()`, `Revoke()`, `IsValidAt(DateTimeOffset)`.
+
+**Invariánsok:**
+- `ExpiresAt` > `IssuedAt`.
+- `Reason` nem üres és minimum 20 karakter.
+- `Status` automatikus átmenete `EXPIRED`-ba lejárat után (háttér-job vagy lazy ellenőrzés).
+
+**Domain események:** `BreakGlassActivated`, `BreakGlassRevoked`.
+
+A `BreakGlassGrant.Issue()` művelet kiváltja egy `OwnerNotificationEvent`-et, amit egy domain event handler dolgoz fel és e-mail értesítést küld az érintett OwnerAdmin-nak.
+
+### CR2.8 Új domain események összesítve
+
+| Esemény | Szülő aggregátum | Kiváltó |
+|---|---|---|
+| `OwnerProvisioned` | `Owner` | `Owner.Create()` |
+| `OwnerSuspended` | `Owner` | `Owner.Suspend()` |
+| `OwnerReactivated` | `Owner` | `Owner.Reactivate()` |
+| `OwnerArchived` | `Owner` | `Owner.Archive()` |
+| `FoundationCreated` | `Foundation` | `Foundation.Create()` |
+| `FoundationRenamed` | `Foundation` | `Foundation.Rename()` |
+| `FoundationArchived` | `Foundation` | `Foundation.Archive()` |
+| `PlatformRoleAssigned` | `AppUser` | `AssignPlatformRole()` |
+| `PlatformRoleRevoked` | `AppUser` | `RevokePlatformRole()` |
+| `OwnerRoleAssigned` | `AppUser` | `AssignOwnerRole()` |
+| `OwnerRoleRevoked` | `AppUser` | `RevokeOwnerRole()` |
+| `FoundationAssignmentCreated` | `AppUser` | `AssignToFoundation()` |
+| `FoundationAssignmentRevoked` | `AppUser` | `RevokeFoundationAssignment()` |
+| `FoundationRoleChanged` | `AppUser` | `ChangeFoundationRole()` |
+| `BreakGlassActivated` | `BreakGlassGrant` | `Issue()` |
+| `BreakGlassRevoked` | `BreakGlassGrant` | `Revoke()` |
+
+### CR2.9 Új invariánsok katalógus-bővítése
+
+| Invariáns | Típus | Érvényesítés helye |
+|---|---|---|
+| Foundation csak `ACTIVE` Owner alá hozható létre | Hard | `Foundation.Create()` |
+| Foundation `Archive` csak ha nincs aktív Application | Hard | `Foundation.Archive()` + `IApplicationCountService` |
+| Owner `Archive` csak ha minden Foundation `ARCHIVED` | Hard | `Owner.Archive()` + `IFoundationCountService` |
+| `FoundationId` aggregátumon immutable | Hard | Konstruktor és setter visibility |
+| `OwnerId` aggregátumon immutable | Hard | Konstruktor és setter visibility |
+| `OwnerId` és `FoundationId` konzisztens (`Foundation.OwnerId == aggregate.OwnerId`) | Hard | Domain service létrehozáskor |
+| Platform és Owner/Foundation szerepkör nem keveredik egy `AppUser`-en | Hard | `AppUser.AssignPlatformRole()` / `AssignOwnerRole()` |
+| Egy `AppUser.OwnerId` immutable | Hard | Setter visibility |
+| `FoundationUserAssignment.FoundationId.Owner == AppUser.Owner` | Hard | `AppUser.AssignToFoundation()` |
+| Utolsó PlatformAdmin nem törölhető | Hard | Application Service |
+| Utolsó OwnerAdmin Owner-enként nem törölhető | Hard | Application Service |
+| Utolsó FoundationAdmin alapítványonként nem törölhető | Hard | Application Service |
+| Self-demotion minden szinten tiltott | Hard | Application Service (kérelmező identitása) |
+| `BreakGlassGrant.Reason` ≥ 20 karakter | Hard | `BreakGlassGrant.Issue()` |
+| `BreakGlassGrant.ExpiresAt > IssuedAt` | Hard | `BreakGlassGrant.Issue()` |
+
+### CR2.10 Adatbázis-séma kiterjesztés (EF Core)
+
+**Új táblák:**
+
+```
+Owners                          (Id, Name, ContactEmail, Status, CreatedAt, UpdatedAt)
+Foundations                     (Id, OwnerId FK, Name, LogoUri, Status, CreatedAt, UpdatedAt)
+FoundationUserAssignments       (Id, AppUserId FK, FoundationId FK, FoundationRole, AssignedAt, AssignedByUserId, IsActive)
+OwnerCodeListTemplates          (Id, OwnerId FK, Name, ...)  -- ugyanaz a séma, mint CodeList, csak Owner-scope
+OwnerCodeListTemplateItems      (Id, TemplateId FK, Code, Label, ...)
+BreakGlassGrants                (Id, PlatformAdminUserId, TargetOwnerId, Reason, IssuedAt, ExpiresAt, Status, RevokedAt)
+```
+
+**Bővülő táblák — kötelező új oszlopok (NOT NULL, indexelt):**
+
+| Tábla | Új oszlop |
+|---|---|
+| `Applications` | `OwnerId`, `FoundationId` |
+| `Granters` | `OwnerId`, `FoundationId` |
+| `Vendors` | `OwnerId`, `FoundationId` |
+| `CodeLists` | `OwnerId`, `FoundationId` |
+| `Notifications` | `OwnerId`, `FoundationId` |
+| `AuditLogs` | `OwnerId` (NULL), `FoundationId` (NULL) |
+| `AppUsers` | `OwnerId` (NULL Platform-szinten), `PlatformRole` (NULL), `OwnerRole` (NULL) |
+
+**Új indexek:**
+
+- Minden scope-olt táblán: `(OwnerId, FoundationId)` összetett index a global query filter teljesítményhez.
+- `FoundationUserAssignments`-en: `(AppUserId, FoundationId)` egyedi index — egy felhasználó egy alapítványban legfeljebb egy aktív hozzárendelés.
+- `BreakGlassGrants`-en: `(Status, ExpiresAt)` index a lejárati job-hoz.
+
+**EF Core global query filterek (CR2 szerint):**
+
+A `AppDbContext.OnModelCreating()` minden tenant-scope entitásra a meglévő `!IsArchived` filter mellé hozzáadja:
+
+```csharp
+modelBuilder.Entity<Application>().HasQueryFilter(a =>
+    !a.IsArchived
+    && a.OwnerId == _currentScope.OwnerId
+    && (_currentScope.FoundationId == null || a.FoundationId == _currentScope.FoundationId));
+```
+
+Az `_currentScope` az új `ICurrentScopeService`-en keresztül van injektálva — implementáció lásd `architecture-plan.md` CR2 fejezet.
+
+### CR2.11 Migrációs stratégia
+
+A meglévő single-tenant adatbázis migrálása a CR2 modellre az alábbi lépésekben történik:
+
+1. **Default Owner létrehozása** seedingként: `Name = "Default Owner"`, `Status = ACTIVE`.
+2. **Default Foundation létrehozása** a default Owner alá, az alapítvány eredeti nevével (a 26.2 alapítvány-szintű beállítások szervezetnévét örökölve).
+3. **Új oszlopok hozzáadása** `OwnerId` és `FoundationId` minden táblához, eleinte `NULL`-able.
+4. **Backfill SQL:** minden meglévő rekord megkapja a default Owner és Foundation ID-t.
+5. **Oszlopok `NOT NULL`-ra állítása** + foreign key constraint hozzáadása.
+6. **AppUsers migrációja:** a meglévő `Admin` szerepű felhasználók `FoundationAdmin` FoundationAssignment-et kapnak a default Foundation-höz; az első felhasználó kiegészítve `OwnerAdmin` szereppel is.
+7. **Régi `UserRole` oszlop deprecation** (megtartva backward compatibility miatt egy release-en át, majd dropolva).
+
+A migráció **egyirányú**: a CR2 nem támogatja a single-tenant állapotra való visszaállást.
+
+### CR2.12 Hivatkozott FS-szakaszok és CR2 mapping
+
+| FS szakasz | CR2 fejezet | Megjegyzés |
+|---|---|---|
+| FS 4.1 PlatformAdmin/PlatformAuditor | CR2.4 (AppUser.PlatformRole) | – |
+| FS 4.2 OwnerAdmin/OwnerAuditor | CR2.4 (AppUser.OwnerRole), CR2.2.1 Owner | – |
+| FS 4.3 FoundationAdmin + többi | CR2.4 (AppUser.FoundationAssignments) | FoundationRole enum |
+| FS 4.4 Felhasználó-hozzárendelés | CR2.4 + CR2.9 invariánsok | – |
+| FS 5.1–5.3 jogosultsági mátrixok | CR2.4 enumok + Application Service | – |
+| FS 5.4 hatókör-izoláció | CR2.10 EF query filterek | – |
+| FS 5.5 utolsó admin / break-glass | CR2.7 BreakGlassGrant + CR2.9 invariánsok | – |
+| FS 26.1 Platform admin | CR2.2.1 Owner aggregátum + CR2.6 audit | – |
+| FS 26.2 Owner admin | CR2.2.2 Foundation + CR2.2.4 OwnerCodeListTemplate | – |
+| FS 26.3 Foundation admin | CR2.2.3 FoundationUserAssignment | – |
+| FS 26.4 Foundation switcher | (architecture-plan CR2) | Itt csak az esemény: `SCOPE_SWITCH` |
+| FS 29. audit | CR2.6 + CR2.10 séma | – |
+| FS 31.2 jogosultság | CR2.10 query filterek | – |
+| FS 32.1 multi-tenant | CR2.1 Bounded Context bevezető | – |
+| FS 32.3 fájltároló | (architecture-plan CR2) | Itt csak hivatkozás |
+
+---
+
 *— Dokumentum vége —*
 
-**Verzió:** 1.0  
-**Kapcsolódó dokumentumok:** `functional-specification.md` v1.0, `architecture-plan.md` v1.0  
+**Verzió:** 1.1 (CR2 alkalmazva)  
+**Kapcsolódó dokumentumok:** `functional-specification.md` v1.1 (CR2), `architecture-plan.md` v1.1 (CR2)  
 **Állapot:** Tervezet – senior review szükséges

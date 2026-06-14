@@ -4,9 +4,11 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using GrantManagement.Application.Common.Interfaces;
+using GrantManagement.Application.Common.Scope;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Interfaces;
 using GrantManagement.Domain.Interfaces.Services;
+using GrantManagement.Domain.Tenancy.Enums;
 using GrantManagement.Infrastructure.FileStorage;
 using GrantManagement.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -138,7 +140,21 @@ public sealed class WebApiFixture : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(ConnectionString)
             .Options;
-        return new AppDbContext(options);
+        return new AppDbContext(options, new NoOpCurrentScopeService());
+    }
+
+    private sealed class NoOpCurrentScopeService : ICurrentScopeService
+    {
+        public string Audience => "business";
+        public Guid? OwnerId => null;
+        public Guid? FoundationId => null;
+        public PlatformRole? PlatformRole => null;
+        public OwnerRole? OwnerRole => null;
+        public IReadOnlyDictionary<Guid, FoundationRole> FoundationRoles =>
+            new Dictionary<Guid, FoundationRole>();
+        public Guid? BreakGlassGrantId => null;
+        public bool CanAccessOwner(Guid ownerId) => true;
+        public bool CanAccessFoundation(Guid foundationId) => true;
     }
 
     public string GenerateJwt(Guid userId, UserRole role, string email = "test@test.local")

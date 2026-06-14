@@ -17,6 +17,15 @@ public class InvitationConfiguration : IEntityTypeConfiguration<Invitation>
         builder.Property(i => i.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(i => i.ExpiresAt).IsRequired();
 
+        // CR2 scope fields
+        builder.Property(i => i.Scope).HasConversion<string>().HasMaxLength(20);
+        builder.Property(i => i.OwnerId);
+        builder.Property(i => i.FoundationId);
+        builder.Property(i => i.PlatformRole).HasConversion<string>().HasMaxLength(30);
+        builder.Property(i => i.OwnerRole).HasConversion<string>().HasMaxLength(30);
+        builder.Property(i => i.FoundationRole).HasConversion<string>().HasMaxLength(30);
+        builder.Property(i => i.FoundationAssignmentsJson).HasColumnType("text");
+
         builder.HasIndex(i => i.Token).IsUnique();
         builder.HasIndex(i => new { i.Email, i.Status });
     }

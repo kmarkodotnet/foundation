@@ -442,6 +442,24 @@ test.describe('TS-008 | Meghívó elfogadása és fiók aktiválása', () => {
     });
     await page.route('https://accounts.google.com/**', (route) => route.abort());
 
+    // Az AcceptInvitationComponent most betöltéskor hívja a preview API-t
+    await page.route('**/api/v1/invitations/preview/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          email: 'teszt@example.com',
+          scope: 'Foundation',
+          role: 'PalyazatiMunkatars',
+          ownerId: null,
+          ownerName: null,
+          foundationId: 'some-foundation-id',
+          foundationName: 'Teszt Alapítvány',
+          isExpired: false,
+        }),
+      });
+    });
+
     // Az /auth/accept?token=... az AcceptInvitationComponent-et tölti be
     await page.goto(`/auth/accept?token=${VALID_TOKEN}`);
     // A komponens ngOnInit után automatikusan nem indítja az OAuth-ot,

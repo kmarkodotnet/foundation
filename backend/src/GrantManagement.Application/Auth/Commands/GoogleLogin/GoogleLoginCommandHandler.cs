@@ -53,6 +53,14 @@ public sealed class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginComma
         if (appUser.Status == UserStatus.Inactive)
             throw new InactiveUserException();
 
+        if (appUser.OwnerId.HasValue)
+        {
+            var owner = await _context.Owners
+                .FirstOrDefaultAsync(o => o.Id == appUser.OwnerId.Value, cancellationToken);
+            if (owner?.Status == GrantManagement.Domain.Tenancy.Enums.OwnerStatus.Suspended)
+                throw new GrantManagement.Domain.Exceptions.OwnerSuspendedException();
+        }
+
         appUser.SyncFromGoogle(googleUser.FullName, googleUser.PictureUrl);
         appUser.RecordLogin(DateTimeOffset.UtcNow);
         await _context.SaveChangesAsync(cancellationToken);

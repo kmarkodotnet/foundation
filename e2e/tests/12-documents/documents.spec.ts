@@ -24,7 +24,6 @@
  */
 
 import { test, expect } from '../../fixtures/auth.fixture';
-import { HttpEventType } from '@playwright/test';
 
 // ─── Konstansok ──────────────────────────────────────────────────────────────
 

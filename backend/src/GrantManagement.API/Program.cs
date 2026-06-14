@@ -1,5 +1,6 @@
 using GrantManagement.API.Common;
 using GrantManagement.API.Middleware;
+using GrantManagement.Application.Common.Scope;
 using GrantManagement.Infrastructure.BackgroundJobs;
 using GrantManagement.Infrastructure.Hubs;
 using GrantManagement.Application;
@@ -67,6 +68,35 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(Policies.CanManageCodelists,    p => p.RequireRole("Admin"));
     options.AddPolicy(Policies.CanManageGranters,     p => p.RequireRole("Admin", "PalyazatiMunkatars"));
     options.AddPolicy(Policies.CanManageVendors,      p => p.RequireRole("Admin", "PalyazatiMunkatars", "Penzugyes"));
+
+    // CR2 Platform & Owner policies
+    options.AddPolicy("IsPlatformAdmin", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim("platform_role", "PlatformAdmin")
+              .RequireClaim("scope", "platform"));
+
+    options.AddPolicy("CanReadPlatform", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim("scope", "platform"));
+
+    options.AddPolicy("IsOwnerAdmin", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim("owner_role", "OwnerAdmin")
+              .RequireClaim("scope", "owner"));
+
+    options.AddPolicy("CanReadOwner", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim("scope", "owner"));
+
+    options.AddPolicy("CanManageFoundations", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim("owner_role", "OwnerAdmin")
+              .RequireClaim("scope", "owner"));
+
+    options.AddPolicy("CanIssueBreakGlass", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim("platform_role", "PlatformAdmin")
+              .RequireClaim("scope", "platform"));
 });
 
 builder.Services.AddSignalR();
@@ -141,6 +171,7 @@ app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.UseCors("AllowAngularClient");
 app.UseAuthentication();
+app.UseMiddleware<ScopeValidationMiddleware>();
 app.UseAuthorization();
 
 if (!app.Environment.IsEnvironment("Testing"))
@@ -159,6 +190,11 @@ if (!app.Environment.IsEnvironment("Testing"))
 
     RecurringJob.AddOrUpdate<InvitationExpiryJob>(
         "invitation-expiry-check",
+        job => job.ExecuteAsync(),
+        Hangfire.Cron.Hourly());
+
+    RecurringJob.AddOrUpdate<BreakGlassExpirationJob>(
+        "break-glass-expiration",
         job => job.ExecuteAsync(),
         Hangfire.Cron.Hourly());
 }

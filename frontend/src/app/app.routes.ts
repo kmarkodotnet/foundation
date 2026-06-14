@@ -83,6 +83,22 @@ export const routes: Routes = [
             (m) => m.profileRoutes
           ),
       },
+      {
+        path: 'platform',
+        loadChildren: () =>
+          import('./features/platform/platform.routes').then(
+            (m) => m.platformRoutes
+          ),
+        canActivate: [roleGuard],
+        data: { roles: ['PlatformAdmin', 'PlatformAuditor'] },
+      },
+      {
+        path: 'owner',
+        loadChildren: () =>
+          import('./features/owner/owner.routes').then((m) => m.ownerRoutes),
+        canActivate: [roleGuard],
+        data: { roles: ['OwnerAdmin', 'OwnerMember'] },
+      },
     ],
   },
   {

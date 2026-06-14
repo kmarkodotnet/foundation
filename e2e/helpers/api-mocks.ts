@@ -94,6 +94,19 @@ export async function mockUserProfile(page: Page, payload: object): Promise<void
   });
 }
 
+/** Mocks GET /api/v1/me/available-scopes (foundation switcher) */
+export async function mockAvailableScopes(
+  page: Page,
+  payload: unknown = { platformRole: null, ownerId: null, ownerName: null, ownerRole: null, foundations: [] },
+): Promise<void> {
+  await page.route('**/api/v1/me/available-scopes**', (route) => {
+    if (route.request().method() === 'GET') {
+      return jsonOk(route, payload);
+    }
+    return route.continue();
+  });
+}
+
 /** Registers all common mocks needed for an authenticated session */
 export async function mockAuthenticatedSession(page: Page): Promise<void> {
   await mockSignalR(page);
@@ -102,4 +115,5 @@ export async function mockAuthenticatedSession(page: Page): Promise<void> {
   await mockCodelists(page);
   await mockLogout(page);
   await mockNotifications(page);
+  await mockAvailableScopes(page);
 }

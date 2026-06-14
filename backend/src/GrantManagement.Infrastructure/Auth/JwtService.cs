@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Interfaces.Services;
+using GrantManagement.Domain.Tenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -35,8 +37,41 @@ public sealed class JwtService : IJwtService
     {
         var claims = BuildClaims(user);
         var signingCredentials = BuildSigningCredentials();
-        var token = BuildToken(claims, signingCredentials);
+        var token = BuildTokenInternal(claims, signingCredentials, null);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 
+    public string GenerateTokenForScope(
+        AppUser user,
+        string audience,
+        Guid? ownerId = null,
+        Guid? foundationId = null)
+    {
+        var claims = BuildScopeClaims(user, audience, ownerId, foundationId);
+        var signingCredentials = BuildSigningCredentials();
+        var token = BuildTokenInternal(claims, signingCredentials, audience);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateBreakGlassToken(AppUser platformAdmin, BreakGlassGrant grant)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, platformAdmin.GoogleId),
+            new(JwtRegisteredClaimNames.Email, platformAdmin.Email),
+            new(JwtRegisteredClaimNames.Name, platformAdmin.Name),
+            new(ClaimTypeUserId, platformAdmin.Id.ToString()),
+            new("scope", "owner"),
+            new("aud", "owner"),
+            new("owner_id", grant.TargetOwnerId.ToString()),
+            new("break_glass_grant_id", grant.Id.ToString())
+        };
+
+        if (platformAdmin.PlatformRole.HasValue)
+            claims.Add(new Claim("platform_role", platformAdmin.PlatformRole.Value.ToString()));
+
+        var signingCredentials = BuildSigningCredentials();
+        var token = BuildTokenInternal(claims, signingCredentials, "owner");
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
@@ -52,6 +87,43 @@ public sealed class JwtService : IJwtService
         ];
     }
 
+    private static IEnumerable<Claim> BuildScopeClaims(
+        AppUser user,
+        string audience,
+        Guid? ownerId,
+        Guid? foundationId)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.GoogleId),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(JwtRegisteredClaimNames.Name, user.Name),
+            new(ClaimTypeUserId, user.Id.ToString()),
+            new("scope", audience),
+            new("aud", audience)
+        };
+
+        if (user.PlatformRole.HasValue)
+            claims.Add(new Claim("platform_role", user.PlatformRole.Value.ToString()));
+
+        if (user.OwnerRole.HasValue)
+            claims.Add(new Claim("owner_role", user.OwnerRole.Value.ToString()));
+
+        if (ownerId.HasValue)
+            claims.Add(new Claim("owner_id", ownerId.Value.ToString()));
+
+        if (foundationId.HasValue)
+            claims.Add(new Claim("foundation_id", foundationId.Value.ToString()));
+
+        var foundationRolesMap = user.FoundationAssignments
+            .Where(a => a.IsActive)
+            .ToDictionary(a => a.FoundationId.ToString(), a => a.FoundationRole.ToString());
+        if (foundationRolesMap.Count > 0)
+            claims.Add(new Claim("foundation_roles", JsonSerializer.Serialize(foundationRolesMap)));
+
+        return claims;
+    }
+
     private SigningCredentials BuildSigningCredentials()
     {
         var keyBytes = Encoding.UTF8.GetBytes(_secretKey);
@@ -59,13 +131,14 @@ public sealed class JwtService : IJwtService
         return new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
     }
 
-    private JwtSecurityToken BuildToken(
+    private JwtSecurityToken BuildTokenInternal(
         IEnumerable<Claim> claims,
-        SigningCredentials signingCredentials)
+        SigningCredentials signingCredentials,
+        string? audience)
     {
         return new JwtSecurityToken(
             issuer: _issuer,
-            audience: null,
+            audience: audience,
             claims: claims,
             notBefore: DateTime.UtcNow,
             expires: DateTime.UtcNow.AddHours(_expirationHours),

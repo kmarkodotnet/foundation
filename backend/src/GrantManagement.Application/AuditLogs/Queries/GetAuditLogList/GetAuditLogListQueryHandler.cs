@@ -50,19 +50,23 @@ public class GetAuditLogListQueryHandler
             .OrderByDescending(x => x.log.CreatedAt)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(x => new AuditLogItemDto(
-                x.log.Id,
-                x.log.CreatedAt,
-                x.log.UserId,
-                x.UserName,
-                x.UserEmail,
-                x.log.EntityType,
-                x.log.EntityId,
-                x.log.Action,
-                x.log.FieldName,
-                x.log.OldValue,
-                x.log.NewValue,
-                x.log.IpAddress))
+            .Select(x => new AuditLogItemDto
+            {
+                Id = x.log.Id,
+                CreatedAt = x.log.CreatedAt,
+                UserId = x.log.UserId,
+                UserName = x.UserName,
+                UserEmail = x.UserEmail,
+                EntityType = x.log.EntityType,
+                EntityId = x.log.EntityId,
+                Action = x.log.Action.ToString(),
+                FieldName = x.log.FieldName,
+                OldValue = x.log.OldValue,
+                NewValue = x.log.NewValue,
+                IpAddress = x.log.IpAddress,
+                OwnerId = x.log.OwnerId,
+                FoundationId = x.log.FoundationId
+            })
             .ToListAsync(cancellationToken);
 
         return PagedResult<AuditLogItemDto>.Create(items, totalCount, request.Page, request.PageSize);

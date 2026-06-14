@@ -1,6 +1,9 @@
 using GrantManagement.Application.Common.Interfaces;
+using GrantManagement.Application.Common.Scope;
 using GrantManagement.Domain.Common;
 using GrantManagement.Domain.Entities;
+using GrantManagement.Domain.Tenancy;
+using GrantManagement.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using GrantApp = GrantManagement.Domain.Entities.Application;
 
@@ -8,7 +11,13 @@ namespace GrantManagement.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IApplicationDbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly ICurrentScopeService _scope;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentScopeService scope)
+        : base(options)
+    {
+        _scope = scope;
+    }
 
     public DbSet<GrantApp> Applications => Set<GrantApp>();
     public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
@@ -32,6 +41,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Domain.Entities.SystemSettings> SystemSettings => Set<Domain.Entities.SystemSettings>();
+    public DbSet<Domain.Entities.PlatformSettings> PlatformSettings => Set<Domain.Entities.PlatformSettings>();
+
+    // CR2 Tenancy
+    public DbSet<Owner> Owners => Set<Owner>();
+    public DbSet<Foundation> Foundations => Set<Foundation>();
+    public DbSet<BreakGlassGrant> BreakGlassGrants => Set<BreakGlassGrant>();
+    public DbSet<OwnerCodeListTemplate> OwnerCodeListTemplates => Set<OwnerCodeListTemplate>();
+    public DbSet<FoundationUserAssignment> FoundationUserAssignments => Set<FoundationUserAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,12 +58,33 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<Comment>().HasQueryFilter(c => !c.IsDeleted);
         modelBuilder.Entity<Document>().HasQueryFilter(d => !d.IsArchived);
-        modelBuilder.Entity<GrantApp>().HasQueryFilter(a => !a.IsArchived);
         modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
         modelBuilder.Entity<ProofRecord>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<EmailRecord>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<CodeList>().HasQueryFilter(cl => !cl.IsDeleted);
         modelBuilder.Entity<CodeListItem>().HasQueryFilter(i => !i.IsDeleted);
+
+        // Tenant-aware query filters
+        modelBuilder.Entity<GrantApp>().HasQueryFilter(a =>
+            !a.IsArchived
+            && (_scope.OwnerId == null || a.OwnerId == _scope.OwnerId)
+            && (_scope.FoundationId == null || a.FoundationId == _scope.FoundationId));
+
+        modelBuilder.Entity<Granter>().HasQueryFilter(g =>
+            (_scope.OwnerId == null || g.OwnerId == _scope.OwnerId)
+            && (_scope.FoundationId == null || g.FoundationId == _scope.FoundationId));
+
+        modelBuilder.Entity<Vendor>().HasQueryFilter(v =>
+            (_scope.OwnerId == null || v.OwnerId == _scope.OwnerId)
+            && (_scope.FoundationId == null || v.FoundationId == _scope.FoundationId));
+
+        modelBuilder.Entity<CodeList>().HasQueryFilter(cl =>
+            !cl.IsDeleted
+            && (cl.IsSystem || (_scope.OwnerId == null || cl.OwnerId == _scope.OwnerId))
+            && (cl.IsSystem || (_scope.FoundationId == null || cl.FoundationId == _scope.FoundationId)));
+
+        modelBuilder.Entity<Notification>().HasQueryFilter(n =>
+            (_scope.OwnerId == null || n.OwnerId == _scope.OwnerId)
+            && (_scope.FoundationId == null || n.FoundationId == _scope.FoundationId));
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

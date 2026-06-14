@@ -59,6 +59,12 @@ public class ExceptionMiddleware
                 Title = "Inaktív felhasználó.",
                 Detail = "inactive"
             },
+            OwnerSuspendedException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Forbidden,
+                Title = "Szervezet felfüggesztve.",
+                Detail = exception.Message
+            },
             InvitationExpiredException => new ProblemDetails
             {
                 Status = (int)HttpStatusCode.Gone,
@@ -82,6 +88,12 @@ public class ExceptionMiddleware
                 Status = (int)HttpStatusCode.UnprocessableEntity,
                 Title = "Email-cím eltérés.",
                 Detail = "email-mismatch"
+            },
+            ConflictException => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Conflict,
+                Title = "Ütközés.",
+                Detail = exception.Message
             },
             NotFoundException => new ProblemDetails
             {

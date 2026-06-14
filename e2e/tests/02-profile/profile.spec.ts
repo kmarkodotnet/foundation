@@ -111,7 +111,7 @@ test.describe('TS-011 | Értesítési beállítások módosítása', () => {
     let capturedBody: Record<string, boolean> | null = null;
     await munkatarsPage.route(PREFS_URL, async (route) => {
       if (route.request().method() === 'PUT') {
-        capturedBody = JSON.parse(route.request().postData() ?? '{}');
+        capturedBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, boolean>;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -133,7 +133,7 @@ test.describe('TS-011 | Értesítési beállítások módosítása', () => {
     await munkatarsPage.getByRole('button', { name: /mentés/i }).click();
     await responsePromise;
 
-    expect(capturedBody?.emailOnDeadlineApproaching).toBe(false);
+    expect((capturedBody as Record<string, boolean> | null)?.['emailOnDeadlineApproaching']).toBe(false);
   });
 
   test('Mentés után megerősítő snackbar jelenik meg', async ({ munkatarsPage }) => {

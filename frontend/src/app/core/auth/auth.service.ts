@@ -193,11 +193,27 @@ export class AuthService {
   }
 
   private buildProfileFromClaims(payload: Record<string, unknown>): UserProfileDto {
+    let role = (payload['role'] as string | undefined) ?? '';
+
+    if (!role) {
+      if (payload['platform_role']) {
+        role = payload['platform_role'] as string;
+      } else if (payload['owner_role']) {
+        role = payload['owner_role'] as string;
+      } else if (payload['foundation_roles']) {
+        try {
+          const rolesMap = JSON.parse(payload['foundation_roles'] as string) as Record<string, string>;
+          const foundationId = payload['foundation_id'] as string | undefined;
+          role = (foundationId ? rolesMap[foundationId] : null) ?? Object.values(rolesMap)[0] ?? '';
+        } catch { /* ignore malformed claim */ }
+      }
+    }
+
     return {
-      id: (payload['sub'] as string | undefined) ?? (payload['userId'] as string | undefined) ?? '',
+      id: (payload['userId'] as string | undefined) ?? (payload['sub'] as string | undefined) ?? '',
       email: (payload['email'] as string | undefined) ?? '',
       fullName: (payload['name'] as string | undefined) ?? '',
-      role: (payload['role'] as string | undefined) ?? '',
+      role,
     };
   }
 

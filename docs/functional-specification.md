@@ -115,47 +115,99 @@ A tervezett webalkalmazás célja:
 
 ## 4. Szerepkörök és felhasználói csoportok
 
-A rendszer Google/Gmail fiókkal történő bejelentkezést használ. Az egyes felhasználók bejelentkezés után egy előre hozzárendelt szerepkört kapnak, amelyet kizárólag az Admin módosíthat.
+A rendszer **háromszintű felügyeleti hierarchiát** alkalmaz:
 
-### 4.1 Szerepkörök leírása
+1. **Platform szint** — a SaaS-szolgáltató által üzemeltetett, a teljes rendszer felett értelmezett szint.
+2. **Owner (tulajdonos) szint** — egy tulajdonos szervezet, amely egy vagy több alapítványt birtokol és felügyel.
+3. **Foundation (alapítvány) szint** — egy konkrét alapítvány, amelyhez a pályázati üzleti adatok ténylegesen tartoznak.
 
-#### Admin
-- Teljes rendszerfelügyelet.
-- Felhasználók kezelése, szerepkörök hozzárendelése.
-- Kódszótárak kezelése.
-- Minden modul olvasása, írása, törlése, jóváhagyása.
-- Audit napló megtekintése.
+```
+Platform
+   └── Owner (1 → N Foundation)
+          └── Foundation
+                 └── pályázatok, dokumentumok, számlák, …
+```
+
+A rendszer Google/Gmail fiókkal történő bejelentkezést használ. Minden felhasználó bejelentkezés után előre meghívott szerepkörrel rendelkezik; szerepkört kizárólag az adott szint felelőse oszthat ki (PlatformAdmin Owner-szinten, OwnerAdmin Foundation-szinten, FoundationAdmin a saját alapítványán belül).
+
+### 4.1 Platform-szintű szerepkörök
+
+#### PlatformAdmin
+- A teljes platform üzemeltetésének felelőse.
+- Owners (tulajdonosi szervezetek) létrehozása, módosítása, felfüggesztése, archiválása.
+- Platform-szintű technikai beállítások kezelése (fájlméret-limit, meghívó-érvényesség, alapértelmezett értesítési határidők).
+- Platform-szintű audit napló megtekintése.
+- **Alapértelmezésben nem fér hozzá** az Owners alá tartozó üzleti adatokhoz; ezt csak „break-glass" módon, kötelező indoklással, naplózott módon teheti meg (lásd 5.5 és 26.1.5).
+
+#### PlatformAuditor
+- Csak olvasási jog a teljes platform metaadataira (Owners listája, platform audit napló).
+- Nem fér hozzá pályázati üzleti adatokhoz.
+- Tipikus felhasználó: külső compliance auditor.
+
+### 4.2 Owner-szintű szerepkörök
+
+#### OwnerAdmin
+- Az Owner alá tartozó alapítványok teljes körű felügyelete.
+- Új alapítvány létrehozása, archiválása, alapítványi metaadatok módosítása.
+- FoundationAdmin szerepkör kiosztása alapítványonként (meghívóval).
+- Owner-szintű kódszótár-sablonok kezelése (új alapítványok ezekkel jönnek létre).
+- Owner-szintű audit napló megtekintése (az Owner alá tartozó alapítványok összevont auditja).
+- Cross-foundation jelentések megtekintése (összesített pályázati statisztikák több alapítványra).
+
+#### OwnerAuditor
+- Csak olvasási jog az Owner alá tartozó összes alapítvány adataira (cross-foundation).
+- Tipikus felhasználó: könyvelő, kuratóriumi tag, külső pénzügyi auditor.
+
+### 4.3 Foundation-szintű szerepkörök
+
+Minden Foundation-szintű szerepkör **egyetlen konkrét alapítványhoz** van kötve. Egy felhasználó több alapítványban is rendelkezhet szerepkörrel, alapítványonként eltérővel — feltéve, hogy ezek az alapítványok ugyanahhoz az Owner-hez tartoznak.
+
+#### FoundationAdmin *(korábban: FoundationAdmin)*
+- Egy adott alapítvány teljes adminisztrációs felelőse.
+- Felhasználók kezelése az adott alapítványon belül, alapítvány-szintű szerepkörök hozzárendelése (kivéve OwnerAdmin/OwnerAuditor/PlatformAdmin/PlatformAuditor).
+- Kódszótárak kezelése az adott alapítványra (az Owner-szintű sablon felülírható és bővíthető).
+- Minden modul olvasása, írása, törlése, jóváhagyása az adott alapítványon belül.
+- Az adott alapítvány audit naplójának megtekintése.
 
 #### Elnök
-- Stratégiai szintű rálátás az összes pályázatra.
+- Stratégiai szintű rálátás az adott alapítvány összes pályázatára.
 - Jóváhagyási jogkör kulcsfontosságú lépéseknél (pl. pályázat beadása, elszámolás).
 - Nem kezeli a napi adminisztratív feladatokat.
 - Olvasási jog mindenhol, módosítási és jóváhagyási jog kiemelt modulokban.
 
 #### Pályázati munkatárs
-- Pályázatok létrehozása, kezelése a munkafolyamat mentén.
+- Pályázatok létrehozása, kezelése a munkafolyamat mentén az adott alapítványon belül.
 - Dokumentumok, e-mailek, megjegyzések csatolása.
 - Pályáztatók és szerződő cégek kezelése.
 - Pénzügyi modulokban csak olvasási jog.
 
 #### Pénzügyes
-- Számlák és fizetések rögzítése és kezelése.
+- Számlák és fizetések rögzítése és kezelése az adott alapítványon belül.
 - Elszámolás rögzítése.
 - Olvasási jog a pályázati adatokhoz.
 - Nem módosíthat pályázati tartalmi adatokat.
 
 #### Megtekintő
-- Kizárólag olvasási jog az összes modulban.
+- Kizárólag olvasási jog az adott alapítvány összes moduljában.
 - Nem hozhat létre, nem módosíthat, nem törölhet semmit.
-- Tipikus felhasználó: külső ellenőr, igazgatótanácsi tag.
+- Tipikus felhasználó: az alapítványhoz kapcsolódó külső szemlélő.
+
+### 4.4 Felhasználó ↔ szerepkör hozzárendelési modell
+
+- Egy felhasználó (Google-fiók) **legfeljebb egy Owner-hez** tartozhat (NK-13). Egy másik Owner alá tartozás új meghívást és új Google-fiókot igényel.
+- Egy felhasználónak az Owner-en belül **expliciten meg kell kapnia** szerepkört minden alapítványban, amelyhez hozzá akar férni; az Owner alá tartozás önmagában nem jelent automatikus láthatóságot (NK-14).
+- Egy felhasználó **több alapítványban különböző szerepkörökkel** is rendelkezhet (pl. az „A" alapítványban FoundationAdmin, a „B" alapítványban Pénzügyes).
+- Az OwnerAdmin egyúttal lehet FoundationAdmin egy vagy több saját alapítványban — de a két szerepkör kiosztása **különálló esemény**, külön audit-bejegyzéssel jár (NK-17).
+- Platform-szintű és Owner/Foundation-szintű szerepkörök ugyanazon felhasználón **nem keveredhetnek**: aki PlatformAdmin vagy PlatformAuditor, az nem lehet egyszerre OwnerAdmin/FoundationAdmin (jogosultság-szétválasztás).
+- Bejelentkezés után a felhasználó az alapértelmezett (vagy egyetlen) hatókörébe érkezik; ha több alapítványhoz tartozik, **alapítvány-váltó** UI-elem segítségével válthat hatókört (lásd 26.4).
 
 ---
 
 ## 5. Jogosultsági modell
 
-### 5.1 Jogosultsági mátrix
+A rendszer **hatókör-alapú RBAC**-ot alkalmaz: minden szerepkör egy konkrét hatókörhöz (Platform, Owner vagy Foundation) van kötve, és a műveletek csak az adott hatókörön belül érvényesek. Hatókörök közti hozzáférés kizárólag az alábbi szabályok szerint, expliciten engedélyezett.
 
-A táblázatban alkalmazott jelölések:
+A táblázatokban alkalmazott jelölések:
 - **R** = olvasás (Read)
 - **C** = létrehozás (Create)
 - **U** = módosítás (Update)
@@ -163,7 +215,11 @@ A táblázatban alkalmazott jelölések:
 - **A** = jóváhagyás (Approve)
 - **–** = nincs jogosultság
 
-| Modul | Admin | Elnök | Pályázati munkatárs | Pénzügyes | Megtekintő |
+### 5.1 Foundation-szintű jogosultsági mátrix
+
+A mátrix egy **adott alapítványon belüli** jogokat ír le. A „FoundationAdmin" oszlop a korábbi „Admin" szerepkör új neve.
+
+| Modul | FoundationAdmin | Elnök | Pályázati munkatárs | Pénzügyes | Megtekintő |
 |---|---|---|---|---|---|
 | Pályázati felhívások | R,C,U,D | R,U,A | R,C,U | R | R |
 | Pályázati anyagok | R,C,U,D | R,A | R,C,U | R | R |
@@ -177,18 +233,58 @@ A táblázatban alkalmazott jelölések:
 | Dokumentumkezelés | R,C,U,D | R | R,C,U | R,C | R |
 | E-mail csatolások | R,C,U,D | R | R,C,U | R,C | R |
 | Megjegyzések | R,C,U,D | R,C,U | R,C,U | R,C,U | R |
-| Pályáztatók | R,C,U,D | R | R,C,U | R | R |
-| Szerződő cégek | R,C,U,D | R | R,C,U | R,C,U | R |
-| Kódszótárak | R,C,U,D | R | R | R | R |
-| Felhasználók | R,C,U,D | R | – | – | – |
-| Audit napló | R | R | – | – | – |
+| Pályáztatók (alapítvány-szintű) | R,C,U,D | R | R,C,U | R | R |
+| Szerződő cégek (alapítvány-szintű) | R,C,U,D | R | R,C,U | R,C,U | R |
+| Kódszótárak (alapítvány-szintű felülírás) | R,C,U,D | R | R | R | R |
+| Felhasználók (alapítvány-szintű hozzárendelés) | R,C,U,D | R | – | – | – |
+| Alapítvány audit napló | R | R | – | – | – |
 
-### 5.2 Különleges jogosultsági szabályok
+### 5.2 Owner-szintű jogosultsági mátrix
 
-- Lezárt pályázatokon (`LEZÁRT` állapot) kizárólag Admin végezhet módosítást.
-- Törlés helyett az Admin szoftveres archiválást hajt végre (soft delete), kivéve teszt adatokat.
+A mátrix az adott **Owner saját alapítványainak összességén** értelmezett. Az OwnerAdmin/OwnerAuditor szerepkörök a megnevezett Owner alá tartozó **minden** alapítványra vonatkoznak; idegen Owner adataihoz nincs hozzáférés.
+
+| Modul | OwnerAdmin | OwnerAuditor |
+|---|---|---|
+| Alapítványok (CRUD, archiválás) | R,C,U,D | R |
+| FoundationAdmin kinevezés / visszavonás | C,U,D | – |
+| Owner-szintű kódszótár-sablonok | R,C,U,D | R |
+| Cross-foundation jelentések | R | R |
+| Owner-szintű audit napló | R | R |
+| Bármely saját alapítvány pályázati adatai | R | R |
+| Owner-szintű felhasználói adminisztráció | R,C,U,D | R |
+
+> **Megjegyzés:** Az OwnerAdmin **nem oszthat ki** Owner-szintű (OwnerAdmin/OwnerAuditor) szerepkört, csak alapítvány-szintűt. Új Owner-szintű szerepkört kizárólag PlatformAdmin hozhat létre (privilege escalation védelem).
+
+### 5.3 Platform-szintű jogosultsági mátrix
+
+| Modul | PlatformAdmin | PlatformAuditor |
+|---|---|---|
+| Owners (CRUD, suspend, archiválás) | R,C,U,D | R |
+| Platform-szintű felhasználói adminisztráció | R,C,U,D | R |
+| Platform-szintű technikai beállítások | R,U | R |
+| Platform audit napló | R | R |
+| Bármely Owner üzleti adatai | – *(default; lásd break-glass, 5.5)* | – |
+
+### 5.4 Hatókör-izolációs szabályok
+
+- Minden adatlekérdezés és módosítás backend oldalon az aktuálisan bejelentkezett felhasználó **JWT-claim-jeiből származtatott hatóköréhez** van kötve. A scope soha nem származhat kliensoldali bemenetből.
+- Foundation-szintű szerepkörök **csak az adott alapítvány** adataihoz férnek hozzá.
+- Owner-szintű szerepkörök **csak az adott Owner saját alapítványaihoz** férnek hozzá.
+- Platform-szintű szerepkörök **csak a platform metaadataihoz** férnek hozzá; üzleti adathoz csak break-glass módban (lásd 5.5).
+- Hatókör-ütközés esetén (pl. egy entitás `FoundationId`-je nem egyezik a felhasználó scope-jával) a rendszer 403 hibát ad vissza és kiemelt audit-bejegyzést készít.
+
+### 5.5 Különleges jogosultsági szabályok
+
+- Lezárt pályázatokon (`LEZÁRT` állapot) kizárólag FoundationAdmin (vagy a felette levő OwnerAdmin) végezhet módosítást.
+- Törlés helyett az adott szintű felelős szoftveres archiválást hajt végre (soft delete), kivéve teszt adatokat.
 - A jóváhagyás (`A`) jogkör mindig az adott lépés véglegesítését jelenti (pl. beadás megerősítése, elszámolás lezárása).
-- Saját megjegyzés módosítható és törölhető a megjegyzés tulajdonosa által is, az Admin mellett.
+- Saját megjegyzés módosítható és törölhető a megjegyzés tulajdonosa által is, az adott alapítvány FoundationAdminja mellett.
+- **Utolsó admin szabály**: mindenkor legalább egy aktív felelősnek léteznie kell minden szinten — legalább 1 PlatformAdmin, Owner-enként legalább 1 OwnerAdmin, alapítványonként legalább 1 FoundationAdmin. Self-demotion (saját szerepkör visszavonása) minden szinten tiltott.
+- **Break-glass hozzáférés** (NK-18): PlatformAdmin szükség esetén (technikai vészhelyzet, jogszabályi adatkiadási kötelezettség) ideiglenes Owner-szintű hozzáférést kaphat egy adott Owner adataihoz. Feltételek:
+  - kötelező szöveges indoklás;
+  - az érintett Owner OwnerAdminjának automatikus e-mail értesítése;
+  - kiemelt audit-bejegyzés (`BREAK_GLASS_ACCESS`);
+  - alapértelmezett időkorlát: 24 óra, ezt követően automatikus visszavonás.
 
 ---
 
@@ -209,7 +305,9 @@ A rendszer az alábbi fő modulokból épül fel:
 | M09 | Keresés és szűrés | Általános és modul-specifikus keresési, szűrési és listázási funkciók. |
 | M10 | Értesítések | Automatikus határidőfigyelmeztetések és rendszerértesítések. |
 | M11 | Audit napló | Minden adatmódosítás naplózása visszakövethetőség céljából. |
-| M12 | Adminisztráció | Rendszerszintű beállítások, felhasználók, kódszótárak kezelése. |
+| M12 | Alapítvány-adminisztráció | Alapítvány-szintű beállítások, felhasználók, kódszótárak kezelése (lásd 26.3). |
+| M13 | Owner-adminisztráció | Alapítványok provisioningja, Owner-szintű felhasználók, kódszótár-sablonok, cross-foundation jelentések, Owner-szintű audit (lásd 26.2). |
+| M14 | Platform-adminisztráció | Owners (tulajdonosok) kezelése, platform-szintű felhasználók és technikai beállítások, platform audit, break-glass hozzáférés (lásd 26.1). |
 
 ---
 
@@ -274,7 +372,7 @@ A pályázati munkafolyamat **lineáris, de részben kihagyható** lépések sor
 | 6 → 7 | Szerződésekből Számlákba | Lépés jelölhető elvégzettként |
 | 7 → 8/9 | Számlákból tovább | Legalább 1 számla rögzítve |
 | 8 → 9 | Igazolásból Elszámolásba | Legalább 1 igazolás rögzítve |
-| 9 → LEZÁRT | Elszámolásból Lezárásba | Elszámolás időpontja rögzítve, jóváhagyás szükséges (Elnök vagy Admin) |
+| 9 → LEZÁRT | Elszámolásból Lezárásba | Elszámolás időpontja rögzítve, jóváhagyás szükséges (Elnök vagy FoundationAdmin) |
 
 ### 7.5 Negatív eredmény kezelése
 
@@ -282,7 +380,7 @@ Ha a [3] lépésnél az eredmény **„Nem nyert"**:
 - A pályázat állapota `LEZÁRT – NEM NYERT` lesz.
 - A [4]–[9] lépések nem aktiválódnak, inaktívként jelennek meg.
 - Az összes addig rögzített adat és dokumentum megőrzésre kerül.
-- A lezárt pályázat olvasható, de nem módosítható (kivéve Admin).
+- A lezárt pályázat olvasható, de nem módosítható (kivéve FoundationAdmin).
 
 ### 7.6 Párhuzamos tevékenységek
 
@@ -303,7 +401,7 @@ Ha a [3] lépésnél az eredmény **„Nem nyert"**:
 | `LOST` | Nem nyert | Negatív eredmény rögzítve. |
 | `CLOSED_WON` | Lezárt – Nyert | Elszámolás teljesítve, a nyertes pályázat folyamata lezárult. |
 | `CLOSED_LOST` | Lezárt – Nem nyert | A nem nyert pályázat manuálisan lezárva. |
-| `ARCHIVED` | Archivált | Admin által archivált pályázat (logikailag törölt). |
+| `ARCHIVED` | Archivált | FoundationAdmin által archivált pályázat (logikailag törölt). |
 
 ### 8.2 Állapotátmenetek
 
@@ -315,7 +413,7 @@ SUBMITTED → LOST (eredmény = nem nyert)
 WON → IN_PROGRESS (visszakerül a folyamatba: szerződés, költési terv, stb.)
 IN_PROGRESS → CLOSED_WON (elszámolás lezárva + jóváhagyva)
 LOST → CLOSED_LOST (manuális lezárás)
-Bármely állapot → ARCHIVED (csak Admin)
+Bármely állapot → ARCHIVED (csak FoundationAdmin)
 ```
 
 ### 8.3 Munkafolyamat-lépés állapotok
@@ -341,8 +439,8 @@ Minden egyes munkafolyamat-lépésnek saját állapota van:
 - Minden lépésnél lehetséges dokumentum, e-mail és megjegyzés csatolása.
 - Minden lépésnél rögzítésre kerül a létrehozó felhasználó és az időbélyeg.
 - Módosítás esetén az előző értéket az audit napló megőrzi.
-- Lezárt lépésnél (`LOCKED`) csak Admin végezhet módosítást.
-- Kihagyott lépés visszaállítható aktívra, ha az üzleti folyamat megköveteli (Admin vagy Elnök jogkörrel).
+- Lezárt lépésnél (`LOCKED`) csak FoundationAdmin végezhet módosítást.
+- Kihagyott lépés visszaállítható aktívra, ha az üzleti folyamat megköveteli (FoundationAdmin vagy Elnök jogkörrel).
 
 ---
 
@@ -352,9 +450,9 @@ Minden egyes munkafolyamat-lépésnek saját állapota van:
 A pályázati felhívás az életciklus kiindulópontja. Ez a lépés rögzíti a pályáztató által meghirdetett lehetőség összes releváns adatát.
 
 ### 10.2 Érintett szerepkörök
-- Létrehozás: Admin, Pályázati munkatárs
-- Módosítás: Admin, Elnök, Pályázati munkatárs
-- Törlés/Archiválás: Admin
+- Létrehozás: FoundationAdmin, Pályázati munkatárs
+- Módosítás: FoundationAdmin, Elnök, Pályázati munkatárs
+- Törlés/Archiválás: FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 10.3 Adatmezők
@@ -395,8 +493,8 @@ A pályázati felhívás az életciklus kiindulópontja. Ez a lépés rögzíti 
 Rögzíti a tényleges pályázat benyújtásának körülményeit és tartalmát.
 
 ### 11.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs
-- Jóváhagyás (beadás véglegesítése): Elnök, Admin
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs
+- Jóváhagyás (beadás véglegesítése): Elnök, FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 11.3 Adatmezők
@@ -411,7 +509,7 @@ Rögzíti a tényleges pályázat benyújtásának körülményeit és tartalmá
 ### 11.4 Üzleti szabályok
 - A lépés csak akkor tekinthető lezártnak, ha a beadás időpontja rögzítve van.
 - Beadás után a pályázat állapota `SUBMITTED`-re vált.
-- Az Elnök vagy Admin jóváhagyása szükséges a lépés véglegesítéséhez (konfigurálható).
+- Az Elnök vagy FoundationAdmin jóváhagyása szükséges a lépés véglegesítéséhez (konfigurálható).
 
 > **Szakmai feltételezés:** A jóváhagyás a beadás tényét, nem az anyag tartalmát igazolja. Az anyag tartalmi ellenőrzése szervezeti folyamat, nem rendszerszintű.
 
@@ -432,8 +530,8 @@ Rögzíti a tényleges pályázat benyújtásának körülményeit és tartalmá
 A pályázat eredményének (nyert / nem nyert) és a kapcsolódó adatok rögzítése.
 
 ### 12.2 Érintett szerepkörök
-- Rögzítés: Admin, Pályázati munkatárs
-- Jóváhagyás: Elnök, Admin
+- Rögzítés: FoundationAdmin, Pályázati munkatárs
+- Jóváhagyás: Elnök, FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 12.3 Adatmezők
@@ -467,8 +565,8 @@ A pályázat eredményének (nyert / nem nyert) és a kapcsolódó adatok rögz�
 A nyertes pályázathoz kapcsolódó, a pályáztatóval kötött szerződés rögzítése. Ez a lépés kihagyható, ha a pályáztató nem köt formális szerződést.
 
 ### 13.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs
-- Jóváhagyás: Elnök, Admin
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs
+- Jóváhagyás: Elnök, FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 13.3 Adatmezők
@@ -502,8 +600,8 @@ A nyertes pályázathoz kapcsolódó, a pályáztatóval kötött szerződés r�
 A nyertes pályázati összeg felhasználásának tervezése, a pályázati feltételeknek megfelelő bontásban.
 
 ### 14.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs
-- Jóváhagyás: Elnök, Admin
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs
+- Jóváhagyás: Elnök, FoundationAdmin
 - Megtekintés: Minden szerepkör (pénzügyes is olvashat)
 
 ### 14.3 Adatmezők – Költési terv fej
@@ -545,8 +643,8 @@ A nyertes pályázati összeg felhasználásának tervezése, a pályázati felt
 Az alapítvány és külső cégek/szolgáltatók között kötött, pályázati célú megállapodások rögzítése.
 
 ### 15.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs, Pénzügyes
-- Jóváhagyás: Admin, Elnök
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs, Pénzügyes
+- Jóváhagyás: FoundationAdmin, Elnök
 - Megtekintés: Minden szerepkör
 
 ### 15.3 Adatmezők
@@ -582,9 +680,9 @@ Az alapítvány és külső cégek/szolgáltatók között kötött, pályázati
 A pályázati keretből teljesített kifizetések dokumentálása számla- és fizetési szinten.
 
 ### 16.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pénzügyes
+- Létrehozás/módosítás: FoundationAdmin, Pénzügyes
 - Megtekintés: Minden szerepkör
-- Jóváhagyás (kifizetés igazolása): Admin, Elnök, Pénzügyes
+- Jóváhagyás (kifizetés igazolása): FoundationAdmin, Elnök, Pénzügyes
 
 ### 16.3 Adatmezők
 
@@ -630,7 +728,7 @@ A [7] lépés tartalmaz egy összesítőt:
 Annak dokumentálása, hogy a pályázati célja szerinti esemény megtörtént vagy a tárgyi ellenszolgáltatás megérkezett.
 
 ### 17.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs
 - Megtekintés: Minden szerepkör
 
 ### 17.3 Adatmezők
@@ -656,7 +754,7 @@ Annak dokumentálása, hogy a pályázati célja szerinti esemény megtörtént 
 ### 17.6 Elfogadási kritériumok
 - Fotó feltöltése nélkül az igazolás nem rögzíthető.
 - A feltöltött fotók bélyegképként megjelennek a lépés nézetén.
-- Igazolás törlése esetén a fotók is törlődnek (vagy az Admin kezeli az árva fájlokat).
+- Igazolás törlése esetén a fotók is törlődnek (vagy az FoundationAdmin kezeli az árva fájlokat).
 
 ---
 
@@ -666,9 +764,9 @@ Annak dokumentálása, hogy a pályázati célja szerinti esemény megtörtént 
 A pályáztató felé teljesítendő pénzügyi és tartalmi elszámolás rögzítése.
 
 ### 18.2 Érintett szerepkörök
-- Létrehozás: Admin, Pénzügyes, Pályázati munkatárs
-- Módosítás: Admin, Pénzügyes
-- Jóváhagyás (lezárás): Elnök, Admin
+- Létrehozás: FoundationAdmin, Pénzügyes, Pályázati munkatárs
+- Módosítás: FoundationAdmin, Pénzügyes
+- Jóváhagyás (lezárás): Elnök, FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 18.3 Adatmezők
@@ -748,7 +846,7 @@ A pályázati folyamat bármely lépéséhez kapcsolódó fájlok feltöltése, 
 
 ### 19.5 Üzleti szabályok
 - Dokumentum feltölthető bármely lépésnél, bármely jogosult szerepkör által.
-- Dokumentum nem törölhető véglegesen (csak Admin archiválhat).
+- Dokumentum nem törölhető véglegesen (csak FoundationAdmin archiválhat).
 - Mindenki megtekintheti a csatolt dokumentumokat olvasási jogkörrel.
 - A fájlok közvetlen letöltési link vagy előnézet formájában elérhetők.
 
@@ -785,7 +883,7 @@ A pályázathoz kapcsolódó elektronikus levelezés dokumentálása. Az e-maile
 ### 20.4 Üzleti szabályok
 - Egy lépéshez több e-mail is csatolható.
 - Az e-mail csatolmány nem önálló dokumentum, hanem a kommunikáció nyomvonalának részét képezi.
-- E-mail törölhető az azt rögzítő felhasználó által (saját rögzítés esetén) vagy Admin által.
+- E-mail törölhető az azt rögzítő felhasználó által (saját rögzítés esetén) vagy FoundationAdmin által.
 
 ### 20.5 Elfogadási kritériumok
 - E-mail hozzáadható bármely lépés részletes nézetéből.
@@ -809,8 +907,8 @@ Rövid vagy hosszabb szöveges megjegyzések rögzítése minden pályázati lé
 | Módosítva | Timestamp | Automatikus (ha módosítva) |
 
 ### 21.3 Üzleti szabályok
-- Megjegyzés szerkeszthető a saját szerző által (és Admin által).
-- Megjegyzés törölhető a saját szerző által (és Admin által); törölt megjegyzés helyén „Törölve" felirat jelenik meg, a tartalom nem látható.
+- Megjegyzés szerkeszthető a saját szerző által (és FoundationAdmin által).
+- Megjegyzés törölhető a saját szerző által (és FoundationAdmin által); törölt megjegyzés helyén „Törölve" felirat jelenik meg, a tartalom nem látható.
 - Megjegyzéseket más felhasználók nem módosíthatják.
 - A megjegyzések időrendben (legújabb alul) jelennek meg; chat-szerű megjelenítés ajánlott.
 
@@ -827,8 +925,8 @@ Rövid vagy hosszabb szöveges megjegyzések rögzítése minden pályázati lé
 A pályázatokat kiíró szervezetek önálló, visszakereshető nyilvántartása. A pályáztató nem kódszótár-elem, hanem önálló entitás kapcsolódó adatokkal.
 
 ### 22.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs
-- Törlés/Archiválás: Admin
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs
+- Törlés/Archiválás: FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 22.3 Adatmezők
@@ -860,8 +958,8 @@ A pályázatokat kiíró szervezetek önálló, visszakereshető nyilvántartás
 Az alvállalkozói szerződések partnerének (külső cég, szolgáltató, szállító) nyilvántartása. Nem kódszótár-elem, hanem önálló entitás.
 
 ### 23.2 Érintett szerepkörök
-- Létrehozás/módosítás: Admin, Pályázati munkatárs, Pénzügyes
-- Törlés/Archiválás: Admin
+- Létrehozás/módosítás: FoundationAdmin, Pályázati munkatárs, Pénzügyes
+- Törlés/Archiválás: FoundationAdmin
 - Megtekintés: Minden szerepkör
 
 ### 23.3 Adatmezők
@@ -894,7 +992,7 @@ Az alvállalkozói szerződések partnerének (külső cég, szolgáltató, szá
 A rendszerben használt értékkészletek adminisztrátor általi karbantartása. A kódszótárak bővíthetők, szerkeszthetők és sorbarendezhetők.
 
 ### 24.2 Érintett szerepkörök
-- Teljes CRUD: Admin
+- Teljes CRUD: FoundationAdmin
 - Megtekintés: Minden szerepkör (a kódszótárak tartalmát az összes felhasználó olvashatja)
 
 ### 24.3 Kódszótár-típusok (rendszer-szintű, előre definiált)
@@ -927,7 +1025,7 @@ A rendszerben használt értékkészletek adminisztrátor általi karbantartása
 
 ### 24.6 Üzleti szabályok
 - Rendszer-szintű kódszótárak nem törölhetők, csak bővíthetők és elemeik módosíthatók.
-- Admin saját kódszótárakat is létrehozhat egyedi üzleti szükségletekre.
+- FoundationAdmin saját kódszótárakat is létrehozhat egyedi üzleti szükségletekre.
 - Inaktív kódszótár-elem nem jelenik meg a kiválasztó listákban, de a már kapcsolt rekordokon megmarad.
 - Kódszótár elem sorrendje határozza meg a legördülő listák sorrendjét az alkalmazásban.
 
@@ -949,7 +1047,7 @@ A bejelentkezett felhasználó saját adatainak megtekintése és korlátozott m
 | Teljes név | Google fiók | Nem (szinkronizált) |
 | E-mail cím | Google fiók | Nem |
 | Profilkép | Google fiók | Nem |
-| Szerepkör | Admin által beállított | Nem (saját magán) |
+| Szerepkör | FoundationAdmin által beállított | Nem (saját magán) |
 | Értesítési beállítások | Felhasználó | ✅ |
 | Felhasználói felület nyelve | Felhasználó | ✅ (ha több nyelv elérhető) |
 | Utolsó bejelentkezés | Rendszer | Nem |
@@ -966,26 +1064,106 @@ A bejelentkezett felhasználó saját adatainak megtekintése és korlátozott m
 
 ## 26. Adminisztrációs funkciók
 
-### 26.1 Felhasználókezelés
+Az adminisztrációs funkciók a háromszintű felügyeleti hierarchia szerint vannak strukturálva: platform-, owner- és alapítvány-szintű feladatkörök külön UI-felületeken érhetők el, és külön bejelentkezési hatókörökhöz tartoznak.
 
-#### Funkciók
-- Felhasználók listázása (név, e-mail, szerepkör, utolsó belépés, státusz).
-- Szerepkör módosítása meglévő felhasználónak.
-- Felhasználó inaktiválása (nem tud bejelentkezni, de adatai megmaradnak).
-- Inaktivált felhasználó reaktiválása.
-- Felhasználó törlése nem lehetséges, ha van hozzá tartozó adat a rendszerben.
-- Meghívók kezelése: új meghívó kiküldése, lejárt meghívó újraküldése, függőben lévő meghívó visszavonása.
+### 26.1 Platform-szintű adminisztráció
 
-#### Meghívásos regisztrációs folyamat
+A platform-szintű funkciók kizárólag PlatformAdmin és PlatformAuditor szerepkörrel érhetők el, külön UI-belépési ponton (`/platform`).
+
+#### 26.1.1 Owners (tulajdonosok) kezelése
+
+- Új Owner provisioning: szervezetnév, technikai kapcsolattartó e-mail címe, kezdő OwnerAdmin meghívásához használt Google-fiók.
+- Owner-lifecycle állapotok: `ACTIVE`, `SUSPENDED`, `ARCHIVED`.
+- Owner felfüggesztése: az alá tartozó felhasználók nem tudnak bejelentkezni, az adatok megőrzöttek maradnak.
+- Owner archiválása: soft delete, csak akkor engedélyezett, ha minden alá tartozó alapítvány előzőleg archivált vagy migrált.
+
+#### 26.1.2 Platform-szintű felhasználókezelés
+
+- PlatformAdmin / PlatformAuditor szerepkörök kiosztása, módosítása, visszavonása.
+- Platform-szintű felhasználó **nem rendelkezhet** egyidejűleg Owner- vagy Foundation-szintű szerepkörrel (jogosultság-szétválasztás).
+- Meghívási folyamat: lásd 26.3.2; a meghívó hatóköre ebben az esetben `PLATFORM`.
+
+#### 26.1.3 Platform-szintű technikai beállítások
+
+| Beállítás | Leírás |
+|---|---|
+| Fájlméret korlát | Maximum feltöltési méret MB-ban (platform-szintű alapérték) |
+| Meghívó érvényességi ideje | Hány óráig érvényes a kiküldött meghívó link (default: 72 óra) |
+| Alapértelmezett értesítési határidők | Hány nappal előre küldjön figyelmeztetőt (default: 7 nap) — Owner/Foundation-szinten felülírható |
+| Default Owner-szintű kódszótár-sablon | Új Owner létrehozásakor örökölt értékkészlet (NK-16) |
+
+#### 26.1.4 Platform audit napló
+
+- Minden platform-szintű művelet, Owner-lifecycle esemény és break-glass hozzáférés naplózva.
+- Szűrhető: PlatformAdmin felhasználó, érintett Owner, dátumintervallum, művelettípus szerint.
+
+#### 26.1.5 Break-glass hozzáférés Owner üzleti adataihoz
+
+- PlatformAdmin szükség esetén időkorlátos, indoklott Owner-szintű hozzáférést kaphat (lásd 5.5).
+- Az indítás kötelező szöveges indoklást igényel.
+- Az érintett Owner OwnerAdminja automatikusan e-mail értesítést kap.
+- A hozzáférés alapértelmezett időtartama 24 óra; lejáratkor automatikus visszavonás.
+- Külön audit-bejegyzés készül `BREAK_GLASS_ACCESS` művelettípussal.
+
+### 26.2 Owner-szintű adminisztráció
+
+Az Owner-szintű funkciók kizárólag OwnerAdmin és OwnerAuditor szerepkörrel érhetők el.
+
+#### 26.2.1 Alapítványok (Foundations) kezelése
+
+- Új alapítvány létrehozása: alapítvány neve, branding (logó, megjelenítendő név), kezdő FoundationAdmin meghívásához használt Google-fiók.
+- Új alapítvány automatikusan örökli az Owner-szintű kódszótár-sablonokat (NK-16).
+- Új alapítvány létrehozásakor opcionálisan átmásolhatók az Owner alá tartozó **másik** alapítvány Pályáztatói és Szerződő cégei (NK-15 — sablonmásolás, nem megosztás).
+- Alapítvány-lifecycle: `ACTIVE`, `ARCHIVED`.
+- Alapítvány archiválása soft delete; csak akkor lehetséges, ha nincs aktív (nem lezárt) pályázata.
+
+#### 26.2.2 Owner-szintű felhasználókezelés és cross-foundation hozzárendelés
+
+- Az Owner alá tartozó összes felhasználó listája egy helyen, alapítvány-szerinti szerepkörrel együtt.
+- OwnerAdmin új felhasználót hívhat meg az Owner-hez és tetszőleges saját alapítványához rendelhet alapítvány-szintű szerepkörrel.
+- OwnerAdmin/OwnerAuditor szerepkört kiosztani **nem** lehet itt; ezt kizárólag PlatformAdmin végzi.
+- A meghívási folyamat hatóköre: `OWNER` (legalább egy alapítvány-szintű hozzárendeléssel együtt).
+
+#### 26.2.3 Owner-szintű kódszótár-sablonok
+
+- Az Owner-szintű kódszótár-sablonok az adott Owner alá tartozó **új** alapítványoknak az alapértelmezett értékkészletét jelentik.
+- A már létező alapítványok saját kódszótárai változatlanok maradnak; az Owner-szintű sablon módosítása nem hat vissza rájuk automatikusan.
+- Sablon manuálisan „újra-alkalmazható" egy létező alapítványra, ami a hiányzó tételeket pótolja (meglévőket nem ír felül).
+
+#### 26.2.4 Cross-foundation jelentések
+
+- Az OwnerAdmin/OwnerAuditor összevont jelentéseket lát az Owner alá tartozó összes alapítványra:
+  - aktuális pályázati állapot-megoszlás (folyamatban / nyert / lezárt);
+  - elnyert összeg alapítványonkénti és összevont bontásban;
+  - elszámolási státuszok cross-foundation áttekintése.
+- A részletes pályázati nézet alapítvány-specifikus; OwnerAdmin a foundation switcheren keresztül navigál a részletekhez.
+
+#### 26.2.5 Owner-szintű audit napló
+
+- Az Owner alá tartozó összes alapítvány audit-eseményei összevonva.
+- Szűrhető: felhasználó, alapítvány, dátumintervallum, entitás típus, művelet típusa szerint.
+
+### 26.3 Alapítvány-szintű adminisztráció
+
+Az alapítvány-szintű funkciók FoundationAdmin szerepkörrel érhetők el, az aktuálisan kiválasztott alapítvány hatókörén belül.
+
+#### 26.3.1 Felhasználókezelés (alapítvány-szintű)
+
+- Felhasználók listázása az adott alapítványon belül (név, e-mail, alapítvány-szintű szerepkör, utolsó belépés, státusz).
+- Alapítvány-szintű szerepkör módosítása meglévő felhasználónak (kivéve OwnerAdmin/OwnerAuditor/PlatformAdmin/PlatformAuditor).
+- Felhasználó **alapítvány-szintű** hozzárendelésének inaktiválása vagy törlése: a felhasználó Owner-szinten megmarad, csak az adott alapítvány hozzáférését veszti el.
+- Meghívók kezelése az alapítvány hatókörén belül: új meghívó kiküldése, lejárt meghívó újraküldése, függőben lévő meghívó visszavonása.
+
+#### 26.3.2 Meghívásos regisztrációs folyamat
 
 A rendszerbe kizárólag meghívott felhasználók léphetnek be. Automatikus önregisztráció nem engedélyezett.
 
 **A meghívási folyamat lépései:**
-1. Admin létrehoz egy meghívót: megadja a felhasználó e-mail címét és a szándékolt szerepkört.
+1. A meghívást indító felelős (PlatformAdmin / OwnerAdmin / FoundationAdmin) létrehoz egy meghívót: megadja a felhasználó e-mail címét, a meghívó **hatókörét** (PLATFORM / OWNER / FOUNDATION) és a szándékolt szerepkört.
 2. A rendszer meghívó e-mailt küld egy egyszer használatos, időkorlátozott tokennel.
 3. A felhasználó a meghívó linkre kattint, és Google OAuth-on hitelesíti magát.
 4. A rendszer ellenőrzi, hogy a Google-fiók e-mail címe megegyezik-e a meghívott e-mail címmel.
-5. Egyezés esetén a fiók aktiválódik az előre beállított szerepkörrel.
+5. Egyezés esetén a fiók aktiválódik a megadott hatókörrel és szerepkörrel.
 6. Eltérés esetén a bejelentkezés megtagadva; hibaüzenet jelenik meg: „A Google-fiókod e-mail címe nem egyezik a meghívóban szereplő címmel."
 
 **Meghívó státuszok:**
@@ -995,32 +1173,45 @@ A rendszerbe kizárólag meghívott felhasználók léphetnek be. Automatikus ö
 | `PENDING` | Kiküldve, a felhasználó még nem fogadta el |
 | `ACCEPTED` | A felhasználó aktiválta a fiókját |
 | `EXPIRED` | Lejárt (érvényességi idő eltelt, újraküldhető) |
-| `REVOKED` | Admin visszavonta elfogadás előtt |
+| `REVOKED` | Az indító felelős visszavonta elfogadás előtt |
 
-#### Üzleti szabályok
+**Üzleti szabályok:**
 - Meghívó nélkül a Google OAuth sikeres hitelesítés ellenére sem jön létre felhasználói fiók.
-- Egy e-mail címre egyszerre csak egy aktív (`PENDING`) meghívó létezhet.
+- Egy e-mail címre egyszerre csak egy aktív (`PENDING`) meghívó létezhet, **hatókörönként**.
+- Egy felhasználó legfeljebb egy Owner-hez tartozhat (NK-13); ha már egy Owner-hez tartozik, idegen Owner alá szóló meghívót csak akkor fogadhat el, ha az előzőt törlik (külön Google-fiók ajánlott).
+- Platform-szintű meghívót csak PlatformAdmin küldhet; Owner-szintűt csak PlatformAdmin küldhet; Foundation-szintűt OwnerAdmin vagy FoundationAdmin küldhet.
 - Lejárt meghívó újraküldhető; az újraküldés új tokent generál és visszaállítja az érvényességi időt.
 - Meghívó visszavonható mindaddig, amíg a felhasználó el nem fogadta (`PENDING` státusz).
-- Legalább 1 aktív Admin felhasználónak mindig léteznie kell.
-- Admin nem inaktiválhatja saját magát.
+- Az **utolsó admin szabály** (lásd 5.5) minden szinten érvényesül: az utolsó aktív felelős szerepköre nem vonható vissza.
+- Senki nem inaktiválhatja saját magát egyik szinten sem (self-demotion tiltás).
 
-### 26.2 Rendszerbeállítások
+#### 26.3.3 Alapítvány-szintű beállítások
 
 | Beállítás | Leírás |
 |---|---|
-| Értesítési határidők | Hány nappal előre küldjön figyelmeztetőt (default: 7 nap) |
-| Fájlméret korlát | Maximum feltöltési méret MB-ban |
-| Meghívó érvényességi ideje | Hány óráig érvényes a kiküldött meghívó link (default: 72 óra) |
-| Szervezet neve | Megjelenik a UI-ban és az exportált dokumentumokon |
+| Alapítvány neve | Megjelenik a UI-ban és az exportált dokumentumokon |
+| Alapítvány logó | A foundation switcherben és a fejléceken jelenik meg |
+| Értesítési határidők (felülírás) | A platform-szintű alapérték felülírása (NK-19 alapján csak alapítvány-szinten) |
+| Alapítvány-szintű kódszótár-felülírás | Az Owner-szintű sablon felülírása és bővítése |
 
-### 26.3 Audit napló megtekintése
-- Az Admin megtekintheti a teljes audit naplót (ld. 29. fejezet).
+#### 26.3.4 Alapítvány audit napló
+
+- A FoundationAdmin megtekintheti az adott alapítvány teljes audit naplóját (lásd 29. fejezet).
 - Szűrhető: felhasználó, dátumintervallum, entitás típus, művelet típusa szerint.
 
-### 26.4 Elfogadási kritériumok
-- A felhasználólista keresési mezővel szűrhető.
-- Szerepkör-módosítás azonnal életbe lép (a felhasználó következő oldalbetöltésekor).
+### 26.4 Foundation switcher (alapítvány-váltó)
+
+- A navigációs sávban elérhető, ha a felhasználó több alapítványhoz vagy szintű hatókörhöz tartozik.
+- Az OwnerAdmin a switcheren keresztül léphet be bármely saját alapítvány kontextusába.
+- A switcher használata új scope-claim refresh-t indít a backenden; a JWT új `foundation_id` (és szükség esetén `owner_role`) értékkel készül.
+- A foundation switcher használata audit-eseményt generál (`SCOPE_SWITCH`).
+
+### 26.5 Elfogadási kritériumok
+
+- A felhasználólista keresési mezővel szűrhető minden szinten.
+- Szerepkör-módosítás azonnal életbe lép (a felhasználó következő oldalbetöltésekor vagy scope-váltáskor).
+- A meghívási folyamat egyértelműen jelzi a UI-ban, hogy melyik hatókörbe (Platform / Owner / Foundation) szól a meghívó.
+- Az utolsó admin szabály megsértésére irányuló műveleteket a UI proaktívan megakadályozza (gomb tiltása + magyarázat).
 
 ---
 
@@ -1077,15 +1268,15 @@ A rendszerbe kizárólag meghívott felhasználók léphetnek be. Automatikus ö
 | Esemény | Értesített szerepkörök | Csatorna |
 |---|---|---|
 | Beadási határidő közeleg (7 nappal előtte) | Pályázati munkatárs, Elnök | Rendszer értesítés + e-mail |
-| Beadási határidő elmaradt (1 nappal utána) | Pályázati munkatárs, Admin | Rendszer értesítés + e-mail |
+| Beadási határidő elmaradt (1 nappal utána) | Pályázati munkatárs, FoundationAdmin | Rendszer értesítés + e-mail |
 | Elköltési határidő közeleg (14 nappal előtte) | Pénzügyes, Elnök | Rendszer értesítés + e-mail |
-| Pályázati eredmény rögzítve | Elnök, Admin | Rendszer értesítés |
+| Pályázati eredmény rögzítve | Elnök, FoundationAdmin | Rendszer értesítés |
 | Elszámolás jóváhagyásra vár | Elnök | Rendszer értesítés + e-mail |
 | Új megjegyzés rögzítve | Érintett lépés utolsó módosítója | Rendszer értesítés |
 | Dokumentum feltöltve | Érintett pályázat felelőse | Rendszer értesítés |
 | Meghívó kiküldve | Meghívott felhasználó | E-mail |
 | Meghívó 24 órán belül lejár | Meghívott felhasználó | E-mail |
-| Meghívó elfogadva (fiók aktiválva) | Admin | Rendszer értesítés |
+| Meghívó elfogadva (fiók aktiválva) | FoundationAdmin | Rendszer értesítés |
 
 ### 28.2 Rendszer értesítések
 - A navigációs sávon értesítési harang ikon, számlálóval.
@@ -1112,27 +1303,33 @@ Minden adatmódosítás visszakövethetőségének biztosítása.
 
 ### 29.2 Naplózott műveletek
 
+Minden audit-bejegyzés tartalmazza a kapcsolódó `OwnerId` és `FoundationId` (ha értelmezhető) mezőket, hogy a napló a hatókör-hierarchia szerint szűrhető legyen.
+
 | Művelettípus | Naplózott adatok |
 |---|---|
-| Létrehozás (C) | Entitás típus, entitás ID, létrehozó felhasználó, időbélyeg, új értékek |
-| Módosítás (U) | Entitás típus, entitás ID, módosító felhasználó, időbélyeg, módosított mező, régi érték, új érték |
-| Törlés/Archiválás (D) | Entitás típus, entitás ID, törlő felhasználó, időbélyeg |
-| Állapotváltás | Entitás típus, entitás ID, felhasználó, időbélyeg, régi állapot, új állapot |
-| Bejelentkezés | Felhasználó, időbélyeg, IP cím |
-| Szerepkör-módosítás | Érintett felhasználó, módosító Admin, régi/új szerepkör, időbélyeg |
+| Létrehozás (C) | Entitás típus, entitás ID, létrehozó felhasználó, hatókör (OwnerId/FoundationId), időbélyeg, új értékek |
+| Módosítás (U) | Entitás típus, entitás ID, módosító felhasználó, hatókör, időbélyeg, módosított mező, régi érték, új érték |
+| Törlés/Archiválás (D) | Entitás típus, entitás ID, törlő felhasználó, hatókör, időbélyeg |
+| Állapotváltás | Entitás típus, entitás ID, felhasználó, hatókör, időbélyeg, régi állapot, új állapot |
+| Bejelentkezés | Felhasználó, hatókör, időbélyeg, IP cím |
+| Szerepkör-módosítás | Érintett felhasználó, módosító felelős, érintett hatókör, régi/új szerepkör, időbélyeg |
+| Hatókör-váltás (`SCOPE_SWITCH`) | Felhasználó, kiinduló hatókör, új hatókör, időbélyeg |
+| Break-glass hozzáférés (`BREAK_GLASS_ACCESS`) | PlatformAdmin, érintett Owner, indoklás, kezdő/lejárati időbélyeg |
 
 ### 29.3 Megőrzési idő
 - Az audit napló bejegyzések **5 évig** megőrzésre kerülnek.
-- Az audit napló nem törölhető (csak Admin által exportálható).
+- Az audit napló nem törölhető (csak FoundationAdmin által exportálható).
 
 ### 29.4 Megtekintési jogosultság
-- Teljes audit napló: Admin
-- Saját pályázatok auditja: Elnök
+- Platform-szintű audit napló (teljes platform): PlatformAdmin, PlatformAuditor
+- Owner-szintű audit napló (az adott Owner alá tartozó összes alapítvány összevontan): OwnerAdmin, OwnerAuditor
+- Alapítvány-szintű audit napló (egy adott alapítvány): FoundationAdmin
+- Saját pályázatok auditja az adott alapítványon belül: Elnök
 
 ### 29.5 Elfogadási kritériumok
 - Az audit napló szűrhető: entitás típus, felhasználó, dátumintervallum, művelettípus szerint.
 - Az audit napló exportálható CSV formátumban.
-- Minden pályázat részletes nézetén elérhető az adott pályázatra vonatkozó audit napló (csak Admin és Elnök számára).
+- Minden pályázat részletes nézetén elérhető az adott pályázatra vonatkozó audit napló (csak FoundationAdmin és Elnök számára).
 
 ---
 
@@ -1185,7 +1382,10 @@ Minden adatmódosítás visszakövethetőségének biztosítása.
 ### 31.2 Jogosultságkezelés
 - Minden API végponton backend-oldali RBAC ellenőrzés (nem csak frontend).
 - Jogosulatlan hozzáférési kísérlet naplózva és 403 HTTP válasszal visszautasítva.
-- Horizontal privilege escalation: felhasználó csak a saját szervezetének adataihoz fér hozzá (single-tenant rendszer).
+- **Horizontális hatókör-izoláció:** minden felhasználó csak a hozzárendelt hatókörének (Foundation / Owner / Platform) adataihoz fér hozzá. A backend minden API-végponton ellenőrzi a kért entitás `OwnerId` és `FoundationId` mezőit a JWT-claim-ekkel szemben.
+- **Vertikális hatókör-szétválasztás:** Foundation-szintű felhasználó nem érheti el Owner-szintű API-kat, Owner-szintű felhasználó nem érheti el Platform-szintű API-kat. A platform-, owner- és üzleti API-végpontok külön JWT „audience" értékkel rendelkeznek.
+- A felhasználó hatóköre soha nem származhat kliensoldali bemenetből; mindig a tokenből származtatott, szerveroldalon ellenőrzött `OwnerId` / `FoundationId` / `Scope` claim alapján kerül kiszámításra.
+- Break-glass hozzáférés esetén (lásd 5.5 és 26.1.5) az ideiglenes Owner-hozzáférés külön ellenőrzött és audit-flaggel ellátott.
 
 ### 31.3 Adatátvitel
 - HTTPS (TLS 1.2+) kötelező minden kommunikációhoz.
@@ -1212,7 +1412,8 @@ Minden adatmódosítás visszakövethetőségének biztosítása.
 
 ### 32.1 Adatkezelési alapelvek
 - Az adatkezelés az Európai Unió GDPR rendeletének és a magyar jogszabályoknak megfelelő.
-- A rendszer **single-tenant**: kizárólag az adott alapítvány adatait tárolja.
+- A rendszer **multi-tenant háromszintű hierarchia** szerint épül fel: Platform → Owner → Foundation. Az adatelkülönítés Owner és Foundation szinten egyaránt érvényes (shared-database / shared-schema modell `OwnerId` és `FoundationId` discriminator oszlopokkal, és kötelező adatbázis-szintű hatókör-szűréssel minden üzleti entitásra).
+- Owner-ek közti adatszivárgás megakadályozása minden lekérdezés alapkövetelménye; az architektúra-validáció és az integrációs tesztek explicit ellenőrzik, hogy egyetlen lekérdezés sem futhat hatókör-szűrés nélkül.
 - Személyes adatok: bejelentkezett felhasználók neve, e-mail címe, profilképe (Google-tól szinkronizált).
 
 ### 32.2 Adatmegőrzés
@@ -1222,7 +1423,7 @@ Minden adatmódosítás visszakövethetőségének biztosítása.
 
 ### 32.3 Fájltárolás
 - Fájlok lokális fájlrendszeren tárolva, dedikált könyvtárstruktúrában.
-- Könyvtárstruktúra ajánlott felépítése: `/uploads/{év}/{pályázat_id}/{lépés_id}/{fájlnév_uuid}`
+- Könyvtárstruktúra ajánlott felépítése: `/uploads/{owner_id}/{foundation_id}/{év}/{pályázat_id}/{lépés_id}/{fájlnév_uuid}` (az `owner_id` és `foundation_id` szegmensek biztosítják a fájlszintű tenant-elkülönítést is)
 - A webszerver nem szolgálja ki közvetlenül a feltöltött fájlokat; csak az API-n keresztül érhetők el (autentikált végponton).
 - Rendszeres backup: napi biztonsági mentés ajánlott.
 
@@ -1267,15 +1468,23 @@ Az alábbi pontok üzleti döntést igényelnek, vagy pontosításra szorulnak a
 | NK-01 | Szükséges-e az Elnök jóváhagyása a pályázati anyag beadásához, vagy ez Pályázati munkatárs önálló hatásköre? | Elnök jóváhagyása szükséges (konfigurálható) | Igen |
 | NK-02 | Mi az elszámolás 80%-os küszöbértékének pontos üzleti szabálya? Blokkoló vagy csak figyelmeztető? | Figyelmeztető, nem blokkoló | Igen |
 | NK-03 | Kell-e a rendszernek e-maileket küldeni, vagy elegendő a belső értesítési rendszer? | Mindkettő szükséges (e-mail kikapcsolható felhasználónként) | Igen |
-| NK-04 | Több alapítvány is használja a rendszert (multi-tenant), vagy kizárólag egy szervezet? | Single-tenant | Igen |
+| NK-04 | Több alapítvány is használja a rendszert (multi-tenant), vagy kizárólag egy szervezet? | **LEZÁRVA:** Multi-tenant, háromszintű felügyeleti hierarchiával: Platform → Owner (tulajdonos) → Foundation (alapítvány). Lásd 4., 5. és 26. fejezet. | – |
 | NK-05 | A szerződő cég megadható-e szabadon (szöveges mező) a számlánál, vagy kötelezően az entitás-adatbázisból kell kiválasztani? | Kötelező kiválasztás vagy új létrehozás | Igen |
 | NK-06 | Milyen mezők szükségesek a pályázat összefoglaló / egylapos nézetéhez (dashboard)? | Nincs feltételezés; üzleti prioritás kérdése | Igen |
-| NK-07 | Szükséges-e munkafolyamat-visszalépés lehetősége (pl. nyert → beadott, ha hibás rögzítés volt)? | Csak Admin végezhet visszalépést | Igen |
+| NK-07 | Szükséges-e munkafolyamat-visszalépés lehetősége (pl. nyert → beadott, ha hibás rögzítés volt)? | Csak FoundationAdmin végezhet visszalépést | Igen |
 | NK-08 | A számlánál a „szállító" mezőt kötelezően a Szerződő cégek entitásból kell-e kitölteni, vagy szabadon szövegesen is megadható? | Szabadon szöveges (de opcionálisan linkelhető entitáshoz) | Igen |
 | NK-09 | Szükséges-e a pályázatok között kapcsolatot kezelni (pl. alap- és kiegészítő pályázat)? | Nem tervezett | Igen |
 | NK-10 | Milyen riport/statisztikai nézetek szükségesek (pl. éves összesítő, pályáztatónkénti statisztika)? | Nincs részletezve; bővítési lehetőség | Igen |
 | NK-11 | A Google-fiók domain korlátozott-e? (Csak az alapítvány Google Workspace domainjéről lehet belépni?) | **LEZÁRVA:** A meghívásos modell bevezetésével domain-korlátozás helyett konkrét e-mail cím szintű hozzáférés-kezelés valósul meg. Bármelyik Gmail-fiók meghívható, de csak meghívott e-mail cím tud belépni. | – |
 | NK-12 | Szükséges-e a fájlok vírusellenőrzése (antivirus scan) feltöltéskor? | Nem tervezett az alap verzióban | Igen |
+| NK-13 | Egy felhasználó (Google-fiók) tartozhat-e egyszerre több Owner-hez? | **LEZÁRVA:** Nem. Külön Owner-hez tartozás külön Google-fiókot igényel. (Adatszivárgási kockázat csökkentés.) | – |
+| NK-14 | Owner-en belül egy felhasználó automatikusan lát-e minden alapítványt, vagy csak amelyikbe expliciten meghívták? | **LEZÁRVA:** Csak amelyikbe expliciten meghívták (least privilege). | – |
+| NK-15 | A Pályáztatók és a Szerződő cégek nyilvántartása Owner-szintű (megosztott) vagy alapítvány-szintű? | **LEZÁRVA:** Alapértelmezésben alapítvány-szintű (adatelkülönítés egyszerűbb). Owner-szintű sablonmásolás opcionálisan elérhető új alapítvány létrehozásakor (lásd 26.2). | – |
+| NK-16 | Megengedett-e a kódszótár-hierarchia (Owner-szintű alapértelmezett + alapítvány-szintű felülírás)? | **LEZÁRVA:** Igen. Új alapítvány az Owner-szintű sablont örökli; alapítvány-szinten felülírható és bővíthető. | – |
+| NK-17 | Lehet-e ugyanaz a felhasználó egyszerre OwnerAdmin és FoundationAdmin (saját alapítványában)? | **LEZÁRVA:** Igen, de a két szerepkör **különálló kinevezés**, és külön audit-bejegyzéssel jár. | – |
+| NK-18 | PlatformAdmin „break-glass" hozzáférése Owner üzleti adataihoz: engedélyezett-e és milyen feltételekkel? | **LEZÁRVA:** Engedélyezett. Feltételek: kötelező szöveges indoklás, érintett OwnerAdmin automatikus értesítése, kiemelt audit-bejegyzés, alapértelmezett 24 órás időkorlát. | – |
+| NK-19 | Szükséges-e Owner-szintű branding (logó, szervezetnév) az alapítvány-szintű mellé? | **LEZÁRVA:** Nem; csak alapítvány-szintű branding. Owner-szinten csak technikai metaadatok. | – |
+| NK-20 | Owner-szintű előfizetés / számlázás a magtermék része-e? | **LEZÁRVA:** Nem; az SaaS-szolgáltató és az Owner közti kereskedelmi kapcsolat a rendszeren kívül kerül kezelésre. Ha későbbi bővítés válik szükségessé, külön FS-fejezet készül hozzá. | – |
 
 ---
 
@@ -1288,7 +1497,7 @@ Az alábbi funkciók az alaprendszer terjedelmébe nem tartoznak bele, de az arc
 | B-01 | Gmail API integráció | Az alapítvány Gmail-fiókjából automatikusan szinkronizálhatók a pályázathoz kapcsolódó e-mailek. |
 | B-02 | Dashboard és riportok | Éves összesítők, pályáztatónkénti statisztikák, elnyert összegek trendje, grafikonos megjelenítés. |
 | B-03 | Dokumentumgenerálás | Sablonból automatikusan generált elszámolási, szerződési vagy összefoglaló dokumentumok. |
-| B-04 | Multi-tenant architektúra | Több alapítvány párhuzamos kiszolgálása egy rendszeren belül, adatelkülönítéssel. |
+| ~~B-04~~ | ~~Multi-tenant architektúra~~ | **ÁTHELYEZVE A MAGTERMÉKBE** (lásd 4., 5., 26. fejezet és NK-04 lezárása). |
 | B-05 | Banki kivonat importálás | Banki adatok (CSV/XML) automatikus importálásával a kifizetések összevezetése a számlákkal. |
 | B-06 | Elektronikus aláírás | Szerződések elektronikus aláírásának támogatása (pl. DocuSign, eIDAS-kompatibilis megoldás). |
 | B-07 | Mobil alkalmazás | Native iOS/Android app a munkafolyamat mobil eszközről való kezeléséhez (különösen igazolási fotókhoz). |

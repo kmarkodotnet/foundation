@@ -51,7 +51,7 @@ public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCo
         invitation.Id,
         invitation.Email,
         invitation.Role.ToString(),
-        invitation.Status.ToString().ToUpperInvariant(),
+        invitation.Status.ToString(),
         invitation.CreatedAt,
         invitation.ExpiresAt);
 }

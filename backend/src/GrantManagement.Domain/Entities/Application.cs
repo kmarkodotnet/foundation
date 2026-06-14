@@ -6,7 +6,7 @@ using GrantManagement.Domain.ValueObjects;
 
 namespace GrantManagement.Domain.Entities;
 
-public class Application : AggregateRoot<Guid>
+public class Application : AggregateRoot<Guid>, IOwnedEntity
 {
     public string Title { get; private set; } = null!;
     public string? Identifier { get; private set; }
@@ -15,6 +15,8 @@ public class Application : AggregateRoot<Guid>
     public Guid GranterId { get; private set; }
     public Guid CreatedByUserId { get; private set; }
     public bool IsArchived { get; private set; }
+    public Guid OwnerId { get; private set; }
+    public Guid FoundationId { get; private set; }
 
     public CallStepData? CallData { get; private set; }
     public SubmissionStepData? SubmissionData { get; private set; }
@@ -63,7 +65,9 @@ public class Application : AggregateRoot<Guid>
         CallStepData callData,
         Guid createdByUserId,
         string? identifier = null,
-        string? description = null)
+        string? description = null,
+        Guid ownerId = default,
+        Guid foundationId = default)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("A pályázat neve kötelező.");
@@ -79,6 +83,8 @@ public class Application : AggregateRoot<Guid>
             CreatedByUserId = createdByUserId,
             CallData = callData,
             IsArchived = false,
+            OwnerId = ownerId,
+            FoundationId = foundationId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

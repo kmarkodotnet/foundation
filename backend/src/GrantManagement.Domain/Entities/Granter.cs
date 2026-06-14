@@ -6,16 +6,23 @@ namespace GrantManagement.Domain.Entities;
 
 public enum GranterStatus { Active, Inactive }
 
-public class Granter : AggregateRoot<Guid>
+public class Granter : AggregateRoot<Guid>, IOwnedEntity
 {
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
     public ContactInfo Contact { get; private set; } = null!;
     public GranterStatus Status { get; private set; }
+    public Guid OwnerId { get; private set; }
+    public Guid FoundationId { get; private set; }
 
     private Granter() { }
 
-    public static Granter Create(string name, string? description, ContactInfo contact)
+    public static Granter Create(
+        string name,
+        string? description,
+        ContactInfo contact,
+        Guid ownerId = default,
+        Guid foundationId = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("A pályáztató neve kötelező.");
@@ -27,6 +34,8 @@ public class Granter : AggregateRoot<Guid>
             Description = description?.Trim(),
             Contact = contact,
             Status = GranterStatus.Active,
+            OwnerId = ownerId,
+            FoundationId = foundationId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

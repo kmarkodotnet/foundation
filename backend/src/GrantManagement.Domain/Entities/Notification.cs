@@ -3,7 +3,7 @@ using GrantManagement.Domain.Enums;
 
 namespace GrantManagement.Domain.Entities;
 
-public class Notification : AggregateRoot<Guid>
+public class Notification : AggregateRoot<Guid>, IOwnedEntity
 {
     public Guid UserId { get; private set; }
     public NotificationType Type { get; private set; }
@@ -13,6 +13,8 @@ public class Notification : AggregateRoot<Guid>
     public string? RelatedEntityType { get; private set; }
     public bool IsRead { get; private set; }
     public DateTimeOffset? ReadAt { get; private set; }
+    public Guid OwnerId { get; private set; }
+    public Guid FoundationId { get; private set; }
 
     private Notification() { }
 
@@ -22,7 +24,9 @@ public class Notification : AggregateRoot<Guid>
         string title,
         string body,
         Guid? relatedEntityId = null,
-        string? relatedEntityType = null)
+        string? relatedEntityType = null,
+        Guid ownerId = default,
+        Guid foundationId = default)
     {
         return new Notification
         {
@@ -34,6 +38,8 @@ public class Notification : AggregateRoot<Guid>
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType,
             IsRead = false,
+            OwnerId = ownerId,
+            FoundationId = foundationId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

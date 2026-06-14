@@ -1,4 +1,5 @@
 using GrantManagement.Application.Common.Interfaces;
+using GrantManagement.Application.Common.Scope;
 using GrantManagement.Domain.Interfaces;
 using GrantManagement.Domain.Interfaces.Services;
 using GrantManagement.Infrastructure.Auth;
@@ -8,6 +9,7 @@ using GrantManagement.Infrastructure.FileStorage;
 using GrantManagement.Infrastructure.Identity;
 using GrantManagement.Infrastructure.Notifications;
 using GrantManagement.Infrastructure.Persistence;
+using GrantManagement.Infrastructure.Services;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +35,7 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ICurrentScopeService, CurrentScopeService>();
 
         services.Configure<SmtpSettings>(configuration.GetSection("Smtp"));
         services.AddScoped<IEmailService, SmtpEmailService>();
@@ -50,11 +53,16 @@ public static class DependencyInjection
         services.AddHangfireServer();
         services.AddScoped<DeadlineCheckJob>();
         services.AddScoped<InvitationExpiryJob>();
+        services.AddScoped<BreakGlassExpirationJob>();
         services.AddScoped<INotificationService, NotificationService>();
 
         services.AddHttpClient();
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IFoundationCountService, FoundationCountService>();
+        services.AddScoped<IActiveApplicationCountService, ActiveApplicationCountService>();
+
+        services.AddMemoryCache();
 
         return services;
     }

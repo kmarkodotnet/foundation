@@ -52,6 +52,17 @@ namespace GrantManagement.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PlatformRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("ProfilePictureUrl")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -77,6 +88,8 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.HasIndex("GoogleId")
                         .IsUnique();
 
+                    b.HasIndex("OwnerId");
+
                     b.ToTable("AppUsers", (string)null);
                 });
 
@@ -95,6 +108,9 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("FoundationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("GranterId")
                         .HasColumnType("uuid");
 
@@ -104,6 +120,9 @@ namespace GrantManagement.Infrastructure.Migrations
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -151,6 +170,9 @@ namespace GrantManagement.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("FoundationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)");
@@ -160,6 +182,9 @@ namespace GrantManagement.Infrastructure.Migrations
 
                     b.Property<string>("OldValue")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -171,6 +196,8 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.HasIndex("EntityType", "EntityId");
+
+                    b.HasIndex("OwnerId", "FoundationId");
 
                     b.ToTable("AuditLogs", (string)null);
                 });
@@ -263,6 +290,9 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("FoundationId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -275,6 +305,9 @@ namespace GrantManagement.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -292,36 +325,44 @@ namespace GrantManagement.Infrastructure.Migrations
                         {
                             Id = new Guid("11111111-0000-0000-0000-000000000001"),
                             CreatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FoundationId = new Guid("00000000-0000-0000-0000-000000000000"),
                             IsDeleted = false,
                             IsSystem = true,
                             Name = "Dokumentum típusa",
+                            OwnerId = new Guid("00000000-0000-0000-0000-000000000000"),
                             UpdatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         },
                         new
                         {
                             Id = new Guid("11111111-0000-0000-0000-000000000002"),
                             CreatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FoundationId = new Guid("00000000-0000-0000-0000-000000000000"),
                             IsDeleted = false,
                             IsSystem = true,
                             Name = "Beadási mód",
+                            OwnerId = new Guid("00000000-0000-0000-0000-000000000000"),
                             UpdatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         },
                         new
                         {
                             Id = new Guid("11111111-0000-0000-0000-000000000003"),
                             CreatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FoundationId = new Guid("00000000-0000-0000-0000-000000000000"),
                             IsDeleted = false,
                             IsSystem = true,
                             Name = "Elszámolási mód",
+                            OwnerId = new Guid("00000000-0000-0000-0000-000000000000"),
                             UpdatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         },
                         new
                         {
                             Id = new Guid("11111111-0000-0000-0000-000000000004"),
                             CreatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            FoundationId = new Guid("00000000-0000-0000-0000-000000000000"),
                             IsDeleted = false,
                             IsSystem = true,
                             Name = "Pályázat típusa",
+                            OwnerId = new Guid("00000000-0000-0000-0000-000000000000"),
                             UpdatedAt = new DateTimeOffset(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
@@ -773,10 +814,16 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("FoundationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -817,10 +864,36 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("FoundationAssignmentsJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("FoundationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FoundationRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PlatformRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -920,8 +993,14 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("FoundationId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
@@ -948,6 +1027,46 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Entities.PlatformSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DefaultDeadlineNotificationDays")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("DefaultOwnerCodeListTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("InvitationExpiryHours")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxFileSizeMb")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PlatformSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 6, 14, 9, 17, 11, 69, DateTimeKind.Unspecified).AddTicks(7174), new TimeSpan(0, 0, 0, 0, 0)),
+                            DefaultDeadlineNotificationDays = 7,
+                            InvitationExpiryHours = 72,
+                            MaxFileSizeMb = 50,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 6, 14, 9, 17, 11, 69, DateTimeKind.Unspecified).AddTicks(7177), new TimeSpan(0, 0, 0, 0, 0))
+                        });
                 });
 
             modelBuilder.Entity("GrantManagement.Domain.Entities.ProofPhoto", b =>
@@ -1112,7 +1231,7 @@ namespace GrantManagement.Infrastructure.Migrations
                             NotificationWarningDays = 7,
                             OrganizationName = "Alapítvány",
                             SpendingWarningDays = 14,
-                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 6, 13, 7, 7, 11, 590, DateTimeKind.Unspecified).AddTicks(9416), new TimeSpan(0, 0, 0, 0, 0))
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 6, 14, 9, 17, 11, 70, DateTimeKind.Unspecified).AddTicks(4402), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -1129,10 +1248,16 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("FoundationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1254,6 +1379,242 @@ namespace GrantManagement.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("WorkflowSteps", (string)null);
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.BreakGlassGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlatformAdminUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TargetOwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetOwnerId");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.ToTable("BreakGlassGrants", (string)null);
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.Foundation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LogoUri")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("OwnerId", "Status");
+
+                    b.ToTable("Foundations", (string)null);
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.Owner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Owners", (string)null);
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.OwnerCodeListTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("OwnerCodeListTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.OwnerCodeListTemplateItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("OwnerCodeListTemplateItems", (string)null);
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Users.FoundationUserAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AssignedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FoundationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FoundationRole")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FoundationId");
+
+                    b.HasIndex("AppUserId", "FoundationId")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = true");
+
+                    b.ToTable("FoundationUserAssignments", (string)null);
                 });
 
             modelBuilder.Entity("GrantManagement.Domain.Entities.AppUser", b =>
@@ -1656,6 +2017,29 @@ namespace GrantManagement.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.OwnerCodeListTemplateItem", b =>
+                {
+                    b.HasOne("GrantManagement.Domain.Tenancy.OwnerCodeListTemplate", null)
+                        .WithMany("Items")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Users.FoundationUserAssignment", b =>
+                {
+                    b.HasOne("GrantManagement.Domain.Entities.AppUser", null)
+                        .WithMany("FoundationAssignments")
+                        .HasForeignKey("AppUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Entities.AppUser", b =>
+                {
+                    b.Navigation("FoundationAssignments");
+                });
+
             modelBuilder.Entity("GrantManagement.Domain.Entities.Application", b =>
                 {
                     b.Navigation("BudgetPlan");
@@ -1693,6 +2077,11 @@ namespace GrantManagement.Infrastructure.Migrations
                     b.Navigation("Documents");
 
                     b.Navigation("EmailAttachments");
+                });
+
+            modelBuilder.Entity("GrantManagement.Domain.Tenancy.OwnerCodeListTemplate", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

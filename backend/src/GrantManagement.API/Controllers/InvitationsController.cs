@@ -4,6 +4,7 @@ using GrantManagement.Application.Invitations.Commands.ResendInvitation;
 using GrantManagement.Application.Invitations.Commands.RevokeInvitation;
 using GrantManagement.Application.Invitations.DTOs;
 using GrantManagement.Application.Invitations.Queries.GetInvitations;
+using GrantManagement.Application.Invitations.Queries.GetInvitationPreview;
 using GrantManagement.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -104,3 +105,15 @@ public class InvitationsController : ApiControllerBase
 }
 
 public record CreateInvitationRequest(string Email, UserRole Role);
+
+// Separate (unauthenticated) controller for public invitation preview
+[Route("api/v1/invitations")]
+[AllowAnonymous]
+public class InvitationPreviewController : ApiControllerBase
+{
+    [HttpGet("preview/{token}")]
+    [ProducesResponseType(typeof(InvitationPreviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Preview(string token)
+        => Ok(await Sender.Send(new GetInvitationPreviewQuery(token)));
+}

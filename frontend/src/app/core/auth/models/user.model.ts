@@ -3,7 +3,12 @@ export type UserRole =
   | 'Elnok'
   | 'PalyazatiMunkatars'
   | 'Penzugyes'
-  | 'Megtekinto';
+  | 'Megtekinto'
+  | 'FoundationAdmin'
+  | 'PlatformAdmin'
+  | 'PlatformAuditor'
+  | 'OwnerAdmin'
+  | 'OwnerMember';
 
 export interface CurrentUser {
   userId: string;

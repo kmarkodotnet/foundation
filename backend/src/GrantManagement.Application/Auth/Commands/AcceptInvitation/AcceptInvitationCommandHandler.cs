@@ -1,6 +1,8 @@
+using System.Text.Json;
 using AutoMapper;
 using GrantManagement.Application.Auth.DTOs;
 using GrantManagement.Application.Common.Interfaces;
+using GrantManagement.Application.OwnerAdministration.Users.DTOs;
 using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Exceptions;
@@ -65,6 +67,32 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
             googleUser.FullName,
             googleUser.PictureUrl,
             invitation.Role);
+
+        // Scope-aware role assignment
+        switch (invitation.Scope)
+        {
+            case GrantManagement.Domain.Tenancy.Enums.AssignmentScope.Platform:
+                if (invitation.PlatformRole.HasValue)
+                    appUser.AssignPlatformRole(invitation.PlatformRole.Value);
+                break;
+            case GrantManagement.Domain.Tenancy.Enums.AssignmentScope.Owner:
+                if (invitation.OwnerId.HasValue && invitation.OwnerRole.HasValue)
+                    appUser.AssignOwnerRole(invitation.OwnerId.Value, invitation.OwnerRole.Value);
+                if (!string.IsNullOrEmpty(invitation.FoundationAssignmentsJson))
+                {
+                    var assignments = JsonSerializer.Deserialize<List<FoundationRoleAssignment>>(
+                        invitation.FoundationAssignmentsJson,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (assignments is not null)
+                        foreach (var fa in assignments)
+                            appUser.AssignToFoundation(fa.FoundationId, fa.Role, appUser.Id);
+                }
+                break;
+            case GrantManagement.Domain.Tenancy.Enums.AssignmentScope.Foundation:
+                if (invitation.FoundationId.HasValue && invitation.FoundationRole.HasValue)
+                    appUser.AssignToFoundation(invitation.FoundationId.Value, invitation.FoundationRole.Value, appUser.Id);
+                break;
+        }
 
         _context.AppUsers.Add(appUser);
         invitation.Accept();

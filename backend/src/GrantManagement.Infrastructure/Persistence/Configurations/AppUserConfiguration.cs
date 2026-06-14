@@ -18,8 +18,14 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(50).IsRequired();
         builder.Property(u => u.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
 
+        // CR2 multi-tenant
+        builder.Property(u => u.OwnerId);
+        builder.Property(u => u.PlatformRole).HasConversion<string>().HasMaxLength(30);
+        builder.Property(u => u.OwnerRole).HasConversion<string>().HasMaxLength(30);
+
         builder.HasIndex(u => u.GoogleId).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.OwnerId);
 
         builder.OwnsOne(u => u.NotificationPrefs, prefs =>
         {
@@ -30,5 +36,12 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
             prefs.Property(p => p.EmailOnNewComment).HasColumnName("NotifNewComment");
             prefs.Property(p => p.EmailOnDocumentUploaded).HasColumnName("NotifDocumentUploaded");
         });
+
+        builder.Ignore(u => u.DomainEvents);
+
+        builder.HasMany(u => u.FoundationAssignments)
+            .WithOne()
+            .HasForeignKey(a => a.AppUserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

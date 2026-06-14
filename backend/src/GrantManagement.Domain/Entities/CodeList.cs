@@ -5,19 +5,26 @@ namespace GrantManagement.Domain.Entities;
 
 public enum CodeListItemStatus { Active, Inactive }
 
-public class CodeList : AggregateRoot<Guid>
+public class CodeList : AggregateRoot<Guid>, IOwnedEntity
 {
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
     public bool IsSystem { get; private set; }
     public bool IsDeleted { get; private set; }
+    public Guid OwnerId { get; private set; }
+    public Guid FoundationId { get; private set; }
 
     private readonly List<CodeListItem> _items = [];
     public IReadOnlyList<CodeListItem> Items => _items.AsReadOnly();
 
     private CodeList() { }
 
-    public static CodeList Create(string name, string? description, bool isSystem = false)
+    public static CodeList Create(
+        string name,
+        string? description,
+        bool isSystem = false,
+        Guid ownerId = default,
+        Guid foundationId = default)
     {
         return new CodeList
         {
@@ -26,6 +33,8 @@ public class CodeList : AggregateRoot<Guid>
             Description = description,
             IsSystem = isSystem,
             IsDeleted = false,
+            OwnerId = ownerId,
+            FoundationId = foundationId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };

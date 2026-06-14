@@ -61,6 +61,10 @@ Kapcsolódó FS fejezet: [X.X]
 - [EPIC-18: Értesítések és határidőfigyelés](#epic-18-értesítések-és-határidőfigyelés)
 - [EPIC-19: Audit napló](#epic-19-audit-napló)
 - [EPIC-20: Adminisztrációs funkciók](#epic-20-adminisztrációs-funkciók) *(US-160 – US-165)*
+- [EPIC-21 (CR2): Platform-szintű adminisztráció](#epic-21-cr2-platform-szintű-adminisztráció) *(US-200 – US-207)*
+- [EPIC-22 (CR2): Owner-szintű adminisztráció](#epic-22-cr2-owner-szintű-adminisztráció) *(US-210 – US-216)*
+- [EPIC-23 (CR2): Hatókör-kezelés és foundation switcher](#epic-23-cr2-hatókör-kezelés-és-foundation-switcher) *(US-220 – US-223)*
+- [EPIC-24 (CR2): Multi-tenant infrastruktúra és migráció](#epic-24-cr2-multi-tenant-infrastruktúra-és-migráció) *(US-230 – US-233)*
 
 ---
 
@@ -1407,6 +1411,496 @@ hogy nyomon követhessem, ki fogadta el a meghívást, és szükség esetén új
 
 ---
 
+## EPIC-21 (CR2): Platform-szintű adminisztráció
+
+> **CR2 megjegyzés:** ezek a story-k a többszintű hierarchia legfelső, platform-szintjét fedik le. A platform-szintű felhasználók a `/platform` UI-belépési ponton dolgoznak, JWT audience `platform` értékkel. Minden alábbi story implicit elvárása: **a felhasználó PlatformAdmin vagy PlatformAuditor szerepkörrel rendelkezik**, ellenkező esetben 403 választ kap.
+
+---
+
+### US-200 | [Platform] Új Owner provisioning
+
+Mint **PlatformAdmin**,  
+szeretnék új Owner (tulajdonos szervezetet) létrehozni és kezdő OwnerAdmin meghívót kiküldeni,  
+hogy az új ügyfél elkezdhesse használni a rendszert.
+
+**Elfogadási kritériumok:**
+- AC1: A `/platform/owners` oldalon elérhető a „Új Owner létrehozása" gomb.
+- AC2: Az űrlap kötelező mezői: Owner neve, technikai kapcsolattartó e-mail, kezdő OwnerAdmin Google-fiók e-mail.
+- AC3: Sikeres mentés után az Owner státusza `ACTIVE`, és a megadott e-mail címre automatikusan kimegy egy `OWNER` hatókörű meghívó OwnerAdmin szerepkörre.
+- AC4: Az új Owner örökli a platform-szintű alapértelmezett kódszótár-sablont.
+- AC5: A művelet `OWNER_PROVISIONED` audit-bejegyzéssel jár.
+- AC6: Ha az e-mail cím már egy másik Owner-hez tartozó aktív `AppUser` Google-fiókja, hibaüzenet jelenik meg (NK-13 sérülne).
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-001, US-006, US-007, US-223, US-230  
+**FS fejezet:** 26.1.1, 4.4
+
+---
+
+### US-201 | [Platform] Owner felfüggesztése és reaktiválása
+
+Mint **PlatformAdmin**,  
+szeretnék felfüggeszteni vagy reaktiválni egy Owner-t,  
+hogy a fizetési vagy egyéb üzleti problémákat kezeljük az adatok megőrzése mellett.
+
+**Elfogadási kritériumok:**
+- AC1: Az Owner részletes oldalán elérhető „Felfüggesztés" gomb (csak `ACTIVE` állapotnál) és „Reaktiválás" gomb (csak `SUSPENDED` állapotnál).
+- AC2: Felfüggesztett Owner alá tartozó egyik felhasználó sem tud bejelentkezni; bejelentkezési kísérletkor: „A szervezeted hozzáférése jelenleg fel van függesztve."
+- AC3: A felfüggesztés idején tárolt összes adat változatlan marad.
+- AC4: Reaktiválás után a felhasználók azonnal bejelentkezhetnek (új JWT-vel).
+- AC5: Mindkét művelet audit-bejegyzéssel jár.
+
+**Prioritás:** Magas  
+**Méret:** S  
+**Függőségek:** US-200  
+**FS fejezet:** 26.1.1
+
+---
+
+### US-202 | [Platform] Owner archiválása
+
+Mint **PlatformAdmin**,  
+szeretnék archiválni egy Owner-t,  
+hogy a szervezet távozása után az adatokat soft delete-elt formában megőrizzem.
+
+**Elfogadási kritériumok:**
+- AC1: Az „Archiválás" gomb csak akkor érhető el, ha az Owner alá tartozó **minden** Foundation előzőleg archiválva lett.
+- AC2: Ha legalább egy aktív Foundation létezik, az archiválás letiltott; tooltip: „Először minden alapítványt archiválj."
+- AC3: Archiválás után az Owner státusza `ARCHIVED`; a részletes oldalon olvasható, de szerkesztési művelet nem érhető el.
+- AC4: A művelet audit-bejegyzéssel jár.
+
+**Prioritás:** Közepes  
+**Méret:** S  
+**Függőségek:** US-211  
+**FS fejezet:** 26.1.1
+
+---
+
+### US-203 | [Platform] Platform-szintű felhasználó meghívása
+
+Mint **PlatformAdmin**,  
+szeretnék új platform-szintű felhasználót meghívni,  
+hogy PlatformAdmin vagy PlatformAuditor szerepkört oszthassak ki.
+
+**Elfogadási kritériumok:**
+- AC1: A `/platform/users` oldalon elérhető a „Új meghívó" funkció.
+- AC2: A meghívó űrlap mezői: e-mail cím, szerepkör (`PlatformAdmin` / `PlatformAuditor`); a hatókör automatikusan `PLATFORM`.
+- AC3: A meghívási folyamat egyébként megegyezik a US-164-gyel.
+- AC4: A meghívott felhasználó nem rendelkezhet egyszerre Owner/Foundation-szintű szerepkörrel sem (validáció + hibajelzés).
+- AC5: Az utolsó admin szabály érvényesül: az utolsó aktív PlatformAdmin szerepköre nem vonható vissza, és önmagát nem inaktiválhatja senki.
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-164  
+**FS fejezet:** 26.1.2
+
+---
+
+### US-204 | [Platform] Platform-szintű technikai beállítások
+
+Mint **PlatformAdmin**,  
+szeretném kezelni a platform-szintű technikai beállításokat,  
+hogy minden Owner alapértelmezett konfigurációja egységes legyen.
+
+**Elfogadási kritériumok:**
+- AC1: Beállítható: fájlméret-korlát (MB), meghívó érvényessége (óra), alapértelmezett értesítési határidők (nap), default Owner-szintű kódszótár-sablon.
+- AC2: A módosítás azonnal érvénybe lép minden új Owner / Foundation provisioningnál.
+- AC3: Meglévő Owner / Foundation egyedi beállításait a platform-szintű módosítás nem írja felül automatikusan.
+- AC4: A módosítás audit-bejegyzéssel jár.
+
+**Prioritás:** Közepes  
+**Méret:** S  
+**Függőségek:** US-200  
+**FS fejezet:** 26.1.3
+
+---
+
+### US-205 | [Platform] Platform audit napló megtekintése
+
+Mint **PlatformAdmin** vagy **PlatformAuditor**,  
+szeretném megtekinteni a platform-szintű audit naplót,  
+hogy nyomon követhessem az Owner-lifecycle eseményeket, platform-szintű felhasználói műveleteket és break-glass hozzáféréseket.
+
+**Elfogadási kritériumok:**
+- AC1: A `/platform/audit-logs` oldal az összes platform-szintű és cross-Owner eseményt mutatja.
+- AC2: Szűrés: PlatformAdmin felhasználó, érintett Owner, dátumintervallum, művelettípus.
+- AC3: A `BREAK_GLASS_ACCESS` események vizuálisan kiemelve jelennek meg (figyelmeztető szín, ikon).
+- AC4: Export CSV formátumban elérhető.
+- AC5: A platform audit napló nem törölhető.
+
+**Prioritás:** Közepes  
+**Méret:** M  
+**Függőségek:** US-150, US-200, US-233  
+**FS fejezet:** 26.1.4
+
+---
+
+### US-206 | [Platform] Break-glass hozzáférés kiállítása
+
+Mint **PlatformAdmin**,  
+szeretnék ideiglenes Owner-szintű hozzáférést kapni egy adott Owner adataihoz indoklással,  
+hogy technikai vészhelyzet vagy jogszabályi adatkiadás esetén közvetlenül tudjak segíteni.
+
+**Elfogadási kritériumok:**
+- AC1: Az Owner részletes oldalán elérhető a „Break-glass hozzáférés" gomb; megerősítő modálban kötelező legalább 20 karakteres szöveges indoklás megadása.
+- AC2: Mentés után új `BreakGlassGrant` jön létre `ACTIVE` állapotban, lejárati ideje `IssuedAt + 24 óra`.
+- AC3: Az érintett Owner OwnerAdminja automatikusan e-mail értesítést kap az indoklással együtt.
+- AC4: A grant kiállításakor a PlatformAdmin új JWT-t kap, amely tartalmazza a `break_glass_grant_id` claim-et, és lehetővé teszi az Owner adatainak elérését (`audience: owner`-szerű módon, de `BREAK_GLASS_ACCESS` audit-flag-gel).
+- AC5: A teljes művelet `BREAK_GLASS_ACCESS` audit-bejegyzéssel jár (PlatformAdmin, Owner, indoklás, lejárat).
+
+**Prioritás:** Közepes  
+**Méret:** L  
+**Függőségek:** US-200, US-223, US-233  
+**FS fejezet:** 26.1.5, 5.5
+
+---
+
+### US-207 | [Platform] Break-glass hozzáférés visszavonása és automatikus lejárat
+
+Mint **PlatformAdmin** (vagy **rendszer**),  
+szeretném, hogy a break-glass hozzáférés manuálisan visszavonható és automatikusan lejár,  
+hogy ne maradjon nyitva felesleges privilegizált hozzáférés.
+
+**Elfogadási kritériumok:**
+- AC1: A `/platform/break-glass` listán minden aktív grant megjelenik visszavonási gombbal.
+- AC2: Manuális visszavonás esetén a grant `Status = REVOKED`, `RevokedAt = now`; az audit bejegyzés `BREAK_GLASS_REVOKED`.
+- AC3: Egy Hangfire recurring job (óránként) átállítja az `ExpiresAt < now` aktív grant-eket `EXPIRED` állapotba, kísérő audit-bejegyzéssel `BREAK_GLASS_EXPIRED`.
+- AC4: Lejárt vagy visszavont grant-tel rendelkező JWT-vel végzett kérés 403-mal elutasítva, naplózva.
+- AC5: A visszavonásról az érintett OwnerAdmin nem kap értesítést (csak a kiállításról).
+
+**Prioritás:** Közepes  
+**Méret:** M  
+**Függőségek:** US-206  
+**FS fejezet:** 26.1.5, 5.5
+
+---
+
+## EPIC-22 (CR2): Owner-szintű adminisztráció
+
+> **CR2 megjegyzés:** ezek a story-k az Owner-szintű felelősök napi munkáját fedik le. A felhasználó `/owner` UI-belépési ponton dolgozik, JWT audience `owner` értékkel. Minden alábbi story implicit elvárása: **a felhasználó OwnerAdmin (vagy ahol jelölve, OwnerAuditor) szerepkörrel rendelkezik az adott Owner-en belül**.
+
+---
+
+### US-210 | [Owner] Új alapítvány létrehozása
+
+Mint **OwnerAdmin**,  
+szeretnék új alapítványt létrehozni az én Owner-em alá,  
+hogy egy új szervezeti egységet kezdjek menedzselni a rendszerben.
+
+**Elfogadási kritériumok:**
+- AC1: A `/owner/foundations` oldalon elérhető a „Új alapítvány" gomb.
+- AC2: Az űrlap mezői: alapítvány neve, opcionális logó (kép feltöltés), kezdő FoundationAdmin Google-fiók e-mail.
+- AC3: Mentéskor az alapítvány örökli az Owner-szintű kódszótár-sablont (snapshot, NK-16).
+- AC4: Opcionálisan kiválasztható egy meglévő saját alapítvány, amelynek Pályáztatóit és Szerződő cégeit a rendszer átmásolja az új alapítványba (NK-15 sablonmásolás).
+- AC5: A megadott Google-fiók kap egy `FOUNDATION` hatókörű meghívót FoundationAdmin szerepkörre.
+- AC6: A művelet `FOUNDATION_CREATED` audit-bejegyzéssel jár (mind Owner-szinten, mind az új alapítvány-szintű naplóban).
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-200, US-213, US-223, US-230  
+**FS fejezet:** 26.2.1, 4.2
+
+---
+
+### US-211 | [Owner] Alapítvány archiválása
+
+Mint **OwnerAdmin**,  
+szeretnék archiválni egy alapítványt,  
+hogy a tevékenységet befejezett szervezeti egységet kivonjam az aktív halmazból anélkül, hogy az adatait elveszítsem.
+
+**Elfogadási kritériumok:**
+- AC1: Az „Archiválás" gomb csak akkor érhető el, ha nincs aktív (`IN_PROGRESS`, `SUBMITTED`, `WON`) pályázat az alapítványban.
+- AC2: Ha aktív pályázat van, a UI tooltip: „N aktív pályázat van; először zárd le őket."
+- AC3: Archiválás után az alapítvány `ARCHIVED`; a felhasználói hozzárendelései automatikusan inaktiválódnak; bejelentkezett FoundationAdmin nem tud többet műveletet végezni az alapítványban.
+- AC4: Az archivált alapítvány adatai továbbra is olvashatók break-glass módban vagy az Owner-szintű audit naplóból.
+- AC5: A művelet `FOUNDATION_ARCHIVED` audit-bejegyzéssel jár.
+
+**Prioritás:** Közepes  
+**Méret:** M  
+**Függőségek:** US-210  
+**FS fejezet:** 26.2.1
+
+---
+
+### US-212 | [Owner] FoundationAdmin kinevezése alapítványban
+
+Mint **OwnerAdmin**,  
+szeretnék FoundationAdmin szerepkört kiosztani egy meglévő vagy újonnan meghívott felhasználónak egy adott alapítványban,  
+hogy delegáljam az alapítvány napi felügyeletét.
+
+**Elfogadási kritériumok:**
+- AC1: A `/owner/foundations/{id}/admins` listán látszanak az adott alapítvány FoundationAdminjai.
+- AC2: Új FoundationAdmin meghívásakor a meghívó hatóköre `FOUNDATION`, szerepkör `FoundationAdmin`.
+- AC3: Meglévő Owner-felhasználónak közvetlenül kiosztható FoundationAdmin szerepkör új meghívó nélkül; az audit-esemény `FoundationAssignmentCreated`.
+- AC4: Az utolsó FoundationAdmin szerepköre nem vonható vissza; ilyen kísérlet UI-szinten letiltott.
+- AC5: OwnerAdmin egyúttal saját maga is lehet FoundationAdmin az alapítványban — de a kinevezés különálló esemény, és a kettős szerepkör külön-külön audit-bejegyzést kap (NK-17).
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-210  
+**FS fejezet:** 26.2.2, 4.4
+
+---
+
+### US-213 | [Owner] Owner-szintű felhasználó meghívása és alapítvány-szintű hozzárendelés
+
+Mint **OwnerAdmin**,  
+szeretnék egy felhasználót meghívni az Owner-emhez és egy vagy több alapítványhoz hozzárendelni szerepkörrel,  
+hogy egy emberre több alapítvány felelőssége is bízható legyen.
+
+**Elfogadási kritériumok:**
+- AC1: A `/owner/users` oldalon elérhető a „Új felhasználó meghívása" funkció.
+- AC2: Az űrlap mezői: e-mail cím; (alapítvány + szerepkör) hozzárendelések listája, legalább egy elemmel.
+- AC3: A meghívó típusa `OWNER`; az alapítvány-szintű hozzárendelések a meghívó-payload részeként tárolódnak, és az aktiváláskor érvényesülnek.
+- AC4: Ha a megadott e-mail cím már egy másik Owner-hez tartozó aktív felhasználóhoz tartozik, hibaüzenet (NK-13).
+- AC5: Meglévő Owner-felhasználó esetében a UI biztosítja, hogy új alapítvány-szintű hozzárendelés meghívó nélkül, közvetlenül adható (`FoundationAssignmentCreated` audit).
+- AC6: Egy felhasználó alapítvány-szintű hozzárendelése visszavonható; az utolsó admin szabály érvényesül (US-212 AC4-tel összhangban).
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-210, US-223  
+**FS fejezet:** 26.2.2, 4.4
+
+---
+
+### US-214 | [Owner] Owner-szintű kódszótár-sablonok kezelése
+
+Mint **OwnerAdmin**,  
+szeretném kezelni az Owner-szintű kódszótár-sablonokat,  
+hogy az új alapítványoknak konzisztens értékkészlettel induljanak.
+
+**Elfogadási kritériumok:**
+- AC1: A `/owner/code-list-templates` oldal listázza a sablonokat (név, tételek száma).
+- AC2: Új tétel hozzáadása, módosítása, törlése elérhető szerkesztőfelülettel (mint US-120, csak Owner-scope).
+- AC3: Az Owner-szintű sablon **csak új** alapítványra hat; meglévő alapítványok kódszótárai változatlanok.
+- AC4: A részletes nézeten elérhető „Újra-alkalmazás meglévő alapítványra" funkció: kiválasztott alapítványnak megfelelő hiányzó tételeket pótolja, meglévőket nem ír felül.
+- AC5: A sablon módosítása és az újra-alkalmazás audit-bejegyzéssel jár.
+
+**Prioritás:** Közepes  
+**Méret:** M  
+**Függőségek:** US-210, US-120  
+**FS fejezet:** 26.2.3, NK-16
+
+---
+
+### US-215 | [Owner] Cross-foundation dashboard
+
+Mint **OwnerAdmin** vagy **OwnerAuditor**,  
+szeretnék áttekinteni az Owner alá tartozó összes alapítvány konszolidált pályázati helyzetét,  
+hogy stratégiailag tudjak dönteni az erőforrásokról.
+
+**Elfogadási kritériumok:**
+- AC1: A `/owner/dashboard` oldalon megjelenik: alapítványonkénti és összevont állapot-megoszlás (folyamatban / nyert / lezárt), összegyűjtött nyert összegek, elszámolatlan keret.
+- AC2: Minden alapítvány nevére kattintva a foundation switcher átvált az adott alapítvány kontextusába (lásd US-220).
+- AC3: A dashboard adatai legfeljebb 5 perces cache-elt aggregátumok lehetnek (NF szempontból).
+- AC4: A dashboard read-only, semmilyen módosítási műveletet nem tartalmaz.
+
+**Prioritás:** Közepes  
+**Méret:** L  
+**Függőségek:** US-210, US-220  
+**FS fejezet:** 26.2.4
+
+---
+
+### US-216 | [Owner] Owner-szintű audit napló
+
+Mint **OwnerAdmin** vagy **OwnerAuditor**,  
+szeretném megtekinteni az Owner alá tartozó összes alapítvány audit naplóját összevontan,  
+hogy egy helyen tudjam ellenőrizni a teljes szervezetet.
+
+**Elfogadási kritériumok:**
+- AC1: A `/owner/audit-logs` oldal alapból az összes saját alapítvány eseményeit mutatja kronologikusan.
+- AC2: Szűrés: felhasználó, alapítvány, dátumintervallum, entitás-típus, művelettípus.
+- AC3: Az Owner-szintű napló nem tartalmaz Platform-szintű és más Owner-hez tartozó eseményeket.
+- AC4: A `BREAK_GLASS_ACCESS` események, ahol az érintett Owner az aktuális, vizuálisan kiemelve jelennek meg.
+- AC5: Export CSV formátumban.
+
+**Prioritás:** Közepes  
+**Méret:** M  
+**Függőségek:** US-150, US-200, US-233  
+**FS fejezet:** 26.2.5
+
+---
+
+## EPIC-23 (CR2): Hatókör-kezelés és foundation switcher
+
+> **CR2 megjegyzés:** ez az EPIC fedi le a felhasználói hatókör-választást, a hatókör-tudatos meghívási folyamatot és a backend scope-validáció keresztmetszeti felelősségét.
+
+---
+
+### US-220 | [Auth] Foundation switcher (alapítvány-váltó)
+
+Mint **több alapítványhoz hozzárendelt felhasználó** (vagy OwnerAdmin),  
+szeretnék a UI-on egyetlen kattintással alapítványt váltani,  
+hogy ne kelljen ki- és újra bejelentkeznem.
+
+**Elfogadási kritériumok:**
+- AC1: A navigációs sávban megjelenik egy alapítvány-választó dropdown, ha a felhasználónak több elérhető alapítvány-hatóköre van.
+- AC2: Egy alapítvány kiválasztásakor a kliens `POST /api/v1/me/scope-switch { targetFoundationId }` kérést küld; válaszul új JWT-t kap (audience `business`, új `foundation_id`).
+- AC3: A switcher használata után a UI újratölti az adott alapítvány kontextusát; a megnyitott modal-ok bezárulnak.
+- AC4: A switcher mellett megjelenik a jelenleg kiválasztott alapítvány neve és logója.
+- AC5: A művelet `SCOPE_SWITCH` audit-bejegyzéssel jár (kiinduló és új hatókör).
+- AC6: Ha a felhasználó OwnerAdmin/OwnerAuditor, a dropdown tetején „Owner áttekintés" opció is megjelenik, amely visszavisz a `/owner/dashboard`-ra.
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-001, US-223  
+**FS fejezet:** 26.4
+
+---
+
+### US-221 | [Auth] Hatókör-tudatos meghívási folyamat
+
+Mint **rendszer**,  
+szeretném, hogy a meghívási folyamat világosan kezelje a meghívó hatókörét (Platform / Owner / Foundation),  
+hogy ne keveredjen össze egy felhasználó több szinten értelmezett szerepköre.
+
+**Elfogadási kritériumok:**
+- AC1: A meghívó tárolja a `Scope` mezőt (`PLATFORM` / `OWNER` / `FOUNDATION`), az adott `OwnerId` és/vagy `FoundationId` referenciákat, valamint a szándékolt szerepkört.
+- AC2: A meghívót csak az adott szint felelőse küldhet ki: Platform → PlatformAdmin, Owner → PlatformAdmin, Foundation → OwnerAdmin vagy FoundationAdmin.
+- AC3: A meghívó elfogadásakor a rendszer ellenőrzi: ha a Google-fiók már egy Owner-hez tartozik, csak ugyanahhoz az Owner-hez szóló meghívó fogadható el (NK-13).
+- AC4: Egy e-mail címre egyszerre csak egy aktív (`PENDING`) meghívó létezhet hatókörönként.
+- AC5: A meghívó UI-elemei egyértelműen jelzik a meghívó hatókörét és a kiosztandó szerepkört („FoundationAdmin a Z alapítványban").
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-006, US-007, US-164, US-203, US-213  
+**FS fejezet:** 26.3.2, 4.4, NK-13
+
+---
+
+### US-222 | [Rendszer] Cross-tenant izoláció minden API-végponton
+
+Mint **rendszer**,  
+szeretném biztosítani, hogy egyetlen API-végpont sem ad vissza idegen hatókörhöz tartozó adatot,  
+hogy az adatszivárgás kockázata gyakorlatilag kizárt legyen.
+
+**Elfogadási kritériumok:**
+- AC1: Minden üzleti aggregátumon (`Application`, `Granter`, `Vendor`, `CodeList`, `Notification`, `Document`, `Comment`, stb.) EF Core global query filter aktív `OwnerId` és `FoundationId` szerinti szűréssel.
+- AC2: `IgnoreQueryFilters()` használata kizárólag egy whitelisten szereplő callsite-okon engedélyezett; architecture-teszt ellenőrzi.
+- AC3: Az `AuthorizationBehaviour` MediatR pipeline minden `IScopedRequest`-en lefuttatja a scope-check-et; eltérés esetén `ForbiddenException`.
+- AC4: Integrációs teszt: két Owner-t és két-két alapítványt feltöltve a tesztadatbázis, lefuttatva mindegyik API-végpontot, soha nem jön vissza idegen Owner adata (regressziós teszt minden CR2 release-ben).
+- AC5: Cross-tenant hozzáférési kísérlet 403 választ ad és külön audit-bejegyzést készít (`SCOPE_VIOLATION`).
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-231, US-223  
+**FS fejezet:** 31.2, 5.4
+
+---
+
+### US-223 | [Rendszer] JWT scope-claim bővítés és audience-szétválasztás
+
+Mint **rendszer**,  
+szeretném a JWT-claim-eket háromszintű hatókörrel és audience-szel kiállítani,  
+hogy a vertikális privilege escalation kizárt legyen.
+
+**Elfogadási kritériumok:**
+- AC1: A JWT tartalmazza a következő claim-eket: `scope`, `owner_id`, `foundation_id`, `platform_role`, `owner_role`, `foundation_roles` (FoundationId → FoundationRole map).
+- AC2: A JWT `aud` claim egyértelműen `platform`, `owner` vagy `business` értékű.
+- AC3: A `[Authorize]` attribútumok mindhárom audience-en külön validálnak; egy `business` JWT-vel platform-végpont elérése 401.
+- AC4: A bejelentkezési folyamat sikerre az audience-t a felhasználó szerepkörei alapján határozza meg: ha PlatformAdmin → platform, ha OwnerAdmin/OwnerAuditor és nincs alapítvány-választás → owner, egyébként business.
+- AC5: A `/api/v1/me/available-scopes` végpont visszaadja a felhasználó által elérhető Owner/Foundation hatóköröket a UI dropdown-hoz.
+- AC6: A JWT lejárati ideje 8 óra; scope-váltáskor új JWT készül.
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-001  
+**FS fejezet:** 31.1, 31.2, 4.4
+
+---
+
+## EPIC-24 (CR2): Multi-tenant infrastruktúra és migráció
+
+> **CR2 megjegyzés:** ez az EPIC tartalmazza a meglévő single-tenant adatbázis migrációját, az EF Core query filterek bevezetését, az audit naplózás bővítését és az architecture-szintű tesztelést. Ezek a story-k **technikai jellegűek**, blokkolják az EPIC-21–23 többi story-ját.
+
+---
+
+### US-230 | [Migráció] Single-tenant adat migrálása default Owner + Foundation alá
+
+Mint **rendszergazda**,  
+szeretném a meglévő single-tenant adatokat migrálni a multi-tenant modellbe egy default Owner + default Foundation alá,  
+hogy a CR2 release-szel adatvesztés nélkül átálljon a rendszer.
+
+**Elfogadási kritériumok:**
+- AC1: Az EF Core migráció létrehozza az új táblákat (`Owners`, `Foundations`, `FoundationUserAssignments`, `BreakGlassGrants`, `OwnerCodeListTemplates`).
+- AC2: Az új `OwnerId` és `FoundationId` oszlopok minden meglévő tenant-scope táblához hozzáadódnak, eleinte `NULL`-able.
+- AC3: Egy seeding script létrehoz egy default Owner-t (név: a meglévő „Szervezet neve" beállításból) és egy default Foundation-t alatta.
+- AC4: Backfill SQL minden meglévő rekordnak beállítja az `OwnerId` és `FoundationId` értékét a default-ra.
+- AC5: A migráció második lépésében az oszlopok `NOT NULL` constraint-et + FK-t kapnak.
+- AC6: Meglévő `Admin` szerepű `AppUser`-ek `FoundationAdmin` szerepkört kapnak a default Foundation-höz; a legrégebbi Admin egyúttal OwnerAdmin szerepkört is kap a default Owner-hez.
+- AC7: A meglévő fájltároló rekordok új útvonalra kerülnek áthelyezésre (`/uploads/{default_owner_id}/{default_foundation_id}/{év}/...`), és a `Document.FilePath` mezők frissülnek.
+- AC8: A migráció idempotens (kétszeri futtatás nem okoz hibát).
+- AC9: A migráció rollback-elhetetlen; explicit dokumentált egyirányúság.
+
+**Prioritás:** Magas  
+**Méret:** XL  
+**Függőségek:** –  
+**FS fejezet:** 32.1, 32.3
+
+---
+
+### US-231 | [Rendszer] EF Core global query filterek minden tenant-scope entitásra
+
+Mint **rendszer**,  
+szeretném, hogy minden tenant-scope EF Core entitás kötelezően global query filterrel rendelkezzen `OwnerId` és `FoundationId` szerint,  
+hogy az adatszivárgás végső védvonala adatbázis-szinten is meglegyen.
+
+**Elfogadási kritériumok:**
+- AC1: Az `AppDbContext.OnModelCreating()`-ben minden tenant-scope entitás kap query filtert: `OwnerId == _scope.OwnerId && (_scope.FoundationId == null || e.FoundationId == _scope.FoundationId) && !e.IsArchived`.
+- AC2: A query filter `ICurrentScopeService`-en keresztül kapja az aktuális hatókört.
+- AC3: Az Owner-szintű kontextusban (`FoundationId == null`) cross-foundation aggregátum-lekérdezés is elérhető (Owner saját alapítványain belül).
+- AC4: Architecture-teszt: minden gyökéraggregátum DbSet-en kötelező a global query filter (`NetArchTest` szabály).
+- AC5: A `BreakGlassExpirationJob` és más háttér-job-ok `_scope.SwitchTo()` művelettel explicit Owner-context-et állítanak be minden iterációban.
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-230, US-223  
+**FS fejezet:** 31.2, 5.4
+
+---
+
+### US-232 | [Rendszer] Architecture és integrációs teszt cross-tenant adatszivárgás ellen
+
+Mint **fejlesztő**,  
+szeretném, hogy CI-szinten regressziós tesztek garantálják a cross-tenant izolációt,  
+hogy egy hanyag commit ne tudjon adatszivárgást okozni.
+
+**Elfogadási kritériumok:**
+- AC1: NetArchTest szabály: minden gyökéraggregátum entitás-konfiguráció hívja a `HasQueryFilter`-t. CI build elbukik, ha hiányzik.
+- AC2: Roslyn analyzer (vagy NetArchTest): az `IgnoreQueryFilters()` hívása csak egy `[ScopeBypassAllowed]` attribútummal jelölt callsite-okon engedélyezett.
+- AC3: Integrációs teszt-suite: feltölt két Owner-rel (mindegyik 2-2 alapítvány) tesztadatbázist, és minden API-végpontra ellenőrzi: az „A" Owner JWT-jével nem férhető hozzá „B" Owner adata.
+- AC4: Integrációs teszt: a `BreakGlassGrant` lejárta után az érintett JWT-vel a kérés 403-mat ad vissza.
+- AC5: Integrációs teszt: a `/api/v1/me/scope-switch` és `/available-scopes` csak a saját elérhető hatóköröket adja vissza.
+
+**Prioritás:** Magas  
+**Méret:** L  
+**Függőségek:** US-222, US-231  
+**FS fejezet:** 31.2, 30.x (tesztelési stratégia)
+
+---
+
+### US-233 | [Audit] Audit napló kiterjesztése OwnerId/FoundationId mezőkkel és új művelettípusokkal
+
+Mint **rendszer**,  
+szeretném, hogy minden audit-bejegyzés automatikusan rögzítse a hatókört és új CR2-specifikus művelettípusokat kezeljen,  
+hogy a napló minden szinten szűrhető és teljes legyen.
+
+**Elfogadási kritériumok:**
+- AC1: Az `AuditLog` rekord új mezői: `OwnerId` (`Guid?`), `FoundationId` (`Guid?`); az `IAuditLogger` automatikusan az aktuális `_scope`-ból tölti.
+- AC2: Az `AuditAction` enum kibővül: `SCOPE_SWITCH`, `BREAK_GLASS_ACCESS`, `BREAK_GLASS_REVOKED`, `BREAK_GLASS_EXPIRED`, `OWNER_PROVISIONED`, `OWNER_SUSPENDED`, `OWNER_REACTIVATED`, `OWNER_ARCHIVED`, `FOUNDATION_CREATED`, `FOUNDATION_RENAMED`, `FOUNDATION_ARCHIVED`, `SCOPE_VIOLATION`.
+- AC3: A napló-lekérdezések három szinten elérhetők: Platform (US-205), Owner (US-216), Foundation (meglévő US-150 + US-151), automatikusan a hatókör szerint szűrve.
+- AC4: A platform-szintű napló-export csak PlatformAdmin/PlatformAuditor számára engedélyezett.
+- AC5: A napló nem törölhető egyik szinten sem; megőrzési idő 5 év.
+
+**Prioritás:** Magas  
+**Méret:** M  
+**Függőségek:** US-230  
+**FS fejezet:** 29., 26.1.4, 26.2.5
+
+---
+
 ## Story-k összesítő táblázata
 
 | Story ID | Modul | Cím (rövid) | Prioritás | Méret | Szerepkör |
@@ -1475,6 +1969,29 @@ hogy nyomon követhessem, ki fogadta el a meghívást, és szükség esetén új
 | US-163 | Admin | Rendszerbeállítások | Közepes | S | Admin |
 | US-164 | Admin | Meghívó létrehozása és küldése | Magas | M | Admin |
 | US-165 | Admin | Meghívók listázása és kezelése | Magas | M | Admin |
+| US-200 | Platform (CR2) | Új Owner provisioning | Magas | M | PlatformAdmin |
+| US-201 | Platform (CR2) | Owner felfüggesztése / reaktiválása | Magas | S | PlatformAdmin |
+| US-202 | Platform (CR2) | Owner archiválása | Közepes | S | PlatformAdmin |
+| US-203 | Platform (CR2) | Platform-szintű felhasználó meghívása | Magas | M | PlatformAdmin |
+| US-204 | Platform (CR2) | Platform-szintű technikai beállítások | Közepes | S | PlatformAdmin |
+| US-205 | Platform (CR2) | Platform audit napló | Közepes | M | PlatformAdmin/Auditor |
+| US-206 | Platform (CR2) | Break-glass kiállítása | Közepes | L | PlatformAdmin |
+| US-207 | Platform (CR2) | Break-glass visszavonás / lejárat | Közepes | M | PlatformAdmin / Rendszer |
+| US-210 | Owner (CR2) | Új alapítvány létrehozása | Magas | L | OwnerAdmin |
+| US-211 | Owner (CR2) | Alapítvány archiválása | Közepes | M | OwnerAdmin |
+| US-212 | Owner (CR2) | FoundationAdmin kinevezése | Magas | M | OwnerAdmin |
+| US-213 | Owner (CR2) | Owner-szintű meghívás + foundation-assign | Magas | L | OwnerAdmin |
+| US-214 | Owner (CR2) | Owner-szintű kódszótár-sablonok | Közepes | M | OwnerAdmin |
+| US-215 | Owner (CR2) | Cross-foundation dashboard | Közepes | L | OwnerAdmin/Auditor |
+| US-216 | Owner (CR2) | Owner-szintű audit napló | Közepes | M | OwnerAdmin/Auditor |
+| US-220 | Auth (CR2) | Foundation switcher | Magas | L | Minden többszintű |
+| US-221 | Auth (CR2) | Hatókör-tudatos meghívás | Magas | M | Rendszer |
+| US-222 | Rendszer (CR2) | Cross-tenant izoláció minden API-n | Magas | L | Rendszer |
+| US-223 | Rendszer (CR2) | JWT scope-claim és audience | Magas | L | Rendszer |
+| US-230 | Migráció (CR2) | Single-tenant → multi-tenant migráció | Magas | XL | Rendszergazda |
+| US-231 | Rendszer (CR2) | EF Core global query filterek | Magas | L | Rendszer |
+| US-232 | Rendszer (CR2) | Cross-tenant izoláció regressziós teszt | Magas | L | Fejlesztő |
+| US-233 | Audit (CR2) | Audit napló kiterjesztés (OwnerId/FoundationId + új típusok) | Magas | M | Rendszer |
 
 ---
 
@@ -1506,8 +2023,29 @@ US-082, US-083, US-090, US-110, US-111, US-121, US-132, US-150, US-151, US-163
 
 ---
 
+### CR2-Sprint A — Tenancy alapok (blokkoló minden továbbira)
+US-230, US-223, US-231, US-233, US-222, US-232
+
+### CR2-Sprint B — Platform-szintű adminisztráció
+US-200, US-201, US-203, US-204, US-205, US-202
+
+### CR2-Sprint C — Owner-szintű adminisztráció
+US-210, US-212, US-213, US-211, US-214, US-216
+
+### CR2-Sprint D — Hatókör-kezelés és cross-foundation funkciók
+US-220, US-221, US-215
+
+### CR2-Sprint E — Break-glass és záró stabilizáció
+US-206, US-207, regressziós tesztek finomítása
+
+> **Megjegyzés:** a CR2-sprintek a meglévő MVP teljes lefutása **után** (vagy azzal párhuzamosan, külön branch-en) futtathatók. A CR2-Sprint A story-i blokkolják az összes többi CR2 story-t — ezek nélkül a backend nem multi-tenant képes.
+
+---
+
 *— Dokumentum vége —*
 
-**Verzió:** 1.0  
-**Kapcsolódó FS:** functional-specification.md v1.0  
-**Story-k száma összesen:** 58  
+**Verzió:** 1.1 (CR2 alkalmazva)  
+**Kapcsolódó FS:** functional-specification.md v1.1 (CR2)  
+**Kapcsolódó domain-model:** domain-model.md v1.1 (CR2)  
+**Kapcsolódó architecture-plan:** architecture-plan.md v1.1 (CR2)  
+**Story-k száma összesen:** 81 (58 alap + 23 CR2)  

@@ -2,7 +2,7 @@ name: CI/CD – Test · Build · Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, multi-tenant-multi-owner]
   workflow_dispatch:
 
 jobs:
@@ -67,6 +67,7 @@ jobs:
 
       # ── 4. SSH kulcs előkészítése ──────────────────────────────────────────
       - name: SSH kulcs írása fájlba
+        if: github.ref == 'refs/heads/main'
         shell: powershell
         env:
           DEPLOY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -82,6 +83,7 @@ jobs:
 
       # ── 5. Deploy szkript + fájlok másolása az RPi-re ────────────────────
       - name: Deploy szkript előkészítése
+        if: github.ref == 'refs/heads/main'
         shell: powershell
         run: |
           $lines = @(
@@ -102,6 +104,7 @@ jobs:
           [System.IO.File]::WriteAllText("deploy.sh", $script + "`n", (New-Object System.Text.UTF8Encoding $false))
 
       - name: SCP – image tar-ok + compose fájl + deploy szkript az RPi-re
+        if: github.ref == 'refs/heads/main'
         shell: powershell
         run: |
           scp -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `
@@ -110,6 +113,7 @@ jobs:
 
       # ── 6. Deployment az RPi-n ────────────────────────────────────────────
       - name: Deploy – docker load + compose up
+        if: github.ref == 'refs/heads/main'
         shell: powershell
         run: |
           ssh -o StrictHostKeyChecking=no -i "$env:USERPROFILE\.ssh\deploy_key" `

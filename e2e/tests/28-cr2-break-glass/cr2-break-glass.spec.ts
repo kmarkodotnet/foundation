@@ -149,13 +149,13 @@ test.describe('E2E-091 | Break-glass — rövid indoklás elutasítása', () => 
 
 test.describe('E2E-092 | Break-glass grant manuális visszavonása', () => {
   test('POST /platform/break-glass/{id}/revoke 200-at és REVOKED státuszt ad', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/platform/break-glass**', (route) => route.fulfill(ok(GRANTS_LIST)));
     await page.route(`**/api/v1/platform/break-glass/${GRANT_ID}/revoke**`, async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill(ok({ ...ACTIVE_GRANT, status: 'Revoked', revokedAt: '2026-06-14T10:00:00Z' }));
       }
       return route.continue();
     });
-    await page.route('**/api/v1/platform/break-glass**', (route) => route.fulfill(ok(GRANTS_LIST)));
 
     await page.goto('/platform/break-glass');
     await page.waitForLoadState('networkidle');
@@ -183,6 +183,8 @@ test.describe('E2E-092 | Break-glass grant manuális visszavonása', () => {
   test('Visszavont grant JWT-vel API hívás 403-at ad', async ({ page }) => {
     const revokedGrantToken = generateBreakGlassJwt(CR2_USERS.PlatformAdmin, GRANT_ID, OWNER_A_ID);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/foundations**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -190,8 +192,6 @@ test.describe('E2E-092 | Break-glass grant manuális visszavonása', () => {
         body: JSON.stringify({ title: 'Forbidden', detail: 'Break-glass hozzáférés lejárt vagy visszavonva.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -219,6 +219,8 @@ test.describe('E2E-093 | Break-glass automatikus lejárat (BreakGlassExpirationJ
     };
     const expiredToken = generateExpiredCr2Jwt(expiredBreakGlassUser);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/foundations**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -226,8 +228,6 @@ test.describe('E2E-093 | Break-glass automatikus lejárat (BreakGlassExpirationJ
         body: JSON.stringify({ title: 'Forbidden', detail: 'Break-glass hozzáférés lejárt vagy visszavonva.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -261,6 +261,8 @@ test.describe('E2E-094 | Break-glass grant más Owner adataihoz nem fér hozzá'
   test('Break-glass grant Owner A-ra szól, Owner B adatai 403-at adnak', async ({ page }) => {
     const breakGlassToken = generateBreakGlassJwt(CR2_USERS.PlatformAdmin, GRANT_ID, OWNER_A_ID);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/**', async (route) => {
       const url = route.request().url();
       if (url.includes(OWNER_B_ID)) {
@@ -272,8 +274,6 @@ test.describe('E2E-094 | Break-glass grant más Owner adataihoz nem fér hozzá'
       }
       return route.fulfill(ok({ items: [], totalCount: 0 }));
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -300,6 +300,8 @@ test.describe('E2E-094 | Break-glass grant más Owner adataihoz nem fér hozzá'
   test('Break-glass JWT-vel Owner A foundation-jai elérhetők', async ({ page }) => {
     const breakGlassToken = generateBreakGlassJwt(CR2_USERS.PlatformAdmin, GRANT_ID, OWNER_A_ID);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/foundations**', (route) =>
       route.fulfill(ok({
         items: [
@@ -308,8 +310,6 @@ test.describe('E2E-094 | Break-glass grant más Owner adataihoz nem fér hozzá'
         totalCount: 1,
       })),
     );
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 

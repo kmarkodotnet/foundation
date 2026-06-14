@@ -37,6 +37,7 @@ const OWNERS_LIST = {
 
 test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
   test('PlatformAdmin POST /platform/owners 201-et kap', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/owners**', async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -47,7 +48,6 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
       }
       return route.fulfill(ok(OWNERS_LIST));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -65,6 +65,7 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
   });
 
   test('PlatformAuditor POST /platform/owners 403-at kap', async ({ platformAuditorPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/owners**', async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -75,7 +76,6 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
       }
       return route.fulfill(ok(OWNERS_LIST));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -93,8 +93,8 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
   });
 
   test('PlatformAuditor GET /platform/owners 200-at kap', async ({ platformAuditorPage: page }) => {
-    await page.route('**/api/v1/platform/owners**', (route) => route.fulfill(ok(OWNERS_LIST)));
     await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/owners**', (route) => route.fulfill(ok(OWNERS_LIST)));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -115,9 +115,9 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
       totalCount: 1, page: 1, pageSize: 20,
     };
 
-    await page.route('**/api/v1/platform/audit-logs**', (route) => route.fulfill(ok(AUDIT_LOG)));
     await page.route('**/hubs/**', (route) => route.abort());
     await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/audit-logs**', (route) => route.fulfill(ok(AUDIT_LOG)));
 
     await page.goto('/platform/audit-logs');
     await page.waitForLoadState('networkidle');
@@ -128,14 +128,14 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
   test('PlatformAdmin DELETE /platform/users/{id} 200-at kap', async ({ platformAdminPage: page }) => {
     const TARGET_USER_ID = '00000000-0000-0000-0000-000000000099';
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok(PLATFORM_USERS_LIST)));
     await page.route(`**/api/v1/platform/users/${TARGET_USER_ID}**`, async (route) => {
       if (route.request().method() === 'DELETE') {
         return route.fulfill({ status: 204, body: '' });
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok(PLATFORM_USERS_LIST)));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/users');
     await page.waitForLoadState('networkidle');
@@ -151,6 +151,8 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
   test('PlatformAuditor DELETE /platform/users/{id} 403-at kap', async ({ platformAuditorPage: page }) => {
     const TARGET_USER_ID = '00000000-0000-0000-0000-000000000099';
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok(PLATFORM_USERS_LIST)));
     await page.route(`**/api/v1/platform/users/${TARGET_USER_ID}**`, async (route) => {
       if (route.request().method() === 'DELETE') {
         return route.fulfill({
@@ -161,8 +163,6 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok(PLATFORM_USERS_LIST)));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/users');
     await page.waitForLoadState('networkidle');
@@ -180,6 +180,7 @@ test.describe('E2E-040 | PA vs PAu CRUD jogosultságok', () => {
 
 test.describe('E2E-041 | PlatformAdmin nem fér hozzá business API-hoz', () => {
   test('PlatformAdmin GET /applications 403-at kap', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -187,7 +188,6 @@ test.describe('E2E-041 | PlatformAdmin nem fér hozzá business API-hoz', () => 
         body: JSON.stringify({ title: 'Forbidden', detail: 'Platform audience nem fér hozzá business erőforrásokhoz.' }),
       });
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -201,6 +201,7 @@ test.describe('E2E-041 | PlatformAdmin nem fér hozzá business API-hoz', () => 
   });
 
   test('PlatformAdmin GET /granters 403-at kap', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/granters**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -208,7 +209,6 @@ test.describe('E2E-041 | PlatformAdmin nem fér hozzá business API-hoz', () => 
         body: JSON.stringify({ title: 'Forbidden', detail: 'Platform audience nem fér hozzá business erőforrásokhoz.' }),
       });
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -222,8 +222,8 @@ test.describe('E2E-041 | PlatformAdmin nem fér hozzá business API-hoz', () => 
   });
 
   test('PlatformAdmin felhasználói lista oldala megjelenik', async ({ platformAdminPage: page }) => {
-    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok(PLATFORM_USERS_LIST)));
     await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok(PLATFORM_USERS_LIST)));
 
     await page.goto('/platform/users');
     await page.waitForLoadState('networkidle');
@@ -243,8 +243,8 @@ test.describe('E2E-042 | Platform és Foundation szerepkör kombináció', () =>
       { key: 'gm_token', value: hybridToken },
     );
     await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/platform/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
     await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -253,6 +253,7 @@ test.describe('E2E-042 | Platform és Foundation szerepkör kombináció', () =>
   });
 
   test('Platform audience token nem ad business pályázat-listázási jogot', async ({ platformAuditorPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -260,7 +261,6 @@ test.describe('E2E-042 | Platform és Foundation szerepkör kombináció', () =>
         body: JSON.stringify({ title: 'Forbidden', detail: 'Audience mismatch.' }),
       });
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -282,6 +282,8 @@ test.describe('E2E-042 | Platform és Foundation szerepkör kombináció', () =>
       audience: 'business' as const,
     });
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -289,8 +291,6 @@ test.describe('E2E-042 | Platform és Foundation szerepkör kombináció', () =>
         body: JSON.stringify({ title: 'Forbidden', detail: 'Nincs érvényes szerepköre.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 

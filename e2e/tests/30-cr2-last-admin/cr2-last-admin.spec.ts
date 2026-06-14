@@ -25,6 +25,8 @@ const FOUNDATION_ADMIN_USER_ID = '00000000-0000-0000-0000-000000000030';
 
 test.describe('E2E-110 | Utolsó PlatformAdmin nem demotálható', () => {
   test('DELETE /platform/users/{id} utolsó PlatformAdminra 409-et ad', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
     await page.route(`**/api/v1/platform/users/${PLATFORM_ADMIN_USER_ID}**`, async (route) => {
       if (route.request().method() === 'DELETE') {
         return route.fulfill({
@@ -35,8 +37,6 @@ test.describe('E2E-110 | Utolsó PlatformAdmin nem demotálható', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/users');
     await page.waitForLoadState('networkidle');
@@ -50,6 +50,8 @@ test.describe('E2E-110 | Utolsó PlatformAdmin nem demotálható', () => {
   });
 
   test('PATCH /platform/users/{id}/role PlatformAdmin→Auditor demotálás 409-et ad ha utolsó', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
     await page.route(`**/api/v1/platform/users/${PLATFORM_ADMIN_USER_ID}/role**`, async (route) => {
       if (route.request().method() === 'PATCH' || route.request().method() === 'PUT') {
         const body = route.request().postDataJSON() as Record<string, unknown>;
@@ -63,8 +65,6 @@ test.describe('E2E-110 | Utolsó PlatformAdmin nem demotálható', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/users');
     await page.waitForLoadState('networkidle');
@@ -86,6 +86,8 @@ test.describe('E2E-110 | Utolsó PlatformAdmin nem demotálható', () => {
 
 test.describe('E2E-111 | Utolsó OwnerAdmin nem demotálható', () => {
   test('DELETE /owner/users/{id} utolsó OwnerAdminra 409-et ad', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
     await page.route(`**/api/v1/owner/users/${OWNER_ADMIN_USER_ID}**`, async (route) => {
       if (route.request().method() === 'DELETE') {
         return route.fulfill({
@@ -96,8 +98,6 @@ test.describe('E2E-111 | Utolsó OwnerAdmin nem demotálható', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');
@@ -111,6 +111,8 @@ test.describe('E2E-111 | Utolsó OwnerAdmin nem demotálható', () => {
   });
 
   test('OwnerAdmin demotálás OwnerMemberre 409-et ad ha utolsó', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
     await page.route(`**/api/v1/owner/users/${OWNER_ADMIN_USER_ID}/role**`, async (route) => {
       if (route.request().method() === 'PATCH' || route.request().method() === 'PUT') {
         return route.fulfill({
@@ -121,8 +123,6 @@ test.describe('E2E-111 | Utolsó OwnerAdmin nem demotálható', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');
@@ -206,6 +206,8 @@ test.describe('E2E-113 | Saját szerepkör visszavonása tiltott', () => {
   test('PlatformAdmin saját szerepét nem vonhatja vissza — 403', async ({ platformAdminPage: page }) => {
     const targetUrl = `/api/v1/platform/users/${PLATFORM_ADMIN_USER_ID}/role`;
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
     await page.route(`**/api/v1/platform/users/${PLATFORM_ADMIN_USER_ID}/role**`, async (route) => {
       if (route.request().method() === 'PATCH' || route.request().method() === 'PUT') {
         return route.fulfill({
@@ -216,8 +218,6 @@ test.describe('E2E-113 | Saját szerepkör visszavonása tiltott', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/users');
     await page.waitForLoadState('networkidle');
@@ -235,6 +235,8 @@ test.describe('E2E-113 | Saját szerepkör visszavonása tiltott', () => {
   });
 
   test('OwnerAdmin saját magát nem törölheti — 403', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
     await page.route(`**/api/v1/owner/users/${OWNER_ADMIN_USER_ID}**`, async (route) => {
       if (route.request().method() === 'DELETE') {
         return route.fulfill({
@@ -245,8 +247,6 @@ test.describe('E2E-113 | Saját szerepkör visszavonása tiltott', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok({ items: [], totalCount: 0 })));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');

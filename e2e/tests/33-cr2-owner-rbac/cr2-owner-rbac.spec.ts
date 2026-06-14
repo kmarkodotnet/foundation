@@ -39,6 +39,7 @@ const OWNER_A_USERS = {
 
 test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
   test('OwnerAdmin POST /owner/foundations 201-et kap', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/foundations**', async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -54,7 +55,6 @@ test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
       }
       return route.fulfill(ok(OWNER_A_FOUNDATIONS));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/foundations');
     await page.waitForLoadState('networkidle');
@@ -86,6 +86,7 @@ test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
       { key: 'gm_token', value: ownerMemberToken },
     );
     await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/foundations**', async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -96,7 +97,6 @@ test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
       }
       return route.fulfill(ok(OWNER_A_FOUNDATIONS));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/foundations');
     await page.waitForLoadState('networkidle');
@@ -116,14 +116,14 @@ test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
   test('OwnerAdmin DELETE /owner/users/{id} sikeres', async ({ ownerAdminAPage: page }) => {
     const MEMBER_USER_ID = '00000000-0000-0000-0000-000000000099';
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok(OWNER_A_USERS)));
     await page.route(`**/api/v1/owner/users/${MEMBER_USER_ID}**`, async (route) => {
       if (route.request().method() === 'DELETE') {
         return route.fulfill({ status: 204, body: '' });
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok(OWNER_A_USERS)));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');
@@ -137,8 +137,8 @@ test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
   });
 
   test('OwnerAdmin GET /owner/users 200-at kap', async ({ ownerAdminAPage: page }) => {
-    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok(OWNER_A_USERS)));
     await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok(OWNER_A_USERS)));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');
@@ -159,8 +159,8 @@ test.describe('E2E-030 | OwnerAdmin CRUD vs OwnerMember olvasás', () => {
 
 test.describe('E2E-031 | OwnerAdmin cross-foundation adatolvasás (saját Owner)', () => {
   test('GET /owner/foundations mindkét Foundation-t visszaadja Owner A-nak', async ({ ownerAdminAPage: page }) => {
-    await page.route('**/api/v1/owner/foundations**', (route) => route.fulfill(ok(OWNER_A_FOUNDATIONS)));
     await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/foundations**', (route) => route.fulfill(ok(OWNER_A_FOUNDATIONS)));
 
     await page.goto('/owner/foundations');
     await page.waitForLoadState('networkidle');
@@ -190,8 +190,8 @@ test.describe('E2E-031 | OwnerAdmin cross-foundation adatolvasás (saját Owner)
       totalCount: 2, page: 1, pageSize: 50,
     };
 
-    await page.route('**/api/v1/owner/audit-logs**', (route) => route.fulfill(ok(AUDIT_LOG)));
     await page.route('**/api/v1/owner/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route('**/api/v1/owner/audit-logs**', (route) => route.fulfill(ok(AUDIT_LOG)));
 
     await page.goto('/owner/audit-logs');
     await page.waitForLoadState('networkidle');
@@ -211,8 +211,8 @@ test.describe('E2E-031 | OwnerAdmin cross-foundation adatolvasás (saját Owner)
       ],
     };
 
-    await page.route('**/api/v1/owner/reports/dashboard**', (route) => route.fulfill(ok(DASHBOARD)));
     await page.route('**/api/v1/owner/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route('**/api/v1/owner/reports/dashboard**', (route) => route.fulfill(ok(DASHBOARD)));
 
     await page.goto('/owner/dashboard');
     await page.waitForLoadState('networkidle');
@@ -228,6 +228,8 @@ test.describe('E2E-032 | OwnerAdmin nem adhat magának PlatformAdmin szerepet', 
   test('PATCH /owner/users/{id}/role PlatformAdmin szerepre 403-at kap', async ({ ownerAdminAPage: page }) => {
     const OWN_USER_ID = '00000000-0000-0000-0000-000000000020';
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok(OWNER_A_USERS)));
     await page.route(`**/api/v1/owner/users/${OWN_USER_ID}/role**`, async (route) => {
       if (route.request().method() === 'PATCH' || route.request().method() === 'PUT') {
         const body = route.request().postDataJSON() as Record<string, unknown>;
@@ -241,8 +243,6 @@ test.describe('E2E-032 | OwnerAdmin nem adhat magának PlatformAdmin szerepet', 
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/owner/users**', (route) => route.fulfill(ok(OWNER_A_USERS)));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');
@@ -260,6 +260,7 @@ test.describe('E2E-032 | OwnerAdmin nem adhat magának PlatformAdmin szerepet', 
   });
 
   test('OwnerAdmin nem hozhat létre platformszintű erőforrást', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -267,7 +268,6 @@ test.describe('E2E-032 | OwnerAdmin nem adhat magának PlatformAdmin szerepet', 
         body: JSON.stringify({ title: 'Forbidden', detail: 'Audience mismatch: owner JWT nem fér hozzá platform API-hoz.' }),
       });
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/foundations');
     await page.waitForLoadState('networkidle');
@@ -285,10 +285,10 @@ test.describe('E2E-032 | OwnerAdmin nem adhat magának PlatformAdmin szerepet', 
 
 test.describe('E2E-033 | OwnerAdmin nem fér hozzá Owner B adataihoz', () => {
   test('Owner A JWT-vel Owner B foundation-jai nem látszanak', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/foundations**', async (route) => {
       return route.fulfill(ok(OWNER_A_FOUNDATIONS));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/foundations');
     await page.waitForLoadState('networkidle');
@@ -311,6 +311,8 @@ test.describe('E2E-033 | OwnerAdmin nem fér hozzá Owner B adataihoz', () => {
   test('Owner B Foundation közvetlen lekérése Owner A JWT-vel 404-et ad', async ({ ownerAdminAPage: page }) => {
     const OWNER_B_FOUNDATION_ID = 'ffffffff-0000-0000-0000-000000000003';
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/owner/foundations**', (route) => route.fulfill(ok(OWNER_A_FOUNDATIONS)));
     await page.route(`**/api/v1/owner/foundations/${OWNER_B_FOUNDATION_ID}**`, async (route) => {
       return route.fulfill({
         status: 404,
@@ -318,8 +320,6 @@ test.describe('E2E-033 | OwnerAdmin nem fér hozzá Owner B adataihoz', () => {
         body: JSON.stringify({ title: 'Not Found', detail: 'Az erőforrás nem található.' }),
       });
     });
-    await page.route('**/api/v1/owner/foundations**', (route) => route.fulfill(ok(OWNER_A_FOUNDATIONS)));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/foundations');
     await page.waitForLoadState('networkidle');
@@ -333,10 +333,10 @@ test.describe('E2E-033 | OwnerAdmin nem fér hozzá Owner B adataihoz', () => {
   });
 
   test('Owner A JWT-vel Owner B felhasználói nem látszanak', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/users**', async (route) => {
       return route.fulfill(ok(OWNER_A_USERS));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');
@@ -357,6 +357,7 @@ test.describe('E2E-033 | OwnerAdmin nem fér hozzá Owner B adataihoz', () => {
   });
 
   test('Cross-Owner meghívási kísérlet 403-at ad', async ({ ownerAdminAPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/invitations**', async (route) => {
       if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON() as Record<string, unknown>;
@@ -370,7 +371,6 @@ test.describe('E2E-033 | OwnerAdmin nem fér hozzá Owner B adataihoz', () => {
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/owner/users');
     await page.waitForLoadState('networkidle');

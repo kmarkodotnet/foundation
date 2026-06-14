@@ -1,48 +1,31 @@
 import { Routes } from '@angular/router';
 
 export const ownerRoutes: Routes = [
-  {
-    path: 'dashboard',
-    loadComponent: () =>
-      import('./dashboard/owner-dashboard.component').then((m) => m.OwnerDashboardComponent),
-  },
+  { path: '', redirectTo: 'foundations', pathMatch: 'full' },
   {
     path: 'foundations',
     loadComponent: () =>
-      import('./foundations/foundations-list.component').then((m) => m.FoundationsListComponent),
-  },
-  {
-    path: 'foundations/:id',
-    loadComponent: () =>
-      import('./foundations/foundation-details.component').then((m) => m.FoundationDetailsComponent),
+      import('./owner-foundations/owner-foundations.component').then(
+        (m) => m.OwnerFoundationsComponent,
+      ),
   },
   {
     path: 'users',
     loadComponent: () =>
-      import('./users/owner-users-list.component').then((m) => m.OwnerUsersListComponent),
-  },
-  {
-    path: 'code-list-templates',
-    loadComponent: () =>
-      import('./code-list-templates/code-list-templates-list.component').then(
-        (m) => m.CodeListTemplatesListComponent
-      ),
-  },
-  {
-    path: 'code-list-templates/:id',
-    loadComponent: () =>
-      import('./code-list-templates/code-list-template-editor.component').then(
-        (m) => m.CodeListTemplateEditorComponent
-      ),
+      import('./owner-users/owner-users.component').then((m) => m.OwnerUsersComponent),
   },
   {
     path: 'audit-logs',
     loadComponent: () =>
-      import('./audit-logs/owner-audit-logs.component').then((m) => m.OwnerAuditLogsComponent),
+      import('./owner-audit-logs/owner-audit-logs.component').then(
+        (m) => m.OwnerAuditLogsComponent,
+      ),
   },
   {
-    path: '',
-    redirectTo: 'dashboard',
-    pathMatch: 'full',
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./owner-dashboard/owner-dashboard.component').then(
+        (m) => m.OwnerDashboardComponent,
+      ),
   },
 ];

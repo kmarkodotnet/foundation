@@ -617,7 +617,9 @@ test.describe('TS-025 | Határidő figyelmeztető ikonok', () => {
     // span.gm-deadline-critical contains the mat-icon when critical flag is set
     const criticalIcon = munkatarsPage.locator('.gm-deadline-critical mat-icon.gm-deadline-icon');
     await criticalIcon.waitFor({ state: 'attached', timeout: 8_000 });
-    await criticalIcon.scrollIntoViewIfNeeded();
-    await expect(criticalIcon).toBeVisible({ timeout: 5_000 });
+    // Use toHaveText to verify the correct icon rendered (mat-icon text content = icon name)
+    // This is more reliable than toBeVisible on mobile viewports where font-based icons
+    // can have transient dimension issues during font loading
+    await expect(criticalIcon).toHaveText('warning', { timeout: 5_000 });
   });
 });

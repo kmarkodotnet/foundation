@@ -42,6 +42,8 @@ test.describe('E2E-120 | Manipulált JWT aláírás elutasítása', () => {
     const tamperedSignature = parts[2]!.slice(0, -4) + 'XXXX';
     const tamperedToken = `${parts[0]}.${parts[1]}.${tamperedSignature}`;
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill({ status: 401, body: '{}' }));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 401,
@@ -49,8 +51,6 @@ test.describe('E2E-120 | Manipulált JWT aláírás elutasítása', () => {
         body: JSON.stringify({ title: 'Unauthorized', detail: 'Invalid token signature.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill({ status: 401, body: '{}' }));
 
     await page.goto('/');
 
@@ -66,6 +66,8 @@ test.describe('E2E-120 | Manipulált JWT aláírás elutasítása', () => {
     const tamperedPayload = Buffer.from(JSON.stringify(payloadJson)).toString('base64url');
     const tamperedToken = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill({ status: 401, body: '{}' }));
     await page.route('**/api/v1/platform/**', async (route) => {
       return route.fulfill({
         status: 401,
@@ -73,8 +75,6 @@ test.describe('E2E-120 | Manipulált JWT aláírás elutasítása', () => {
         body: JSON.stringify({ title: 'Unauthorized', detail: 'Token validation failed.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill({ status: 401, body: '{}' }));
 
     await page.goto('/');
 
@@ -89,6 +89,8 @@ test.describe('E2E-121 | Audience mismatch — business JWT platform endpointon'
   test('Business audience JWT platform endpointon 403-at ad', async ({ page }) => {
     const businessToken = generateCr2Jwt(CR2_USERS.FoundationAdminX);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -96,8 +98,6 @@ test.describe('E2E-121 | Audience mismatch — business JWT platform endpointon'
         body: JSON.stringify({ title: 'Forbidden', detail: 'Az audience claim értéke nem egyezik a megkövetelt értékkel.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -108,6 +108,8 @@ test.describe('E2E-121 | Audience mismatch — business JWT platform endpointon'
   test('Owner audience JWT business endpointon 403-at ad', async ({ page }) => {
     const ownerToken = generateCr2Jwt(CR2_USERS.OwnerAdminA);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -115,8 +117,6 @@ test.describe('E2E-121 | Audience mismatch — business JWT platform endpointon'
         body: JSON.stringify({ title: 'Forbidden', detail: 'Az audience claim értéke nem egyezik a megkövetelt értékkel.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -127,6 +127,8 @@ test.describe('E2E-121 | Audience mismatch — business JWT platform endpointon'
   test('Platform audience JWT owner endpointon 403-at ad', async ({ page }) => {
     const platformToken = generateCr2Jwt(CR2_USERS.PlatformAdmin);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -134,8 +136,6 @@ test.describe('E2E-121 | Audience mismatch — business JWT platform endpointon'
         body: JSON.stringify({ title: 'Forbidden', detail: 'Platform audience nem férhet hozzá owner erőforrásokhoz.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -150,6 +150,8 @@ test.describe('E2E-122 | Lejárt JWT elutasítása', () => {
   test('Lejárt JWT-vel API hívás 401-et kap', async ({ page }) => {
     const expiredToken = generateExpiredCr2Jwt(CR2_USERS.FoundationAdminX);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 401,
@@ -157,8 +159,6 @@ test.describe('E2E-122 | Lejárt JWT elutasítása', () => {
         body: JSON.stringify({ title: 'Unauthorized', detail: 'Token has expired.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -169,6 +169,8 @@ test.describe('E2E-122 | Lejárt JWT elutasítása', () => {
   test('Lejárt JWT-vel owner API hívás 401-et kap', async ({ page }) => {
     const expiredOwnerToken = generateExpiredCr2Jwt(CR2_USERS.OwnerAdminA);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/owner/**', async (route) => {
       return route.fulfill({
         status: 401,
@@ -176,8 +178,6 @@ test.describe('E2E-122 | Lejárt JWT elutasítása', () => {
         body: JSON.stringify({ title: 'Unauthorized', detail: 'Token has expired.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -190,6 +190,8 @@ test.describe('E2E-122 | Lejárt JWT elutasítása', () => {
 
 test.describe('E2E-123 | Hiányzó JWT → 401', () => {
   test('Authorization header nélküli kérés 401-et kap', async ({ page }) => {
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       const auth = route.request().headers()['authorization'];
       if (!auth) {
@@ -201,8 +203,6 @@ test.describe('E2E-123 | Hiányzó JWT → 401', () => {
       }
       return route.continue();
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -213,6 +213,8 @@ test.describe('E2E-123 | Hiányzó JWT → 401', () => {
   test('"Bearer " prefix nélküli token 401-et kap', async ({ page }) => {
     const token = generateCr2Jwt(CR2_USERS.FoundationAdminX);
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       const auth = route.request().headers()['authorization'] ?? '';
       if (!auth.startsWith('Bearer ')) {
@@ -224,8 +226,6 @@ test.describe('E2E-123 | Hiányzó JWT → 401', () => {
       }
       return route.continue();
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -259,6 +259,8 @@ test.describe('E2E-124 | foundation_roles claim manipuláció nem bővít hozzá
     const tamperedPayload = Buffer.from(JSON.stringify(payloadJson)).toString('base64url');
     const tamperedToken = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/applications**', async (route) => {
       return route.fulfill({
         status: 401,
@@ -266,8 +268,6 @@ test.describe('E2E-124 | foundation_roles claim manipuláció nem bővít hozzá
         body: JSON.stringify({ title: 'Unauthorized', detail: 'Token signature is invalid.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -279,6 +279,8 @@ test.describe('E2E-124 | foundation_roles claim manipuláció nem bővít hozzá
     const xToken = generateCr2Jwt(CR2_USERS.FoundationAdminX);
     const FOUNDATION_Y_APP_ID = 'app-y-00000000-0000-0000-0000-000000000002';
 
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route(`**/api/v1/applications/${FOUNDATION_Y_APP_ID}**`, async (route) => {
       return route.fulfill({
         status: 404,
@@ -286,8 +288,6 @@ test.describe('E2E-124 | foundation_roles claim manipuláció nem bővít hozzá
         body: JSON.stringify({ title: 'Not Found', detail: 'Az erőforrás nem található vagy nincs hozzáférése.' }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 

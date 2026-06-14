@@ -38,6 +38,7 @@ const ACTIVE_OWNER = {
 
 test.describe('E2E-100 | Owner provisioning — POST /platform/owners', () => {
   test('POST /platform/owners 201-et és az új Owner-t adja vissza', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/owners**', async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -48,7 +49,6 @@ test.describe('E2E-100 | Owner provisioning — POST /platform/owners', () => {
       }
       return route.fulfill(ok(EMPTY_PAGE));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -87,9 +87,9 @@ test.describe('E2E-100 | Owner provisioning — POST /platform/owners', () => {
       totalCount: 1, page: 1, pageSize: 20,
     };
 
-    await page.route('**/api/v1/platform/audit-logs**', (route) => route.fulfill(ok(AUDIT_LOG)));
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/audit-logs**', (route) => route.fulfill(ok(AUDIT_LOG)));
 
     await page.goto('/platform/audit-logs');
     await page.waitForLoadState('networkidle');
@@ -100,6 +100,7 @@ test.describe('E2E-100 | Owner provisioning — POST /platform/owners', () => {
   test('Owner meghívó email elküldése a provisioning során', async ({ platformAdminPage: page }) => {
     const capturedBodies: unknown[] = [];
 
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/owners**', async (route) => {
       if (route.request().method() === 'POST') {
         capturedBodies.push(route.request().postDataJSON());
@@ -111,7 +112,6 @@ test.describe('E2E-100 | Owner provisioning — POST /platform/owners', () => {
       }
       return route.fulfill(ok({ items: [ACTIVE_OWNER], totalCount: 1, page: 1, pageSize: 20 }));
     });
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -148,16 +148,16 @@ test.describe('E2E-100 | Owner provisioning — POST /platform/owners', () => {
 
 test.describe('E2E-101 | Owner felfüggesztés és reaktiválás', () => {
   test('PATCH /platform/owners/{id}/suspend 200-at és Suspended státuszt ad', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/owners**', (route) =>
+      route.fulfill(ok({ items: [ACTIVE_OWNER], totalCount: 1, page: 1, pageSize: 20 })),
+    );
     await page.route(`**/api/v1/platform/owners/${OWNER_A_ID}/suspend**`, async (route) => {
       if (route.request().method() === 'PATCH' || route.request().method() === 'POST') {
         return route.fulfill(ok({ ...ACTIVE_OWNER, status: 'Suspended' }));
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/owners**', (route) =>
-      route.fulfill(ok({ items: [ACTIVE_OWNER], totalCount: 1, page: 1, pageSize: 20 })),
-    );
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -171,6 +171,8 @@ test.describe('E2E-101 | Owner felfüggesztés és reaktiválás', () => {
   });
 
   test('Felfüggesztett Owner bejelentkezési kísérlete 403-at kap', async ({ page }) => {
+    await page.route('**/hubs/**', (route) => route.abort());
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/auth/google**', async (route) => {
       return route.fulfill({
         status: 403,
@@ -181,8 +183,6 @@ test.describe('E2E-101 | Owner felfüggesztés és reaktiválás', () => {
         }),
       });
     });
-    await page.route('**/hubs/**', (route) => route.abort());
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/');
 
@@ -199,16 +199,16 @@ test.describe('E2E-101 | Owner felfüggesztés és reaktiválás', () => {
   });
 
   test('Owner reaktiválásakor az Active státusz visszaáll', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/owners**', (route) =>
+      route.fulfill(ok({ items: [{ ...ACTIVE_OWNER, status: 'Suspended' }], totalCount: 1, page: 1, pageSize: 20 })),
+    );
     await page.route(`**/api/v1/platform/owners/${OWNER_A_ID}/reactivate**`, async (route) => {
       if (route.request().method() === 'PATCH' || route.request().method() === 'POST') {
         return route.fulfill(ok({ ...ACTIVE_OWNER, status: 'Active' }));
       }
       return route.fulfill(ok({}));
     });
-    await page.route('**/api/v1/platform/owners**', (route) =>
-      route.fulfill(ok({ items: [{ ...ACTIVE_OWNER, status: 'Suspended' }], totalCount: 1, page: 1, pageSize: 20 })),
-    );
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -239,6 +239,10 @@ test.describe('E2E-101 | Owner felfüggesztés és reaktiválás', () => {
 
 test.describe('E2E-102 | Owner archiválás — aktív Foundation-ok blokkolnak', () => {
   test('DELETE/archive aktív Foundation-nal rendelkező Owner-t 409-et kap', async ({ platformAdminPage: page }) => {
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route('**/api/v1/platform/owners**', (route) =>
+      route.fulfill(ok({ items: [ACTIVE_OWNER], totalCount: 1, page: 1, pageSize: 20 })),
+    );
     await page.route(`**/api/v1/platform/owners/${OWNER_A_ID}/archive**`, async (route) => {
       return route.fulfill({
         status: 409,
@@ -249,10 +253,6 @@ test.describe('E2E-102 | Owner archiválás — aktív Foundation-ok blokkolnak'
         }),
       });
     });
-    await page.route('**/api/v1/platform/owners**', (route) =>
-      route.fulfill(ok({ items: [ACTIVE_OWNER], totalCount: 1, page: 1, pageSize: 20 })),
-    );
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');
@@ -268,13 +268,13 @@ test.describe('E2E-102 | Owner archiválás — aktív Foundation-ok blokkolnak'
   test('Üres Foundation-listájú Owner archiválása 200-at ad', async ({ platformAdminPage: page }) => {
     const EMPTY_OWNER_ID = 'dddddddd-0000-0000-0000-000000000099';
 
-    await page.route(`**/api/v1/platform/owners/${EMPTY_OWNER_ID}/archive**`, async (route) => {
-      return route.fulfill(ok({ id: EMPTY_OWNER_ID, status: 'Archived' }));
-    });
+    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
     await page.route('**/api/v1/platform/owners**', (route) =>
       route.fulfill(ok({ items: [ACTIVE_OWNER], totalCount: 1, page: 1, pageSize: 20 })),
     );
-    await page.route('**/api/v1/**', (route) => route.fulfill(ok({})));
+    await page.route(`**/api/v1/platform/owners/${EMPTY_OWNER_ID}/archive**`, async (route) => {
+      return route.fulfill(ok({ id: EMPTY_OWNER_ID, status: 'Archived' }));
+    });
 
     await page.goto('/platform/owners');
     await page.waitForLoadState('networkidle');

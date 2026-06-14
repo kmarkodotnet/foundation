@@ -46,8 +46,8 @@ test.describe('E2E-070 | Foundation X vs Y scope-izoláció', () => {
   });
 
   test('Foundation Y pályázatának közvetlen lekérése 404-et ad vissza', async ({ foundationAdminXPage: page }) => {
-    await page.route(`**/api/v1/applications/${FOUNDATION_Y_APP_ID}**`, (route) => route.fulfill(notFound()));
     await page.route('**/api/v1/applications**', (route) => route.fulfill(ok(FOUNDATION_X_APPS)));
+    await page.route(`**/api/v1/applications/${FOUNDATION_Y_APP_ID}**`, (route) => route.fulfill(notFound()));
 
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
@@ -142,8 +142,8 @@ test.describe('E2E-071 | Owner A vs B cross-owner izoláció', () => {
   });
 
   test('Owner B pályázatának közvetlen elérése Owner A JWT-vel 404-et ad', async ({ foundationAdminXPage: page }) => {
-    await page.route(`**/api/v1/applications/${OWNER_B_APP_ID}**`, (route) => route.fulfill(notFound()));
     await page.route('**/api/v1/applications**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route(`**/api/v1/applications/${OWNER_B_APP_ID}**`, (route) => route.fulfill(notFound()));
 
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
@@ -203,8 +203,8 @@ test.describe('E2E-072 | Scope auto-inject mentésnél', () => {
 test.describe('E2E-073 | SCOPE_VIOLATION audit bejegyzés', () => {
   test('Idegen Foundation pályázat lekérése után ScopeValidationMiddleware 404-et ad', async ({ foundationAdminXPage: page }) => {
     const FOREIGN_APP_ID = 'foreign-app-00000000-0000-0000-0000-0000000000ff';
-    await page.route(`**/api/v1/applications/${FOREIGN_APP_ID}**`, (route) => route.fulfill(notFound()));
     await page.route('**/api/v1/applications**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route(`**/api/v1/applications/${FOREIGN_APP_ID}**`, (route) => route.fulfill(notFound()));
 
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
@@ -228,8 +228,8 @@ test.describe('E2E-073 | SCOPE_VIOLATION audit bejegyzés', () => {
       totalCount: 1, page: 1, pageSize: 50,
     };
 
-    await page.route('**/api/v1/platform/audit-logs**', (route) => route.fulfill(ok(AUDIT_WITH_VIOLATION)));
     await page.route('**/api/v1/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route('**/api/v1/platform/audit-logs**', (route) => route.fulfill(ok(AUDIT_WITH_VIOLATION)));
 
     await page.addInitScript(
       ({ key, value }: { key: string; value: string }) => sessionStorage.setItem(key, value),
@@ -258,8 +258,8 @@ test.describe('E2E-074 | OwnerAdmin cross-foundation dashboard', () => {
   };
 
   test('OwnerAdmin dashboard mindkét Foundation adatait tartalmazza', async ({ ownerAdminAPage: page }) => {
-    await page.route('**/api/v1/owner/reports/dashboard**', (route) => route.fulfill(ok(DASHBOARD_RESPONSE)));
     await page.route('**/api/v1/owner/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route('**/api/v1/owner/reports/dashboard**', (route) => route.fulfill(ok(DASHBOARD_RESPONSE)));
 
     await page.goto('/owner/dashboard');
     await page.waitForLoadState('networkidle');
@@ -276,8 +276,8 @@ test.describe('E2E-074 | OwnerAdmin cross-foundation dashboard', () => {
       ],
       totalCount: 2, page: 1, pageSize: 50,
     };
-    await page.route('**/api/v1/owner/audit-logs**', (route) => route.fulfill(ok(AUDIT_BOTH_FOUNDATIONS)));
     await page.route('**/api/v1/owner/**', (route) => route.fulfill(ok(EMPTY_PAGE)));
+    await page.route('**/api/v1/owner/audit-logs**', (route) => route.fulfill(ok(AUDIT_BOTH_FOUNDATIONS)));
 
     await page.goto('/owner/audit-logs');
     await page.waitForLoadState('networkidle');

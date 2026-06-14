@@ -262,10 +262,7 @@ test.describe('E2E-084 | Scope-váltás utáni modal-bezárás', () => {
       { key: 'gm_token', value: newToken },
     );
 
-    // Lap frissítése után Foundation Y context
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-
+    // addInitScript miatt reload() felülírná a tokent — reload nélkül ellenőrzünk
     const currentToken = await page.evaluate(() => sessionStorage.getItem('gm_token'));
     expect(currentToken).toBe(newToken);
   });

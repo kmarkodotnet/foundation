@@ -6,12 +6,13 @@ using GrantManagement.Application.EmailRecords.DTOs;
 using GrantManagement.Application.EmailRecords.Queries.DownloadEmailAttachment;
 using GrantManagement.Application.EmailRecords.Queries.GetEmailPreview;
 using GrantManagement.Application.EmailRecords.Queries.GetEmailRecords;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/emails")]
-public class EmailRecordController : ApiControllerBase
+public class EmailRecordController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Lists all email records for an application, optionally filtered by workflow step.

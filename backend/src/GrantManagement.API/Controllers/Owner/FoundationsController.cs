@@ -5,13 +5,14 @@ using GrantManagement.Application.OwnerAdministration.Foundations.Commands.Creat
 using GrantManagement.Application.OwnerAdministration.Foundations.Commands.RevokeFoundationAdmin;
 using GrantManagement.Application.OwnerAdministration.Foundations.Queries.GetFoundationAdmins;
 using GrantManagement.Application.OwnerAdministration.Foundations.Queries.GetFoundationsList;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Owner;
 
 [Route("api/v1/owner/foundations")]
-public class FoundationsController : ApiControllerBase
+public class FoundationsController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadOwner")]

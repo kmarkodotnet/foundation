@@ -1,12 +1,13 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.OwnerAdministration.Reports.Queries.GetOwnerDashboard;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Owner;
 
 [Route("api/v1/owner/reports")]
-public class OwnerReportsController : ApiControllerBase
+public class OwnerReportsController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet("dashboard")]
     [Authorize(Policy = "CanReadOwner")]

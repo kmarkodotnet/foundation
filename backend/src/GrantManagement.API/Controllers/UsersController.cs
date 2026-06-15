@@ -5,6 +5,7 @@ using GrantManagement.Application.Users.Commands.UpdateUserRole;
 using GrantManagement.Application.Users.DTOs;
 using GrantManagement.Application.Users.Queries.GetUserList;
 using GrantManagement.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,7 @@ namespace GrantManagement.API.Controllers;
 /// User management endpoints (Admin only).
 /// </summary>
 [Authorize(Policy = Policies.CanManageUsers)]
-public class UsersController : ApiControllerBase
+public class UsersController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns all registered users, optionally filtered by name/email/role.

@@ -4,6 +4,7 @@ using GrantManagement.Application.AuditLogs.Queries.ExportAuditLog;
 using GrantManagement.Application.AuditLogs.Queries.GetAuditLogList;
 using GrantManagement.Application.Common.Models;
 using GrantManagement.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,7 +14,7 @@ namespace GrantManagement.API.Controllers;
 /// Audit log endpoints.
 /// </summary>
 [Route("api/v1/audit-logs")]
-public class AuditLogsController : ApiControllerBase
+public class AuditLogsController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns a paged, filtered list of audit log entries. Admin + Elnok only.

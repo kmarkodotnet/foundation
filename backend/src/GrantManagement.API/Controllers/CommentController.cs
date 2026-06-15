@@ -4,12 +4,13 @@ using GrantManagement.Application.Comments.Commands.DeleteComment;
 using GrantManagement.Application.Comments.Commands.UpdateComment;
 using GrantManagement.Application.Comments.DTOs;
 using GrantManagement.Application.Comments.Queries.GetComments;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/comments")]
-public class CommentController : ApiControllerBase
+public class CommentController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Lists comments for an application, optionally filtered by workflow step.

@@ -2,13 +2,14 @@ using GrantManagement.API.Common;
 using GrantManagement.Application.Platform.BreakGlass.Commands.IssueBreakGlass;
 using GrantManagement.Application.Platform.BreakGlass.Commands.RevokeBreakGlass;
 using GrantManagement.Application.Platform.BreakGlass.Queries.GetBreakGlassGrantsList;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Platform;
 
 [Route("api/v1/platform/break-glass")]
-public class BreakGlassController : ApiControllerBase
+public class BreakGlassController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadPlatform")]

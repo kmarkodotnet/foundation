@@ -4,13 +4,14 @@ using GrantManagement.Application.BudgetPlan.Commands.RequestBudgetPlanApproval;
 using GrantManagement.Application.BudgetPlan.Commands.UpsertBudgetPlan;
 using GrantManagement.Application.BudgetPlan.DTOs;
 using GrantManagement.Application.BudgetPlan.Queries.GetBudgetPlan;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/budget-plan")]
-public class BudgetPlanController : ApiControllerBase
+public class BudgetPlanController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Gets the budget plan for an application.

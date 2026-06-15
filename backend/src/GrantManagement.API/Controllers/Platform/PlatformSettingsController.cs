@@ -1,13 +1,14 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.Platform.Settings.Commands.UpdatePlatformSettings;
 using GrantManagement.Application.Platform.Settings.Queries.GetPlatformSettings;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Platform;
 
 [Route("api/v1/platform/settings")]
-public class PlatformSettingsController : ApiControllerBase
+public class PlatformSettingsController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadPlatform")]

@@ -9,6 +9,7 @@ using GrantManagement.Application.CodeLists.Commands.UpdateCodeListItem;
 using GrantManagement.Application.CodeLists.DTOs;
 using GrantManagement.Application.CodeLists.Queries.GetCodeListItems;
 using GrantManagement.Application.CodeLists.Queries.GetCodeLists;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -17,7 +18,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// CodeList management endpoints.
 /// </summary>
-public class CodeListController : ApiControllerBase
+public class CodeListController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>Returns all codelists with item counts.</summary>
     /// <response code="200">List returned.</response>

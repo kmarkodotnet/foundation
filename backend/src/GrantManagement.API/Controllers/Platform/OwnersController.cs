@@ -4,13 +4,14 @@ using GrantManagement.Application.Platform.Owners.Commands.ReactivateOwner;
 using GrantManagement.Application.Platform.Owners.Commands.ArchiveOwner;
 using GrantManagement.Application.Platform.Owners.Queries.GetOwnersList;
 using GrantManagement.API.Common;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Platform;
 
 [Route("api/v1/platform/owners")]
-public class OwnersController : ApiControllerBase
+public class OwnersController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadPlatform")]

@@ -2,13 +2,14 @@ using GrantManagement.API.Common;
 using GrantManagement.Application.AuditLogs.DTOs;
 using GrantManagement.Application.OwnerAdministration.AuditLogs.Commands.ExportOwnerAuditLogs;
 using GrantManagement.Application.OwnerAdministration.AuditLogs.Queries.GetOwnerAuditLogs;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Owner;
 
 [Route("api/v1/owner/audit-logs")]
-public class OwnerAuditLogsController : ApiControllerBase
+public class OwnerAuditLogsController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadOwner")]

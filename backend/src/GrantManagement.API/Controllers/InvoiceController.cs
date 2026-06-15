@@ -5,12 +5,13 @@ using GrantManagement.Application.Invoices.Commands.MarkInvoicePaid;
 using GrantManagement.Application.Invoices.Commands.UpdateInvoice;
 using GrantManagement.Application.Invoices.DTOs;
 using GrantManagement.Application.Invoices.Queries.GetInvoices;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/invoices")]
-public class InvoiceController : ApiControllerBase
+public class InvoiceController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Lists all invoices for an application with financial summary.

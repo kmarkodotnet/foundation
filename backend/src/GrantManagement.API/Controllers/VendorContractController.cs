@@ -3,12 +3,13 @@ using GrantManagement.Application.VendorContracts.Commands.CreateVendorContract;
 using GrantManagement.Application.VendorContracts.Commands.DeleteVendorContract;
 using GrantManagement.Application.VendorContracts.DTOs;
 using GrantManagement.Application.VendorContracts.Queries.GetVendorContracts;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/vendor-contracts")]
-public class VendorContractController : ApiControllerBase
+public class VendorContractController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Lists all vendor contracts for an application.

@@ -5,12 +5,13 @@ using GrantManagement.Application.Settlement.Commands.RecordSettlement;
 using GrantManagement.Application.Settlement.Commands.RequestSettlementApproval;
 using GrantManagement.Application.Settlement.DTOs;
 using GrantManagement.Application.Settlement.Queries.GetSettlement;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/settlement")]
-public class SettlementController : ApiControllerBase
+public class SettlementController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Gets the settlement for an application.

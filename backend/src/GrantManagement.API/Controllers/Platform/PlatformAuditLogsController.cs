@@ -1,5 +1,6 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.Platform.AuditLogs.Queries.GetPlatformAuditLogs;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
@@ -7,7 +8,7 @@ using System.Text;
 namespace GrantManagement.API.Controllers.Platform;
 
 [Route("api/v1/platform/audit-logs")]
-public class PlatformAuditLogsController : ApiControllerBase
+public class PlatformAuditLogsController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadPlatform")]

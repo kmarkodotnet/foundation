@@ -1,6 +1,7 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.Search.DTOs;
 using GrantManagement.Application.Search.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -8,7 +9,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Global full-text search across applications, granters, and vendors.
 /// </summary>
-public class SearchController : ApiControllerBase
+public class SearchController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Searches across applications, granters, and vendors. Minimum 3 characters required.

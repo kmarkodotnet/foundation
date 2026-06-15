@@ -5,13 +5,14 @@ using GrantManagement.Application.OwnerAdministration.CodeListTemplates.Commands
 using GrantManagement.Application.OwnerAdministration.CodeListTemplates.Commands.UpdateTemplateItem;
 using GrantManagement.Application.OwnerAdministration.CodeListTemplates.Queries.GetOwnerCodeListTemplateDetails;
 using GrantManagement.Application.OwnerAdministration.CodeListTemplates.Queries.GetOwnerCodeListTemplates;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Owner;
 
 [Route("api/v1/owner/code-list-templates")]
-public class OwnerCodeListTemplatesController : ApiControllerBase
+public class OwnerCodeListTemplatesController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadOwner")]

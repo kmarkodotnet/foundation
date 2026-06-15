@@ -7,9 +7,7 @@ namespace GrantManagement.API.Common;
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
-public abstract class ApiControllerBase : ControllerBase
+public abstract class ApiControllerBase(ISender sender) : ControllerBase
 {
-    private ISender? _sender;
-    protected ISender Sender =>
-        _sender ??= HttpContext.RequestServices.GetRequiredService<ISender>();
+    protected readonly ISender Sender = sender;
 }

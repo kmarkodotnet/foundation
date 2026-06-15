@@ -1,13 +1,14 @@
 using GrantManagement.API.Common;
 using GrantManagement.Application.Platform.Users.Commands.InvitePlatformUser;
 using GrantManagement.Application.Platform.Users.Queries.GetPlatformUsersList;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Platform;
 
 [Route("api/v1/platform/users")]
-public class PlatformUsersController : ApiControllerBase
+public class PlatformUsersController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "IsPlatformAdmin")]

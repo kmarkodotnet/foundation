@@ -1,13 +1,14 @@
 using GrantManagement.Application.Authentication.Commands.ScopeSwitch;
 using GrantManagement.Application.Authentication.Queries.GetAvailableScopes;
 using GrantManagement.API.Common;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Me;
 
 [Route("api/v1/me")]
-public class ScopeSwitchController : ApiControllerBase
+public class ScopeSwitchController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpPost("scope-switch")]
     [Authorize]

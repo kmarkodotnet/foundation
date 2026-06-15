@@ -6,6 +6,7 @@ using GrantManagement.Application.Invitations.DTOs;
 using GrantManagement.Application.Invitations.Queries.GetInvitations;
 using GrantManagement.Application.Invitations.Queries.GetInvitationPreview;
 using GrantManagement.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,14 +16,9 @@ namespace GrantManagement.API.Controllers;
 /// Invitation management endpoints (Admin only).
 /// </summary>
 [Authorize(Policy = Policies.CanManageUsers)]
-public class InvitationsController : ApiControllerBase
+public class InvitationsController(ISender sender, IConfiguration configuration) : ApiControllerBase(sender)
 {
-    private readonly IConfiguration _configuration;
-
-    public InvitationsController(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
+    private readonly IConfiguration _configuration = configuration;
 
     /// <summary>
     /// Lists all invitations, optionally filtered by status.
@@ -109,7 +105,7 @@ public record CreateInvitationRequest(string Email, UserRole Role);
 // Separate (unauthenticated) controller for public invitation preview
 [Route("api/v1/invitations")]
 [AllowAnonymous]
-public class InvitationPreviewController : ApiControllerBase
+public class InvitationPreviewController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet("preview/{token}")]
     [ProducesResponseType(typeof(InvitationPreviewResponse), StatusCodes.Status200OK)]

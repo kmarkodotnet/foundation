@@ -4,12 +4,13 @@ using GrantManagement.Application.ProofRecords.DTOs;
 using GrantManagement.Application.ProofRecords.Queries.DownloadAllProofPhotos;
 using GrantManagement.Application.ProofRecords.Queries.GetProofPhoto;
 using GrantManagement.Application.ProofRecords.Queries.GetProofRecords;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/proof-records")]
-public class ProofRecordController : Common.ApiControllerBase
+public class ProofRecordController(ISender sender) : Common.ApiControllerBase(sender)
 {
     /// <summary>
     /// Lists all proof records for an application.

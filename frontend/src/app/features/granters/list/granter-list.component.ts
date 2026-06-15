@@ -1,10 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -36,6 +38,7 @@ import { HasRoleDirective } from '../../../shared/directives/has-role.directive'
 export class GranterListComponent implements OnInit {
   private readonly service = inject(GranterService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(false);
   readonly granters = signal<Granter[]>([]);
@@ -47,10 +50,12 @@ export class GranterListComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.service.getAll().subscribe({
-      next: (data) => { this.granters.set(data); this.loading.set(false); },
-      error: () => this.loading.set(false),
-    });
+    this.service.getAll()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => { this.granters.set(data); this.loading.set(false); },
+        error: () => this.loading.set(false),
+      });
   }
 
   openDetail(id: string): void {

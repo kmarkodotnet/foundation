@@ -8,6 +8,7 @@ using GrantManagement.Application.Applications.Queries.GetApplicationDetail;
 using GrantManagement.Application.Applications.Queries.GetApplicationList;
 using GrantManagement.Application.Common.Models;
 using GrantManagement.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -15,7 +16,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Grant application endpoints.
 /// </summary>
-public class ApplicationsController : ApiControllerBase
+public class ApplicationsController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns a paged, filtered and sorted list of grant applications.

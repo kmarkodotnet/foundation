@@ -7,6 +7,7 @@ using GrantManagement.Application.Auth.Commands.UpdateNotificationPreferences;
 using GrantManagement.Application.Auth.DTOs;
 using GrantManagement.Application.Auth.Queries.GetCurrentUser;
 using Microsoft.AspNetCore.Authorization;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -14,14 +15,9 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Authentication and current-user endpoints.
 /// </summary>
-public class AuthController : ApiControllerBase
+public class AuthController(ISender sender, IWebHostEnvironment env) : ApiControllerBase(sender)
 {
-    private readonly IWebHostEnvironment _env;
-
-    public AuthController(IWebHostEnvironment env)
-    {
-        _env = env;
-    }
+    private readonly IWebHostEnvironment _env = env;
 
     /// <summary>
     /// Issues a real JWT for a named test user without Google OAuth.

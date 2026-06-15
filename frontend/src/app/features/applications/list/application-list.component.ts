@@ -1,5 +1,5 @@
 import {
-  ApplicationRef,
+  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   DestroyRef,
@@ -74,6 +74,7 @@ interface ActiveFilterBadge {
 @Component({
   selector: 'gm-application-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [provideNativeDateAdapter()],
   imports: [
     ReactiveFormsModule,
@@ -108,7 +109,6 @@ export class ApplicationListComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly appRef = inject(ApplicationRef);
 
   readonly loading = signal(false);
   readonly exporting = signal(false);
@@ -317,7 +317,7 @@ export class ApplicationListComponent implements OnInit {
     this._snapshot.set({ ...this._snapshot(), [key]: defaults[key] });
     this.page$.next({ ...this.page$.value, page: 1 });
     this.filterTrigger$.next();
-    this.appRef.tick();
+    this.cdr.markForCheck();
   }
 
   clearAllFilters(): void {
@@ -337,7 +337,7 @@ export class ApplicationListComponent implements OnInit {
     this.sortDirection = 'Asc';
     this.page$.next({ page: 1, pageSize: this.page$.value.pageSize });
     this.filterTrigger$.next();
-    this.appRef.tick();
+    this.cdr.markForCheck();
   }
 
   openDetail(id: string): void {
@@ -367,6 +367,7 @@ export class ApplicationListComponent implements OnInit {
         awardedAmountMax: snap.awardedAmountMax ?? undefined,
         includeArchived: snap.includeArchived || undefined,
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {
           this.exporting.set(false);

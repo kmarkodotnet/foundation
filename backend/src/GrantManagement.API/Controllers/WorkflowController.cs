@@ -12,12 +12,13 @@ using GrantManagement.Application.Workflow.Commands.UpdateContractStep;
 using GrantManagement.Application.Workflow.Commands.UpdateSubmissionStep;
 using GrantManagement.Application.Workflow.DTOs;
 using GrantManagement.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
 [Route("api/v1/applications/{applicationId:guid}/workflow")]
-public class WorkflowController : ApiControllerBase
+public class WorkflowController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Records submission data for the Submission workflow step.

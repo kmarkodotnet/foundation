@@ -13,7 +13,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Granter (pályáztató) management endpoints.
 /// </summary>
-public class GrantersController : ApiControllerBase
+public class GrantersController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns a list of granters, optionally filtered to active only.

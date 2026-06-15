@@ -2,6 +2,7 @@ using GrantManagement.API.Common;
 using GrantManagement.Application.SystemSettings.Commands.UpdateSystemSettings;
 using GrantManagement.Application.SystemSettings.DTOs;
 using GrantManagement.Application.SystemSettings.Queries.GetSystemSettings;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,7 @@ namespace GrantManagement.API.Controllers;
 /// System configuration endpoints (Admin only).
 /// </summary>
 [Authorize(Policy = Policies.CanManageUsers)]
-public class SystemSettingsController : ApiControllerBase
+public class SystemSettingsController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns the current system settings.

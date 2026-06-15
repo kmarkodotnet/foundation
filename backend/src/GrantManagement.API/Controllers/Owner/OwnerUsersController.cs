@@ -3,13 +3,14 @@ using GrantManagement.Application.OwnerAdministration.Users.Commands.AssignUserT
 using GrantManagement.Application.OwnerAdministration.Users.Commands.InviteOwnerUser;
 using GrantManagement.Application.OwnerAdministration.Users.Commands.RevokeUserFoundationAssignment;
 using GrantManagement.Application.OwnerAdministration.Users.Queries.GetOwnerUsersList;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers.Owner;
 
 [Route("api/v1/owner/users")]
-public class OwnerUsersController : ApiControllerBase
+public class OwnerUsersController(ISender sender) : ApiControllerBase(sender)
 {
     [HttpGet]
     [Authorize(Policy = "CanReadOwner")]

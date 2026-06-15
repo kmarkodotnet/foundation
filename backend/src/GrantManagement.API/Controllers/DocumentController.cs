@@ -1,3 +1,4 @@
+using GrantManagement.API.Common;
 using GrantManagement.API.Models;
 using GrantManagement.Application.Documents.Commands.ArchiveDocument;
 using GrantManagement.Application.Documents.Commands.UploadDocument;
@@ -7,19 +8,13 @@ using GrantManagement.Application.Documents.Queries.DownloadDocument;
 using GrantManagement.Application.Documents.Queries.GetDocuments;
 using GrantManagement.Application.Documents.Queries.GetDocumentVersions;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
 
-[ApiController]
 [Route("api/v1/applications/{applicationId:guid}/documents")]
-[Authorize]
-public class DocumentController : ControllerBase
+public class DocumentController(ISender sender) : ApiControllerBase(sender)
 {
-    private ISender? _sender;
-    private ISender Sender =>
-        _sender ??= HttpContext.RequestServices.GetRequiredService<ISender>();
 
     /// <summary>
     /// Lists documents for an application, optionally filtered by workflow step.

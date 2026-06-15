@@ -3,6 +3,7 @@ using GrantManagement.Application.Notifications.Commands.MarkAllNotificationsRea
 using GrantManagement.Application.Notifications.Commands.MarkNotificationRead;
 using GrantManagement.Application.Notifications.DTOs;
 using GrantManagement.Application.Notifications.Queries.GetMyNotifications;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -10,7 +11,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Manages in-app notifications for the current user.
 /// </summary>
-public class NotificationsController : ApiControllerBase
+public class NotificationsController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns notifications for the current user.

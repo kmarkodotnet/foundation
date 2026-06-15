@@ -6,6 +6,7 @@ using GrantManagement.Application.Vendors.Commands.UpdateVendor;
 using GrantManagement.Application.Vendors.DTOs;
 using GrantManagement.Application.Vendors.Queries.GetVendorDetail;
 using GrantManagement.Application.Vendors.Queries.GetVendors;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrantManagement.API.Controllers;
@@ -13,7 +14,7 @@ namespace GrantManagement.API.Controllers;
 /// <summary>
 /// Vendor (szerződő cég) management endpoints.
 /// </summary>
-public class VendorsController : ApiControllerBase
+public class VendorsController(ISender sender) : ApiControllerBase(sender)
 {
     /// <summary>
     /// Returns a list of vendors, optionally filtered by search term or including inactive.

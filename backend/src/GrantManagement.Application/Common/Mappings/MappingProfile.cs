@@ -59,6 +59,8 @@ public class MappingProfile : Profile
                 src.Email,
                 src.Name,
                 src.ProfilePictureUrl,
+                src.PlatformRole.HasValue ? src.PlatformRole.Value.ToString() :
+                src.OwnerRole.HasValue   ? src.OwnerRole.Value.ToString()   :
                 src.Role.ToString(),
                 src.LastLoginAt,
                 new NotificationPreferencesDto(

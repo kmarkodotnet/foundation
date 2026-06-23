@@ -128,16 +128,49 @@ export class AuthService {
   // -----------------------------------------------------------------------
 
   hasRole(role: UserRole): boolean {
-    return this._currentUserSignal()?.role === role;
+    return this.hasAnyRole([role]);
   }
 
   hasAnyRole(roles: UserRole[]): boolean {
-    const role = this._currentUserSignal()?.role;
-    return role !== undefined && roles.includes(role);
+    const signalRole = this._currentUserSignal()?.role;
+    if (signalRole !== undefined && roles.includes(signalRole)) return true;
+    const platformRole = this.getJwtPlatformRole() as UserRole | null;
+    if (platformRole && roles.includes(platformRole)) return true;
+    const ownerRole = this.getJwtOwnerRole() as UserRole | null;
+    if (ownerRole && roles.includes(ownerRole)) return true;
+    return false;
   }
 
   isAdmin(): boolean {
-    return this.hasRole('Admin');
+    return this.hasAnyRole(['Admin', 'FoundationAdmin']);
+  }
+
+  getCurrentFoundationId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const payload = this.decodeToken(token);
+    return (payload?.['foundation_id'] as string | undefined) ?? null;
+  }
+
+  getCurrentScope(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const payload = this.decodeToken(token);
+    return (payload?.['scope'] as string | undefined) ?? null;
+  }
+
+  getJwtPlatformRole(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const payload = this.decodeToken(token);
+    return (payload?.['platform_role'] as string | undefined) ?? null;
+  }
+
+  getJwtOwnerRole(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const payload = this.decodeToken(token);
+    return (payload?.['owner_role'] as string | undefined) ?? null;
   }
 
   // -----------------------------------------------------------------------
@@ -195,12 +228,12 @@ export class AuthService {
   private buildProfileFromClaims(payload: Record<string, unknown>): UserProfileDto {
     let role = (payload['role'] as string | undefined) ?? '';
 
-    if (!role) {
-      if (payload['platform_role']) {
-        role = payload['platform_role'] as string;
-      } else if (payload['owner_role']) {
-        role = payload['owner_role'] as string;
-      } else if (payload['foundation_roles']) {
+    if (payload['platform_role']) {
+      role = payload['platform_role'] as string;
+    } else if (payload['owner_role']) {
+      role = payload['owner_role'] as string;
+    } else if (!role) {
+      if (payload['foundation_roles']) {
         try {
           const rolesMap = JSON.parse(payload['foundation_roles'] as string) as Record<string, string>;
           const foundationId = payload['foundation_id'] as string | undefined;

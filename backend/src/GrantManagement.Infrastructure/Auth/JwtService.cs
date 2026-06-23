@@ -77,14 +77,30 @@ public sealed class JwtService : IJwtService
 
     private static IEnumerable<Claim> BuildClaims(AppUser user)
     {
-        return
-        [
-            new Claim(JwtRegisteredClaimNames.Sub, user.GoogleId),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Name, user.Name),
-            new Claim("role", user.Role.ToString()),
-            new Claim(ClaimTypeUserId, user.Id.ToString())
-        ];
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.GoogleId),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(JwtRegisteredClaimNames.Name, user.Name),
+            new("role", user.Role.ToString()),
+            new(ClaimTypeUserId, user.Id.ToString())
+        };
+
+        if (user.PlatformRole.HasValue)
+        {
+            claims.Add(new Claim("platform_role", user.PlatformRole.Value.ToString()));
+            claims.Add(new Claim("scope", "platform"));
+            claims.Add(new Claim("aud", "platform"));
+        }
+        else if (user.OwnerRole.HasValue && user.OwnerId.HasValue)
+        {
+            claims.Add(new Claim("owner_role", user.OwnerRole.Value.ToString()));
+            claims.Add(new Claim("scope", "owner"));
+            claims.Add(new Claim("aud", "owner"));
+            claims.Add(new Claim("owner_id", user.OwnerId.Value.ToString()));
+        }
+
+        return claims;
     }
 
     private static IEnumerable<Claim> BuildScopeClaims(

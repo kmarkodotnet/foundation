@@ -2,8 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  Input,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -13,7 +13,8 @@ import { FormsModule } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ScopeService, AvailableScopesResponse, FoundationScopeItem } from '../../../core/auth/scope.service';
+import { ScopeService, AvailableScopesResponse } from '../../../core/auth/scope.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'gm-foundation-switcher',
@@ -26,8 +27,9 @@ import { ScopeService, AvailableScopesResponse, FoundationScopeItem } from '../.
     } @else if (scopes() && (scopes()!.foundations.length > 1 || scopes()!.ownerRole)) {
       <mat-select
         data-testid="foundation-switcher"
-        [value]="currentFoundationId"
+        [value]="selectValue()"
         (valueChange)="onSelect($event)"
+        placeholder="Válassz scope-ot"
         class="scope-select"
         panelClass="scope-panel"
       >
@@ -51,17 +53,29 @@ import { ScopeService, AvailableScopesResponse, FoundationScopeItem } from '../.
   `],
 })
 export class FoundationSwitcherComponent implements OnInit {
-  @Input() currentFoundationId: string | null = null;
-
   private readonly scopeService = inject(ScopeService);
+  private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  private static readonly PLATFORM_SENTINEL = '__platform__';
+
   readonly switching = signal(false);
   readonly scopes = signal<AvailableScopesResponse | null>(null);
+  readonly currentFoundationId = signal<string | null>(null);
+
+  // Platform scope-ban sentinel értéket kötünk, hogy a mat-select érzékelje
+  // az "Owner áttekintés" kiválasztását (null → null változást egyébként elnyomná)
+  readonly selectValue = computed(() =>
+    this.authService.getCurrentScope() === 'platform'
+      ? FoundationSwitcherComponent.PLATFORM_SENTINEL
+      : this.currentFoundationId()
+  );
 
   ngOnInit(): void {
+    this.currentFoundationId.set(this.authService.getCurrentFoundationId());
+
     this.scopeService.getAvailableScopes()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -71,7 +85,7 @@ export class FoundationSwitcherComponent implements OnInit {
   }
 
   onSelect(foundationId: string | null): void {
-    if (foundationId === this.currentFoundationId) return;
+    if (foundationId !== null && foundationId === this.currentFoundationId()) return;
     this.switching.set(true);
     this.scopeService.switchFoundation(foundationId)
       .pipe(takeUntilDestroyed(this.destroyRef))

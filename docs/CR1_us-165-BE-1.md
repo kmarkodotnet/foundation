@@ -40,6 +40,7 @@ A meghívókezelés olvasási és mutációs végpontjai: lista lekérés, vissz
 - [ ] Handler: `RevokeInvitationCommandHandler.cs`
   - Meghívó keresése ID alapján → `InvitationNotFoundException`
   - `invitation.Revoke()` hívása — ha nem PENDING, `DomainException`
+  - **Audit naplózás** (AC7): `_auditLogger.Log(AuditAction.INVITATION_REVOKED, new { invitationId, email, scope, revokedByUserId })` az `IAuditLogger`-en keresztül
   - `SaveChangesAsync()`
 - [ ] Validator: `RevokeInvitationCommandValidator.cs` — `InvitationId` NotEmpty
 
@@ -49,6 +50,7 @@ A meghívókezelés olvasási és mutációs végpontjai: lista lekérés, vissz
   - Meghívó keresése ID alapján → `InvitationNotFoundException`
   - `invitation.Resend(expiryHours)` hívása — csak PENDING vagy EXPIRED esetén OK, ACCEPTED/REVOKED esetén `DomainException`
   - `IEmailService.SendInvitationAsync(...)` hívása az új tokennel
+  - **Audit naplózás** (AC7): `_auditLogger.Log(AuditAction.INVITATION_RESENT, new { invitationId, email, scope, newExpiresAt, resentByUserId })` az `IAuditLogger`-en keresztül
   - `SaveChangesAsync()`
 - [ ] Validator: `ResendInvitationCommandValidator.cs`
 
@@ -142,3 +144,4 @@ A meghívókezelés olvasási és mutációs végpontjai: lista lekérés, vissz
 - [ ] AC3: EXPIRED vagy PENDING meghívó újraküldhető; az újraküldés új tokent és érvényességi időt generál.
 - [ ] AC4: ACCEPTED meghívón nincs visszavonás vagy újraküldés lehetőség.
 - [ ] AC5: A Hangfire job óránként futtatja a lejárati ellenőrzést.
+- [ ] **AC7**: A visszavonás és újraküldés audit-bejegyzéssel jár (`INVITATION_REVOKED` és `INVITATION_RESENT` művelettípusok, lásd us-233-BE-1). Integration teszt ellenőrzi: PUT /revoke után az `AuditLogs` táblában van új bejegyzés `Action = INVITATION_REVOKED` értékkel; POST /resend után új bejegyzés `Action = INVITATION_RESENT` értékkel.

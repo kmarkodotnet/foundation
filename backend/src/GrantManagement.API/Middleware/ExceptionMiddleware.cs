@@ -89,6 +89,13 @@ public class ExceptionMiddleware
                 Title = "Email-cím eltérés.",
                 Detail = "email-mismatch"
             },
+            InvitationAlreadyExistsException invConflict => new ProblemDetails
+            {
+                Status = (int)HttpStatusCode.Conflict,
+                Title = "Ütközés.",
+                Detail = exception.Message,
+                Extensions = { ["existingInvitationId"] = invConflict.ExistingInvitationId }
+            },
             ConflictException => new ProblemDetails
             {
                 Status = (int)HttpStatusCode.Conflict,

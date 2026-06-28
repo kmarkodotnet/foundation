@@ -1,6 +1,8 @@
 using GrantManagement.Application.Common.Interfaces;
 using GrantManagement.Application.Invitations.Commands.CreateInvitation;
 using GrantManagement.Application.Invitations.DTOs;
+using GrantManagement.Domain.Entities;
+using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Exceptions;
 using GrantManagement.Domain.Interfaces;
 using MediatR;
@@ -12,11 +14,16 @@ public class ResendInvitationCommandHandler : IRequestHandler<ResendInvitationCo
 {
     private readonly IApplicationDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly ICurrentUserService _currentUser;
 
-    public ResendInvitationCommandHandler(IApplicationDbContext context, IEmailService emailService)
+    public ResendInvitationCommandHandler(
+        IApplicationDbContext context,
+        IEmailService emailService,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _emailService = emailService;
+        _currentUser = currentUser;
     }
 
     public async Task<InvitationResponse> Handle(ResendInvitationCommand request, CancellationToken cancellationToken)
@@ -34,6 +41,14 @@ public class ResendInvitationCommandHandler : IRequestHandler<ResendInvitationCo
         var expiryHours = settings?.InvitationExpiryHours ?? 72;
 
         invitation.Resend(expiryHours);
+
+        _context.AuditLogs.Add(AuditLog.Record(
+            entityType: "Invitation",
+            entityId: invitation.Id,
+            action: AuditAction.InvitationResent,
+            userId: _currentUser.UserId,
+            ipAddress: _currentUser.IpAddress));
+
         await _context.SaveChangesAsync(cancellationToken);
 
         var invitationUrl = $"{request.FrontendBaseUrl.TrimEnd('/')}/invite/{invitation.Token}";

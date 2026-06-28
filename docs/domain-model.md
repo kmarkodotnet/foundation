@@ -3421,14 +3421,21 @@ A Tenancy Bounded Context **nem ismer** üzleti fogalmakat (pályázat, számla,
 | `Status` | `FoundationStatus` enum | `ACTIVE`, `ARCHIVED` |
 | `CreatedAt`, `UpdatedAt` | `DateTimeOffset` | Audit-mezők |
 
-**Domain műveletek:** `Foundation.Create(ownerId, name, logoUri)`, `Rename()`, `UpdateLogo()`, `Archive()`.
+**Domain műveletek:**
+
+- `Foundation.Create(ownerId, name, logoUri, templateFoundationId?)` — új alapítvány létrehozása. Ha `templateFoundationId` meg van adva, **NK-15** szabály szerint a sablonalapítvány aktív `Granters` és `Vendors` aggregátumai átmásolódnak az új alapítványba (snapshot — nem referencia). A sablonalapítvány csak ugyanazon Owner-en belül választható.
+- `Foundation.Rename(newName)` — átnevezés (kiváltja `FoundationRenamed` eseményt + `FOUNDATION_RENAMED` audit-bejegyzést).
+- `Foundation.UpdateLogo(logoUri)` — logó URL frissítése; a fájltárolás architektúrális részleteit lásd `architecture-plan.md` CR2.F.
+- `Foundation.Archive()` — archiválás **kaszkád viselkedéssel**: minden aktív `FoundationUserAssignment` automatikusan inaktiválódik (`IsActive = false`, `RevokedAt = now`). A művelet kiváltja a `FoundationArchived` domain event-et, amelyet az application service event handler dolgoz fel: invalidálja az érintett felhasználók aktív JWT-it (cache-üzenet), és audit-bejegyzéseket készít minden inaktivált hozzárendelésről (`FoundationAssignmentRevoked`).
 
 **Invariánsok:**
 - Egy Foundation legfeljebb egy Owner-hez tartozhat (immutable `OwnerId`).
-- `Archive()` csak akkor engedélyezett, ha nincs aktív (nem lezárt) `Application` az alapítványon belül.
+- `Archive()` csak akkor engedélyezett, ha nincs aktív (nem lezárt: `IN_PROGRESS`, `SUBMITTED`, `WON`) `Application` az alapítványon belül.
 - `Foundation.Create()` során az Owner-szintű kódszótár-sablon automatikusan átmásolódik (lásd CR2.2.4).
+- `Foundation.Create()` `templateFoundationId` paramétere esetén a sablonalapítvány `OwnerId`-je meg kell egyezzen az új Foundation `OwnerId`-jével (Application Service szinten ellenőrzött).
+- Archivált Foundation adatai **csak break-glass módban vagy Owner-szintű audit naplóból** olvashatók — query filter `IgnoreQueryFilters()` whitelist callsite-okról (architecture-plan CR2.E.2).
 
-**Domain események:** `FoundationCreated`, `FoundationRenamed`, `FoundationArchived`.
+**Domain események:** `FoundationCreated`, `FoundationRenamed`, `FoundationArchived`, `FoundationAssignmentRevoked` (kaszkád).
 
 #### CR2.2.3 `FoundationUserAssignment` (entitás `AppUser` aggregáton belül)
 
@@ -3447,9 +3454,113 @@ A meglévő `AppUser` aggregátumon belüli entitás. Egy felhasználó és egy 
 
 #### CR2.2.4 Owner-szintű kódszótár-sablon (`OwnerCodeListTemplate`)
 
-A `CodeList` aggregátum mellett, **Owner-szintű** sablonok az új alapítványok alapértelmezett kódszótárainak forrása (NK-16). Új Foundation létrehozásakor a sablon tételei átmásolódnak (snapshot, nem referencia).
+**Aggregát gyökér** (Tenancy BC). A `CodeList` aggregátum mellett, **Owner-szintű** sablonok az új alapítványok alapértelmezett kódszótárainak forrása (NK-16). Új Foundation létrehozásakor a sablon tételei átmásolódnak (snapshot, nem referencia).
 
 A meglévő `CodeList` aggregátum struktúrája változatlan; a sablonok **különálló entitások** ugyanazzal a sémával, csak Owner-scope-pal.
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Aggregát gyökér |
+| `OwnerId` | `Guid` | Szülő Owner |
+| `Name` | `string` | Sablon megnevezése |
+| `Items` | `IReadOnlyCollection<OwnerCodeListTemplateItem>` | Sablon-tételek (`Code`, `Label`, `SortOrder`, `IsActive`) |
+| `CreatedAt`, `UpdatedAt` | `DateTimeOffset` | Audit-mezők |
+
+**Domain műveletek:**
+
+- `OwnerCodeListTemplate.Create(ownerId, name)` — új sablon létrehozása.
+- `AddItem(code, label)`, `UpdateItem(id, ...)`, `DeactivateItem(id)` — tétel CRUD.
+- `ApplyToNewFoundation(foundationId)` — új Foundation létrehozásakor automatikusan meghívott; a teljes aktív sablon átmásolódik az új Foundation `CodeList`-jébe snapshot-ként.
+- `ApplyToExistingFoundation(foundationId)` — **merge-művelet** US-214 AC4: a sablon hiányzó tételeit (azonos `Code` alapján) hozzáadja az adott Foundation már létező `CodeList`-jéhez. **Meglévő tételeket nem ír felül** és nem deaktivál. Kiváltja a `CodeListTemplateApplied` domain event-et és audit-bejegyzést (`CODE_LIST_TEMPLATE_APPLIED`) készít a Foundation-szintű naplóban (érintett tételek darabszáma + lista).
+
+**Invariánsok:**
+- Egy `Code` érték a sablonon belül egyedi.
+- `ApplyToExistingFoundation()` csak ugyanazon Owner-hez tartozó Foundation-re engedélyezett.
+- Üres tételhalmazú sablon `Apply*` művelete `DomainException`-t dob.
+
+**Domain események:** `OwnerCodeListTemplateCreated`, `OwnerCodeListTemplateUpdated`, `CodeListTemplateApplied`.
+
+#### CR2.2.5 `Invitation` aggregátum (Tenancy BC)
+
+**Aggregát gyökér.** A többszintű meghívási folyamatot reprezentálja (Platform / Owner / Foundation szintekre szóló meghívók). Egységes aggregátum mind a négy meghívó-típushoz (US-200, US-203, US-210, US-212, US-213, US-221).
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Aggregát gyökér |
+| `Email` | `EmailAddress` (VO) | Meghívott e-mail címe |
+| `Scope` | `AssignmentScope` enum | `PLATFORM` / `OWNER` / `FOUNDATION` |
+| `TargetOwnerId` | `Guid?` | Cél Owner (Owner/Foundation scope esetén kötelező) |
+| `TargetFoundationId` | `Guid?` | Cél Foundation (Foundation scope esetén kötelező) |
+| `IntendedRole` | `string` | A kiosztandó szerepkör string-reprezentációja: `PlatformAdmin`/`PlatformAuditor`/`OwnerAdmin`/`OwnerAuditor`/`FoundationAdmin`/`Elnok`/`PalyazatiMunkatars`/`Penzugyes`/`Megtekinto` |
+| `EmbeddedAssignments` | `IReadOnlyCollection<EmbeddedFoundationAssignment>` | Owner-meghívóhoz kapcsolódó alapítvány-szintű hozzárendelések listája (US-213 AC3) — aktiváláskor érvényesülnek |
+| `Token` | `string` | Időkorlátos, egyszer használatos elfogadási token (hash-elve tárolva) |
+| `Status` | `InvitationStatus` enum | `PENDING`, `ACCEPTED`, `EXPIRED`, `REVOKED` |
+| `IssuedAt` | `DateTimeOffset` | Kiállítás |
+| `ExpiresAt` | `DateTimeOffset` | Default: `IssuedAt` + `PlatformSettings.InvitationValidityHours` |
+| `AcceptedAt` | `DateTimeOffset?` | Elfogadás időpontja |
+| `RevokedAt` | `DateTimeOffset?` | Visszavonás időpontja |
+| `IssuedByUserId` | `Guid` | A meghívót kiállító `AppUser.Id` |
+
+**Beágyazott entitás:** `EmbeddedFoundationAssignment { FoundationId: Guid, Role: FoundationRole }` — csak az Owner-meghívóban használt.
+
+**Domain műveletek:**
+
+- `Invitation.IssuePlatform(email, role, issuedBy)` — Platform-meghívó (Scope=PLATFORM).
+- `Invitation.IssueOwner(email, targetOwnerId, role, embeddedAssignments, issuedBy)` — Owner-meghívó (Scope=OWNER, kötelezően `OwnerAdmin` vagy `OwnerAuditor` szerepkör, opcionálisan embedded alapítvány-hozzárendelésekkel).
+- `Invitation.IssueFoundation(email, targetFoundationId, role, issuedBy)` — Foundation-meghívó (Scope=FOUNDATION).
+- `Invitation.Accept(googleId)` — elfogadás; létrehozza vagy megnyitja a megfelelő `AppUser`-t, kiosztja a szerepköröket az `IntendedRole` + `EmbeddedAssignments` alapján. Aktiváláskor minden `EmbeddedAssignment` egy-egy `FoundationAssignmentCreated` eseményt vált ki.
+- `Invitation.Revoke(revokedBy)` — visszavonás (`PENDING` → `REVOKED`).
+- `Invitation.Resend()` — új token generálása + `ExpiresAt` újraszámítása (`EXPIRED`/`REVOKED` → `PENDING`).
+- `Invitation.ExpireIfDue(now)` — `PENDING` állapotú meghívó lejárati ellenőrzése (Hangfire job vagy lazy ellenőrzés).
+
+**Invariánsok (Hard, US-221 AC alapján):**
+
+| Invariáns | Forrás | Érvényesítés |
+|---|---|---|
+| `Scope = PLATFORM` esetén `TargetOwnerId` és `TargetFoundationId` egyaránt `null`; `IntendedRole ∈ {PlatformAdmin, PlatformAuditor}` | US-221 AC1 | Aggregátum konstruktor |
+| `Scope = OWNER` esetén `TargetOwnerId` kötelező, `TargetFoundationId` `null`; `IntendedRole ∈ {OwnerAdmin, OwnerAuditor}` | US-221 AC1 | Aggregátum konstruktor |
+| `Scope = FOUNDATION` esetén `TargetFoundationId` kötelező, `IntendedRole ∈ FoundationRole` enum értékei | US-221 AC1 | Aggregátum konstruktor |
+| Egy adott `Email` + `Scope` kombinációhoz egyszerre csak egy `PENDING` `Invitation` létezhet | US-221 AC4 | Application Service uniqueness check (UNIQUE index `(Email, Scope, Status WHERE Status='PENDING')`) |
+| Owner-meghívó `EmbeddedAssignments` listájában minden Foundation a `TargetOwnerId`-hez tartozik | US-213 AC3 | Domain service létrehozáskor |
+| Elfogadás során, ha az e-mail már egy másik Owner-hez tartozó aktív `AppUser`-höz tartozik, `Accept()` `DomainException` (NK-13) | US-221 AC3 | `Invitation.Accept()` |
+| `Token` egyszer használatos: `Accept()` után új `Accept()` hívás `DomainException` | – | Status-átmenet (`ACCEPTED` terminál) |
+| `Resend()` csak `EXPIRED` vagy `REVOKED` állapotból; `ACCEPTED`-ből nem | – | Status-guard |
+
+**Hatókör-szintű kiállítási jogosultság (Application Service):**
+
+| Meghívó scope | Ki állíthatja ki |
+|---|---|
+| `PLATFORM` | PlatformAdmin |
+| `OWNER` | PlatformAdmin |
+| `FOUNDATION` | PlatformAdmin **vagy** az érintett Owner OwnerAdmin-ja **vagy** az érintett alapítvány FoundationAdmin-ja |
+
+A jogosultság-ellenőrzés application service szinten történik (új policies a `architecture-plan` CR2.D.3-ban: `CanIssuePlatformInvitation`, `CanIssueOwnerInvitation`, `CanIssueFoundationInvitation`).
+
+**Domain események:** `InvitationIssued`, `InvitationAccepted`, `InvitationRevoked`, `InvitationResent`, `InvitationExpired`.
+
+#### CR2.2.6 `PlatformSettings` aggregátum (Tenancy BC)
+
+**Aggregát gyökér** (singleton). A platform-szintű technikai konfiguráció tárolása (US-204). A rendszerben **mindig pontosan egy** `PlatformSettings` rekord létezik, amelyet a `DataSeeder` hoz létre.
+
+| Mező | Típus | Megjegyzés |
+|---|---|---|
+| `Id` | `Guid` | Aggregát gyökér (fix sentinel érték: `00000000-0000-0000-0000-000000000001`) |
+| `MaxFileSizeMb` | `int` | Maximum fájlméret (default: 50) |
+| `InvitationValidityHours` | `int` | Meghívó érvényessége órákban (default: 72) |
+| `NotificationLeadDays` | `int` | Értesítési előfigyelmeztetés napjai (default: 7) |
+| `DefaultOwnerCodeListTemplateId` | `Guid?` | Alapértelmezett Owner-szintű kódszótár-sablon (új Owner provisioningnál örökítendő) |
+| `UpdatedAt` | `DateTimeOffset` | Utolsó módosítás |
+| `UpdatedByUserId` | `Guid` | Utolsó módosító |
+
+**Domain műveletek:** `PlatformSettings.Update(maxFileSizeMb, invitationValidityHours, notificationLeadDays, defaultTemplateId, updatedBy)`.
+
+**Invariánsok (Hard, US-204 AC alapján):**
+- `MaxFileSizeMb` ∈ `[1, 500]`, pozitív egész.
+- `InvitationValidityHours` ∈ `[1, 720]` (max 30 nap), pozitív egész.
+- `NotificationLeadDays` ∈ `[1, 90]`, pozitív egész.
+- Módosítás **csak új** Owner/Foundation provisioningnál érvényesül; **a meglévő egyedi beállításokat nem írja felül** (US-204 AC3). Ezt a `Owner`/`Foundation` aggregátumok saját beállítás-snapshot mezői biztosítják (lásd CR2.3 bővítés).
+
+**Domain események:** `PlatformSettingsUpdated`.
 
 ### CR2.3 Meglévő aggregátumok scope-kiterjesztése
 
@@ -3466,6 +3577,19 @@ A létező invariánsok mind érvényesek maradnak; a scope-mezők **immutabilit
 
 - Egy aggregátum `FoundationId` mezője a létrehozás után **nem módosítható**. „Pályázat áthelyezése másik alapítványba" nem támogatott művelet az MVP-ben (későbbi CR-be sorolható).
 - A `FoundationId` és az `OwnerId` konzisztenciáját az aggregátum létrehozásakor a domain service ellenőrzi: `OwnerId` mindig megegyezik a `Foundation.OwnerId`-vel.
+
+**Owner / Foundation snapshot beállítások (US-204 AC3 alapján):**
+
+Az `Owner` és `Foundation` aggregátumok provisioning időpontjában *snapshot*-ot készítenek a `PlatformSettings` releváns mezőiről. Ezt a snapshot-ot tárolják saját kötelező mezőikben (lásd CR2.10 séma), így a `PlatformSettings.Update()` művelet **nem írja felül** a meglévő Owner/Foundation beállításait:
+
+| Aggregátum | Snapshot mező | Forrás `PlatformSettings`-ből |
+|---|---|---|
+| `Owner` | `OwnerSettings.MaxFileSizeMb` | `MaxFileSizeMb` (provisioningkor) |
+| `Owner` | `OwnerSettings.InvitationValidityHours` | `InvitationValidityHours` (provisioningkor) |
+| `Owner` | `OwnerSettings.NotificationLeadDays` | `NotificationLeadDays` (provisioningkor) |
+| `Foundation` | `FoundationSettings.NotificationLeadDays` | `Owner.OwnerSettings.NotificationLeadDays` (provisioningkor) |
+
+A Platform-szintű módosítás csak az ezt követően létrehozott Owner/Foundation rekordokra hat (US-204 AC2). Owner-szintű felülbírálás külön endpoint-on engedélyezett (`PATCH /api/v1/owner/settings`), és Owner-snapshot mezőit írja.
 
 ### CR2.4 AppUser aggregátum bővítése
 
@@ -3531,17 +3655,50 @@ A korábbi `UserRole` enum (`Admin`, `Elnok`, ...) **deprecated**: a CR2 utáni 
 
 A meglévő `AuditLog` rekord (lásd 4.7) két kötelező új mezőt kap: `OwnerId` (`Guid?`) és `FoundationId` (`Guid?`). Mindkettő `null` lehet platform-szintű eseményeknél.
 
-**Új művelettípusok:**
+**Új művelettípusok (teljes lista — US-233 AC2 + CR2 új eseményei):**
 
-| Művelettípus | Naplózott extra adatok |
-|---|---|
-| `SCOPE_SWITCH` | Kiinduló és új hatókör (Owner+Foundation), felhasználó |
-| `BREAK_GLASS_ACCESS` | PlatformAdmin, érintett Owner, indoklás, kezdő/lejárati időbélyeg |
-| `OWNER_PROVISIONED` | Owner ID, név, kezdő OwnerAdmin |
-| `FOUNDATION_CREATED` | Foundation ID, név, Owner |
-| `FOUNDATION_ARCHIVED` | Foundation ID, archiváló felhasználó |
+| Művelettípus | Kiváltó | Naplózott extra adatok |
+|---|---|---|
+| `SCOPE_SWITCH` | `POST /me/scope-switch` | Kiinduló és új hatókör (Owner+Foundation), felhasználó |
+| `SCOPE_VIOLATION` | `AuthorizationBehaviour` cross-tenant kísérlet detektál | Felhasználó, megkísérelt erőforrás, várt vs. tényleges Owner/Foundation, HTTP path |
+| `BREAK_GLASS_ACCESS` | `BreakGlassGrant.Issue()` | PlatformAdmin, érintett Owner, indoklás, kezdő/lejárati időbélyeg |
+| `BREAK_GLASS_REVOKED` | `BreakGlassGrant.Revoke()` | Grant ID, visszavonó felhasználó, időbélyeg |
+| `BREAK_GLASS_EXPIRED` | `BreakGlassExpirationJob` | Grant ID, eredeti `ExpiresAt`, megállapítás időbélyege |
+| `OWNER_PROVISIONED` | `Owner.Create()` | Owner ID, név, kezdő OwnerAdmin |
+| `OWNER_SUSPENDED` | `Owner.Suspend()` | Owner ID, ki függesztette fel, indoklás (opcionális) |
+| `OWNER_REACTIVATED` | `Owner.Reactivate()` | Owner ID, ki reaktiválta |
+| `OWNER_ARCHIVED` | `Owner.Archive()` | Owner ID, ki archiválta |
+| `FOUNDATION_CREATED` | `Foundation.Create()` | Foundation ID, név, Owner; **kettős naplózás**: Owner-szintű napló + Foundation-szintű napló (US-210 AC6) |
+| `FOUNDATION_RENAMED` | `Foundation.Rename()` | Foundation ID, régi név, új név |
+| `FOUNDATION_ARCHIVED` | `Foundation.Archive()` | Foundation ID, archiváló felhasználó, kaszkád-inaktivált assignment-ek száma |
+| `CODE_LIST_TEMPLATE_APPLIED` | `OwnerCodeListTemplate.ApplyToExistingFoundation()` | Sablon ID, cél Foundation ID, érintett tételek listája |
+| `INVITATION_ISSUED` | `Invitation.Issue*()` | Email, Scope, Target IDs, IntendedRole, IssuedBy |
+| `INVITATION_ACCEPTED` | `Invitation.Accept()` | Invitation ID, elfogadó AppUser ID |
+| `INVITATION_REVOKED` | `Invitation.Revoke()` | Invitation ID, visszavonó felhasználó (US-165 AC7) |
+| `INVITATION_RESENT` | `Invitation.Resend()` | Invitation ID, újraküldő felhasználó, új `ExpiresAt` (US-165 AC7) |
+| `INVITATION_EXPIRED` | Hangfire job | Invitation ID, eredeti `ExpiresAt` |
 
 A meglévő művelettípusok (C/U/D, állapotváltás, bejelentkezés, szerepkör-módosítás) változatlanok, csak az új `OwnerId`/`FoundationId` mezőkkel egészülnek ki.
+
+**Megőrzési politika (US-233 AC5 + US-205 AC5 + US-216):**
+
+| Szint | Megőrzési idő | Törölhetőség |
+|---|---|---|
+| Platform-szintű napló (`OwnerId IS NULL AND FoundationId IS NULL`) | 5 év | **Nem törölhető** — sem soft, sem hard delete; nincs `DELETE` HTTP endpoint, az `AppDbContext.SaveChangesAsync` `EntityState.Deleted` detektálása `AuditLog`-ra `InvalidOperationException`-t dob |
+| Owner-szintű napló (`OwnerId IS NOT NULL AND FoundationId IS NULL`) | 5 év | **Nem törölhető** (uaz) |
+| Foundation-szintű napló (`FoundationId IS NOT NULL`) | 5 év | **Nem törölhető** (uaz) |
+
+A 5 éves megőrzés Hangfire recurring job (`AuditLogRetentionJob`, napi futás) által felügyelt: a 5 évnél régebbi rekordokat **archív partícióba** mozgatja (külön `AuditLogsArchive` tábla, csak olvasható), nem törli őket. Az archiválás művelete maga `AUDIT_ARCHIVED` audit-bejegyzést készít.
+
+**Háromszintű napló-lekérdezés** (US-233 AC3):
+
+| Szint | Endpoint | Szűrés |
+|---|---|---|
+| Platform | `GET /api/v1/platform/audit-logs` | `OwnerId IS NULL OR _scope.IsPlatform` — minden cross-Owner esemény látható |
+| Owner | `GET /api/v1/owner/audit-logs` | `OwnerId = _scope.OwnerId` — csak a saját Owner összes alapítvány-eseménye |
+| Foundation | `GET /api/v1/foundations/{id}/audit-logs` (meglévő US-150/US-151 endpointok) | `FoundationId = _scope.FoundationId` |
+
+**Export jogosultság** (US-205 AC4 + US-216 AC5): CSV export csak `PlatformAdmin`/`PlatformAuditor` (platform-szintű) és `OwnerAdmin`/`OwnerAuditor` (Owner-szintű) számára engedélyezett.
 
 ### CR2.7 Break-glass hozzáférés mint aggregátum
 
@@ -3591,6 +3748,17 @@ A `BreakGlassGrant.Issue()` művelet kiváltja egy `OwnerNotificationEvent`-et, 
 | `FoundationRoleChanged` | `AppUser` | `ChangeFoundationRole()` |
 | `BreakGlassActivated` | `BreakGlassGrant` | `Issue()` |
 | `BreakGlassRevoked` | `BreakGlassGrant` | `Revoke()` |
+| `BreakGlassExpired` | `BreakGlassGrant` | `BreakGlassExpirationJob` (Hangfire) |
+| `InvitationIssued` | `Invitation` | `IssuePlatform/Owner/Foundation()` |
+| `InvitationAccepted` | `Invitation` | `Accept()` |
+| `InvitationRevoked` | `Invitation` | `Revoke()` |
+| `InvitationResent` | `Invitation` | `Resend()` |
+| `InvitationExpired` | `Invitation` | Hangfire job |
+| `OwnerCodeListTemplateCreated` | `OwnerCodeListTemplate` | `Create()` |
+| `OwnerCodeListTemplateUpdated` | `OwnerCodeListTemplate` | `AddItem/UpdateItem/DeactivateItem` |
+| `CodeListTemplateApplied` | `OwnerCodeListTemplate` | `ApplyToExistingFoundation()` |
+| `PlatformSettingsUpdated` | `PlatformSettings` | `Update()` |
+| `FoundationAssignmentRevoked` | `AppUser` (Foundation kaszkád) | `Foundation.Archive()` event handler |
 
 ### CR2.9 Új invariánsok katalógus-bővítése
 
@@ -3611,6 +3779,20 @@ A `BreakGlassGrant.Issue()` művelet kiváltja egy `OwnerNotificationEvent`-et, 
 | Self-demotion minden szinten tiltott | Hard | Application Service (kérelmező identitása) |
 | `BreakGlassGrant.Reason` ≥ 20 karakter | Hard | `BreakGlassGrant.Issue()` |
 | `BreakGlassGrant.ExpiresAt > IssuedAt` | Hard | `BreakGlassGrant.Issue()` |
+| `Foundation.Archive()` aktív Application esetén tilos (`IN_PROGRESS`/`SUBMITTED`/`WON`) | Hard | `Foundation.Archive()` + `IApplicationCountService` |
+| `Foundation.Archive()` kaszkád: minden aktív `FoundationUserAssignment` inaktiválódik | Hard | `Foundation.Archive()` + event handler |
+| Archivált Foundation adatai csak break-glass módban vagy Owner-szintű audit naplóból olvashatók | Hard | `IgnoreQueryFilters()` whitelist (architecture-plan CR2.E.2) |
+| `Foundation.Create()` `templateFoundationId` ugyanazon Owner-en belüli legyen | Hard | Application Service |
+| Egy `Email` + `Scope` kombinációhoz egyszerre egy `PENDING` `Invitation` | Hard | UNIQUE index + Application Service |
+| `Invitation.Accept()` elutasít, ha email már másik Owner-hez tartozó aktív `AppUser`-höz tartozik | Hard | `Invitation.Accept()` (NK-13) |
+| `Invitation` `Token` egyszer használatos (`ACCEPTED` után újra `Accept` tilos) | Hard | Status-átmenet |
+| `Invitation.Resend()` csak `EXPIRED`/`REVOKED` állapotból | Hard | Status-guard |
+| `PlatformSettings.MaxFileSizeMb` ∈ `[1, 500]` | Hard | `PlatformSettings.Update()` |
+| `PlatformSettings.InvitationValidityHours` ∈ `[1, 720]` | Hard | `PlatformSettings.Update()` |
+| `PlatformSettings.NotificationLeadDays` ∈ `[1, 90]` | Hard | `PlatformSettings.Update()` |
+| Platform-szintű módosítás meglévő Owner/Foundation egyedi beállításait nem írja felül | Hard | Saját snapshot-mezők Owner/Foundation szinten |
+| Audit napló rekord törlése tilos minden szinten | Hard | `SaveChangesAsync` override `EntityState.Deleted` AuditLog-ra → `InvalidOperationException` |
+| Audit napló megőrzési idő 5 év, utána `AuditLogsArchive` táblába mozgatás | Hard | `AuditLogRetentionJob` (Hangfire) |
 
 ### CR2.10 Adatbázis-séma kiterjesztés (EF Core)
 
@@ -3619,10 +3801,16 @@ A `BreakGlassGrant.Issue()` művelet kiváltja egy `OwnerNotificationEvent`-et, 
 ```
 Owners                          (Id, Name, ContactEmail, Status, CreatedAt, UpdatedAt)
 Foundations                     (Id, OwnerId FK, Name, LogoUri, Status, CreatedAt, UpdatedAt)
-FoundationUserAssignments       (Id, AppUserId FK, FoundationId FK, FoundationRole, AssignedAt, AssignedByUserId, IsActive)
-OwnerCodeListTemplates          (Id, OwnerId FK, Name, ...)  -- ugyanaz a séma, mint CodeList, csak Owner-scope
-OwnerCodeListTemplateItems      (Id, TemplateId FK, Code, Label, ...)
+FoundationUserAssignments       (Id, AppUserId FK, FoundationId FK, FoundationRole, AssignedAt, AssignedByUserId, IsActive, RevokedAt)
+OwnerCodeListTemplates          (Id, OwnerId FK, Name, CreatedAt, UpdatedAt)
+OwnerCodeListTemplateItems      (Id, TemplateId FK, Code, Label, SortOrder, IsActive)
 BreakGlassGrants                (Id, PlatformAdminUserId, TargetOwnerId, Reason, IssuedAt, ExpiresAt, Status, RevokedAt)
+Invitations                     (Id, Email, Scope, TargetOwnerId NULL, TargetFoundationId NULL, IntendedRole,
+                                 TokenHash, Status, IssuedAt, ExpiresAt, AcceptedAt NULL, RevokedAt NULL, IssuedByUserId)
+InvitationEmbeddedAssignments   (Id, InvitationId FK, FoundationId FK, FoundationRole)
+PlatformSettings                (Id [sentinel], MaxFileSizeMb, InvitationValidityHours, NotificationLeadDays,
+                                 DefaultOwnerCodeListTemplateId FK NULL, UpdatedAt, UpdatedByUserId)
+AuditLogsArchive                (ugyanaz a séma mint AuditLogs)  -- 5 év utáni archív partíció
 ```
 
 **Bővülő táblák — kötelező új oszlopok (NOT NULL, indexelt):**
@@ -3665,10 +3853,44 @@ A meglévő single-tenant adatbázis migrálása a CR2 modellre az alábbi lép�
 3. **Új oszlopok hozzáadása** `OwnerId` és `FoundationId` minden táblához, eleinte `NULL`-able.
 4. **Backfill SQL:** minden meglévő rekord megkapja a default Owner és Foundation ID-t.
 5. **Oszlopok `NOT NULL`-ra állítása** + foreign key constraint hozzáadása.
-6. **AppUsers migrációja:** a meglévő `Admin` szerepű felhasználók `FoundationAdmin` FoundationAssignment-et kapnak a default Foundation-höz; az első felhasználó kiegészítve `OwnerAdmin` szereppel is.
-7. **Régi `UserRole` oszlop deprecation** (megtartva backward compatibility miatt egy release-en át, majd dropolva).
+6. **AppUsers migrációja:** a meglévő `Admin` szerepű felhasználók `FoundationAdmin` FoundationAssignment-et kapnak a default Foundation-höz; a legrégebbi `Admin` felhasználó kiegészítve `OwnerAdmin` szereppel is a default Owner-en.
+7. **PlatformSettings sentinel rekord** inicializálása a meglévő `SystemSettings` értékekből (US-204).
+8. **Fájlútvonal migráció (US-230 AC7):** a meglévő `/uploads/{év}/...` útvonalakat egy `FileStorageMigrationJob` (egyszeri Hangfire job) átmozgatja `/uploads/{default_owner_id}/{default_foundation_id}/{év}/...` alá; a `Document.FilePath` mezők ugyanezen tranzakcióban frissülnek. A művelet teljesen automatizált, nem igényel admin közbeavatkozást.
+9. **Régi `UserRole` oszlop deprecation** — lásd CR2.13 cutover stratégia.
 
-A migráció **egyirányú**: a CR2 nem támogatja a single-tenant állapotra való visszaállást.
+**Idempotencia (US-230 AC8):**
+
+A migrációs script minden lépését idempotens módon implementálja:
+
+- `Owner`, `Foundation`, `PlatformSettings` `INSERT` helyett `INSERT … ON CONFLICT (Id) DO NOTHING` (sentinel ID alapján).
+- Oszlop-hozzáadás `ADD COLUMN IF NOT EXISTS` szintaxissal.
+- Backfill `UPDATE … WHERE OwnerId IS NULL`.
+- `NOT NULL` constraint hozzáadása csak akkor, ha még nem létezik (`information_schema.columns.is_nullable` ellenőrzés).
+- FK constraint hozzáadása `IF NOT EXISTS` semantikával.
+- Fájlútvonal-migráció minden fájlra: célútvonalon létezés-ellenőrzés, létező cél esetén a forrás csak akkor mozgatódik, ha tartalom hash megegyezik (collision-safe).
+
+Integrációs teszt (US-230 AC8): a migráció kétszeri futtatása nem dob hibát, és a végállapot bit-szinten azonos az egyszeri futtatás után előállt állapottal.
+
+**Rollback (US-230 AC9):** A migráció **egyirányú**, explicit dokumentált: a CR2 nem támogatja a single-tenant állapotra való visszaállást. Vészhelyzeti DR esetén csak a migráció előtt készített teljes adatbázis-snapshot visszaállítható.
+
+### CR2.13 `UserRole` deprecation cutover stratégia
+
+A korábbi `UserRole` enum (lásd CR2.5) több release-en át fokozatosan kerül kivezetésre, hogy a meglévő invariánsok és külső szerződések ne sérüljenek élesben.
+
+| Fázis | Release | `AppUser.UserRole` oszlop | `AuthorizationBehaviour` viselkedés |
+|---|---|---|---|
+| 0 | Pre-CR2 | Aktív, kötelező | Csak `UserRole` alapján |
+| 1 | **CR2 migration** | Megtartva, populálva (legacy adathoz) | Mindkettő ellenőrizve: `UserRole` **vagy** új CR2 szerepkörök (PlatformRole/OwnerRole/FoundationAssignments) |
+| 2 | CR2+1 release | Megtartva, **read-only** (nem írható új workflow-ban) | Új CR2 szerepkörök elsőbbséget kapnak; `UserRole` csak fallback |
+| 3 | CR2+2 release | **Dropolva** EF Core migrációval | Kizárólag új CR2 szerepkörök |
+
+**Tesztstratégia a cutover során:**
+
+- **Fázis 1 integráció**: a tesztsuite minden végpontra ellenőrzi, hogy a régi `UserRole`-alapú és új CR2-alapú JWT-vel ugyanazt a választ adja.
+- **Fázis 2 architecture teszt**: NetArchTest szabály, amely tiltja az `AppUser.UserRole` setter hívását az `Migration*` namespace-en kívül.
+- **Fázis 3 cutover gate**: integrációs teszt, hogy minden `AppUser`-en pontosan egy érvényes CR2 szerepkör-kombináció van; ha bármelyik felhasználón nincs CR2 szerepkör, a deploy elbukik.
+
+A cutover dátumokat (release tag-ek) a `ADR-09` (architecture-plan CR2.O) rögzíti.
 
 ### CR2.12 Hivatkozott FS-szakaszok és CR2 mapping
 
@@ -3682,13 +3904,20 @@ A migráció **egyirányú**: a CR2 nem támogatja a single-tenant állapotra va
 | FS 5.4 hatókör-izoláció | CR2.10 EF query filterek | – |
 | FS 5.5 utolsó admin / break-glass | CR2.7 BreakGlassGrant + CR2.9 invariánsok | – |
 | FS 26.1 Platform admin | CR2.2.1 Owner aggregátum + CR2.6 audit | – |
+| FS 26.1.3 Platform technikai beállítások | CR2.2.6 PlatformSettings + CR2.3 snapshot | – |
 | FS 26.2 Owner admin | CR2.2.2 Foundation + CR2.2.4 OwnerCodeListTemplate | – |
 | FS 26.3 Foundation admin | CR2.2.3 FoundationUserAssignment | – |
+| FS 26.3.2 Hatókör-tudatos meghívás | CR2.2.5 Invitation aggregátum | US-221 |
 | FS 26.4 Foundation switcher | (architecture-plan CR2) | Itt csak az esemény: `SCOPE_SWITCH` |
-| FS 29. audit | CR2.6 + CR2.10 séma | – |
+| FS 29. audit | CR2.6 + CR2.10 séma | + megőrzési politika |
 | FS 31.2 jogosultság | CR2.10 query filterek | – |
 | FS 32.1 multi-tenant | CR2.1 Bounded Context bevezető | – |
-| FS 32.3 fájltároló | (architecture-plan CR2) | Itt csak hivatkozás |
+| FS 32.3 fájltároló | (architecture-plan CR2.F) | – |
+| NK-13 (egy email → egy Owner) | CR2.4 invariánsok + CR2.2.5 `Invitation.Accept()` | – |
+| NK-15 (sablonalapítvány Granters/Vendors) | CR2.2.2 `Foundation.Create(templateFoundationId)` | – |
+| NK-16 (Owner-szintű kódszótár-sablon) | CR2.2.4 OwnerCodeListTemplate | – |
+| NK-17 (OwnerAdmin + FoundationAdmin külön audit) | CR2.4 + CR2.8 events | US-212 AC5 |
+| NK-19 (Foundation-szintű branding) | CR2.2.2 LogoUri + architecture-plan CR2.F | – |
 
 ---
 

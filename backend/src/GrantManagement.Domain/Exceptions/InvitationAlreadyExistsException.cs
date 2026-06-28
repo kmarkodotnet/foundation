@@ -1,7 +1,12 @@
 namespace GrantManagement.Domain.Exceptions;
 
-public class InvitationAlreadyExistsException : DomainException
+public class InvitationAlreadyExistsException : ConflictException
 {
-    public InvitationAlreadyExistsException(string email)
-        : base($"Erre az email-re már van függőben lévő meghívó: {email}") { }
+    public Guid ExistingInvitationId { get; }
+
+    public InvitationAlreadyExistsException(string email, Guid existingInvitationId)
+        : base($"Erre az email-re már van függőben lévő meghívó: {email}")
+    {
+        ExistingInvitationId = existingInvitationId;
+    }
 }

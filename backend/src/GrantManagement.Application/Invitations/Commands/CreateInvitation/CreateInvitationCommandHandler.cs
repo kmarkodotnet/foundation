@@ -24,12 +24,14 @@ public class CreateInvitationCommandHandler : IRequestHandler<CreateInvitationCo
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
-        var hasPending = await _context.Invitations
+        var existingPending = await _context.Invitations
             .AsNoTracking()
-            .AnyAsync(i => i.Email == normalizedEmail && i.Status == InvitationStatus.Pending, cancellationToken);
+            .Where(i => i.Email == normalizedEmail && i.Status == InvitationStatus.Pending)
+            .Select(i => (Guid?)i.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (hasPending)
-            throw new InvitationAlreadyExistsException(normalizedEmail);
+        if (existingPending.HasValue)
+            throw new InvitationAlreadyExistsException(normalizedEmail, existingPending.Value);
 
         var settings = await _context.SystemSettings
             .AsNoTracking()

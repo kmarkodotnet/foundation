@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatDialogModule, MatDialogRef, MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -10,6 +10,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminUserService } from '../services/admin-user.service';
 import { ROLE_LABELS } from '../models/admin-user.model';
 import { UserRole } from '../../../core/auth/models/user.model';
+import { ResendInvitationConfirmDialogComponent } from './resend-invitation-confirm-dialog.component';
 
 @Component({
   selector: 'gm-create-invitation-dialog',
@@ -73,6 +74,7 @@ import { UserRole } from '../../../core/auth/models/user.model';
 export class CreateInvitationDialogComponent {
   private readonly service = inject(AdminUserService);
   private readonly dialogRef = inject(MatDialogRef<CreateInvitationDialogComponent>);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly saving = signal(false);
@@ -103,11 +105,45 @@ export class CreateInvitationDialogComponent {
       },
       error: (err) => {
         this.saving.set(false);
-        this.snackBar.open(
-          err?.error?.detail ?? 'Nem sikerült elküldeni a meghívót.',
-          'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
-        );
+        if (err?.status === 409) {
+          const existingId: string | undefined = err?.error?.existingInvitationId;
+          if (existingId) {
+            this.openResendConfirmDialog(email, existingId);
+          } else {
+            this.snackBar.open(
+              err?.error?.detail ?? 'Erre az email-re már van függőben lévő meghívó.',
+              'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+            );
+          }
+        } else {
+          this.snackBar.open(
+            err?.error?.detail ?? 'Nem sikerült elküldeni a meghívót.',
+            'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+          );
+        }
       },
+    });
+  }
+
+  private openResendConfirmDialog(email: string, existingInvitationId: string): void {
+    const confirmRef = this.dialog.open(ResendInvitationConfirmDialogComponent, {
+      data: { email },
+      width: '400px',
+    });
+    confirmRef.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.service.resendInvitation(existingInvitationId).subscribe({
+        next: (invitation) => {
+          this.snackBar.open(`Meghívó újraküldve: ${invitation.email}`, 'OK', { duration: 4000 });
+          this.dialogRef.close(invitation);
+        },
+        error: (err) => {
+          this.snackBar.open(
+            err?.error?.detail ?? 'Nem sikerült újraküldeni a meghívót.',
+            'Bezár', { duration: 5000, panelClass: ['gm-snack-error'] }
+          );
+        },
+      });
     });
   }
 

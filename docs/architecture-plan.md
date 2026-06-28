@@ -1751,6 +1751,8 @@ A meglévő `sub`, `email`, `name`, `role` claim-ek mellé:
 
 A `foundation_roles` méretkorlát miatt: ha egy felhasználó több mint 50 alapítványban dolgozik, a claim helyett egy szerver-oldali cache (Redis vagy in-memory) tárolja a teljes mappát, és a JWT csak a `roles_ref` claim-et tartalmazza. **MVP-ben** ez a határérték nem reális, ezért a teljes map a JWT-ben marad.
 
+**JWT lejárati idő:** `exp` claim = `iat + 8 óra` (US-223 AC6). Scope-váltáskor (`POST /me/scope-switch`) **új JWT készül** új `exp`-vel. A frontend a token lejárata előtt 5 perccel automatikusan kezdeményezi a felhasználó refresh-folyamatát (login vagy scope-switch ismételt hívása).
+
 #### CR2.D.2 JWT „audience" szétválasztás
 
 Három különböző JWT signing scope:
@@ -1762,6 +1764,31 @@ Három különböző JWT signing scope:
 | `platform` | `/api/v1/platform/*` | PlatformAdmin/PlatformAuditor bejelentkezés után |
 
 Egy felhasználó egyszerre több audience-szel rendelkező JWT-t is birtokolhat (különböző böngészőfül vagy `/scope-switch` használata után), de egy adott JWT mindig pontosan egy audience-szel érvényes. A `[Authorize]` attribútum a `audience` érték alapján szűri a kéréseket.
+
+**Audience-meghatározó algoritmus** (US-223 AC4):
+
+Bejelentkezés (`POST /api/v1/auth/google-callback`) és scope-switch (`POST /api/v1/me/scope-switch`) sikeres lefutása után a `JwtTokenService.GenerateToken(appUser, requestedFoundationId?)` az alábbi prioritási sorrend szerint dönti el az audience-t:
+
+```
+1. Ha appUser.PlatformRole != null
+       → audience = "platform"
+       → owner_id = null, foundation_id = null
+2. Egyébként ha appUser.OwnerRole != null ÉS requestedFoundationId == null
+       → audience = "owner"
+       → owner_id = appUser.OwnerId, foundation_id = null
+3. Egyébként ha appUser.FoundationAssignments.Any() ÉS requestedFoundationId != null
+       → audience = "business"
+       → owner_id = appUser.OwnerId, foundation_id = requestedFoundationId
+4. Egyébként ha appUser.FoundationAssignments.Count == 1
+       → audience = "business"
+       → foundation_id = az egyetlen assignment
+       (egyalapítványos user automatikus „home" foundation-je)
+5. Egyébként
+       → audience = "business" + foundation_id = null
+       → A frontend kötelezően foundation-választó képernyőre redirectel
+```
+
+Az `/api/v1/me/available-scopes` végpont visszaadja a felhasználó által elérhető hatóköröket (`{ platformRole, ownerId, ownerName, ownerRole, foundations: [...] }`) — ezt a UI dropdownja használja (US-223 AC5).
 
 #### CR2.D.3 Új Authorization policies
 
@@ -1775,6 +1802,9 @@ A meglévő policies (CanCreateApplication, CanApproveApplication, CanManageInvo
 | `CanReadOwner` | `owner` | `OwnerAdmin`, `OwnerAuditor` |
 | `CanManageFoundations` | `owner` | `OwnerAdmin` |
 | `CanIssueBreakGlass` | `platform` | `PlatformAdmin` |
+| `CanIssuePlatformInvitation` | `platform` | `PlatformAdmin` (US-203, US-221) |
+| `CanIssueOwnerInvitation` | `platform` | `PlatformAdmin` (US-200, US-221) |
+| `CanIssueFoundationInvitation` | `owner`/`business` | `OwnerAdmin` (Owner-ben), `FoundationAdmin` (saját alapítvány), `PlatformAdmin` (US-212, US-213, US-221) |
 
 #### CR2.D.4 `AuthorizationBehaviour` scope-check bővítése
 
@@ -1824,6 +1854,41 @@ public interface ICurrentScopeService
 
 Implementáció (`CurrentScopeService`) az `IHttpContextAccessor`-on keresztül olvassa a JWT-claim-eket. A platform-szintű break-glass felhasználó `CanAccessOwner(targetId)` `true`-t ad vissza, ha van érvényes `BreakGlassGrant` az adott Owner-re — ezt mindig audit-bejegyzéssel kíséri.
 
+**Break-glass JWT-kiállítási folyamat** (US-206 AC4):
+
+A break-glass aktiválás **külön endpoint**-on történik, nem a `/scope-switch`-en keresztül. A flow:
+
+```
+1. POST /api/v1/platform/break-glass
+   Body: { targetOwnerId, reason }
+   Policy: CanIssueBreakGlass
+
+2. Backend:
+   a) BreakGlassGrant.Issue(adminUserId, targetOwnerId, reason)
+   b) Audit: BREAK_GLASS_ACCESS
+   c) E-mail értesítés a TargetOwner OwnerAdmin-jainak (kiváltja: BreakGlassActivated event handler)
+   d) Új JWT kiállítása: audience = "owner", owner_id = targetOwnerId,
+      break_glass_grant_id = grant.Id, platform_role megmarad
+      Lejárat: min(grant.ExpiresAt, iat + 8h)
+
+3. Response: { grantId, accessToken, expiresAt }
+
+4. Kliens: a kapott accessToken-nel az Owner-API-t hívja (audience: owner),
+   de a break_glass_grant_id claim minden requesthez SCOPE_VIOLATION-mentes
+   cross-Owner hozzáférést enged a megadott Owner-en belül.
+
+5. Visszavonás: POST /api/v1/platform/break-glass/{id}/revoke
+   → grant.Revoke() + Audit BREAK_GLASS_REVOKED
+   → A break-glass JWT azonnal érvénytelen (a CurrentScopeService minden
+     requestre ellenőrzi a grant.Status mezőt DB-ből, max 60s cache-szel).
+
+6. Automatikus lejárat: BreakGlassExpirationJob (CR2.K)
+   → grant.Status = EXPIRED + Audit BREAK_GLASS_EXPIRED
+   → JWT érvénytelen ugyanúgy.
+```
+
+A break-glass JWT **NEM hosszabbítható**: a `/scope-switch` endpoint elutasítja a `break_glass_grant_id` claim-mel rendelkező JWT-vel érkező kérést (HTTP 403).
+
 ### CR2.E EF Core multi-tenant integráció
 
 #### CR2.E.1 Global query filterek
@@ -1865,13 +1930,90 @@ A meglévő `LocalFileStorageService` (9. fejezet) útvonal-konvenciója:
 
 Az `IFileStorageService` API változatlan; az implementáció a path-építéshez az `ICurrentScopeService`-ből olvassa az `OwnerId` és `FoundationId` értéket. Cross-foundation file-hozzáférés (path-traversal vagy közvetlen URL) backend szinten kizárt: minden file-download endpoint az adott file rekord `OwnerId`/`FoundationId` mezőjét validálja a scope-pal.
 
-**Migráció a CR2 előtti adatbázisra:** egy egyszeri job a meglévő `/uploads/{év}/...` útvonalakat átmozgatja `/uploads/{default_owner_id}/{default_foundation_id}/{év}/...` alá, és a `Document` rekordok `FilePath` mezőit frissíti.
+**Foundation logó upload pipeline (US-210 AC2, NK-19):**
+
+A Foundation logó nem üzleti dokumentum (Document aggregátum), hanem branding metaadat. Külön útvonal-konvenció és validációs profil vonatkozik rá:
+
+```
+/uploads/{owner_id}/{foundation_id}/_meta/logo.{ext}
+```
+
+| Pipeline lépés | Részlet |
+|---|---|
+| Endpoint | `POST /api/v1/owner/foundations/{id}/logo` (multipart/form-data) |
+| Policy | `IsOwnerAdmin` (csak saját Owner Foundation-jére) |
+| Megengedett MIME | `image/png`, `image/jpeg`, `image/svg+xml`, `image/webp` |
+| Megengedett kiterjesztés | `.png`, `.jpg`, `.jpeg`, `.svg`, `.webp` |
+| Maximum méret | 2 MB (külön a `PlatformSettings.MaxFileSizeMb`-tól; branding-asset profil) |
+| Maximum dimenziók | 512×512 px (validátor a feltöltött bitmap-en; SVG esetén `viewBox` ellenőrzése) |
+| SVG biztonság | `<script>`, `<foreignObject>`, `on*` attribútumok eltávolítása (SVG sanitizer; pl. `SvgSanitizer` NuGet csomag) |
+| Tárolás | `/uploads/{owner_id}/{foundation_id}/_meta/logo.{ext}` (override, csak egy logó/foundation) |
+| DB mező | `Foundation.LogoUri = "/api/v1/owner/foundations/{id}/logo"` (relatív, az API stream-eli) |
+| Letöltés | `GET /api/v1/owner/foundations/{id}/logo` (Foundation switcher és UI használja; foundation_id query filter alapján scope-os) |
+| Audit | `FOUNDATION_LOGO_UPDATED` művelettípus |
+
+A logó cseréje (új upload) automatikusan felülírja a meglévőt; régi verziók nem őrződnek meg (a Foundation branding nem dokumentumkezelési use-case).
+
+**Migráció a CR2 előtti adatbázisra (US-230 AC7):**
+
+Egy egyszeri Hangfire job (`FileStorageMigrationJob`) a meglévő `/uploads/{év}/...` útvonalakat átmozgatja `/uploads/{default_owner_id}/{default_foundation_id}/{év}/...` alá, és **ugyanabban a tranzakcióban** frissíti a `Document.FilePath` mezőket. A művelet teljesen automatizált:
+
+```
+1. SELECT Id, FilePath FROM Documents WHERE FilePath LIKE '/uploads/[0-9]%';
+2. For each row:
+   a) Új path = /uploads/{default_owner_id}/{default_foundation_id}/{év}/{...}
+   b) File.Move(régi, új)  -- atomic NTFS/ext4 művelet
+   c) UPDATE Documents SET FilePath = új WHERE Id = row.Id
+   d) Audit: DOCUMENT_FILEPATH_MIGRATED
+3. Validáció: minden file fizikailag létezik az új path-on
+```
+
+Idempotencia (US-230 AC8): a job ellenőrzi, hogy az `új path` már létezik-e, és ha igen, a tartalom hash-t összeveti — egyezés esetén csak a DB-rekordot frissíti, fájl-mozgatást nem végez. Sikertelen mozgatás esetén a job egyetlen fájlt sem írt az új helyre, ezért a rerun biztonságos.
 
 ### CR2.G Audit naplózás architektúrális hatása
 
-Az `IAuditLogger` interfész változatlan; a CR2 csak annyit változtat, hogy minden audit-bejegyzés automatikusan kapja az aktuális `_scope.OwnerId` és `_scope.FoundationId` értékét. Új művelettípusok (`SCOPE_SWITCH`, `BREAK_GLASS_ACCESS`, `OWNER_PROVISIONED`, `FOUNDATION_CREATED`, `FOUNDATION_ARCHIVED`) az `AuditAction` enum-on belül.
+Az `IAuditLogger` interfész változatlan; a CR2 csak annyit változtat, hogy minden audit-bejegyzés automatikusan kapja az aktuális `_scope.OwnerId` és `_scope.FoundationId` értékét.
 
-A 11.3 napló-lekérdezés bővül: a `GET /api/v1/audit-logs` mostantól implicit scope szerint szűr (Foundation kontextusban csak az adott alapítvány eseményei jelennek meg), az Owner-kontextus cross-foundation szűrést enged, a Platform-kontextus a teljes platform-naplót látja.
+**Új `AuditAction` enum-értékek** (teljes lista — szinkron a `domain-model.md` CR2.6-tal):
+
+- Hatókör-műveletek: `SCOPE_SWITCH`, `SCOPE_VIOLATION`
+- Break-glass: `BREAK_GLASS_ACCESS`, `BREAK_GLASS_REVOKED`, `BREAK_GLASS_EXPIRED`
+- Owner lifecycle: `OWNER_PROVISIONED`, `OWNER_SUSPENDED`, `OWNER_REACTIVATED`, `OWNER_ARCHIVED`
+- Foundation lifecycle: `FOUNDATION_CREATED`, `FOUNDATION_RENAMED`, `FOUNDATION_ARCHIVED`, `FOUNDATION_LOGO_UPDATED`
+- Kódszótár-sablon: `CODE_LIST_TEMPLATE_APPLIED`
+- Meghívók: `INVITATION_ISSUED`, `INVITATION_ACCEPTED`, `INVITATION_REVOKED`, `INVITATION_RESENT`, `INVITATION_EXPIRED`
+- Hozzárendelések: `PLATFORM_ROLE_ASSIGNED`, `PLATFORM_ROLE_REVOKED`, `OWNER_ROLE_ASSIGNED`, `OWNER_ROLE_REVOKED`, `FOUNDATION_ASSIGNMENT_CREATED`, `FOUNDATION_ASSIGNMENT_REVOKED`, `FOUNDATION_ROLE_CHANGED`
+- Beállítások: `PLATFORM_SETTINGS_UPDATED`, `OWNER_SETTINGS_UPDATED`
+- Megőrzés: `AUDIT_ARCHIVED` (a `AuditLogRetentionJob` által)
+- Fájlmigráció: `DOCUMENT_FILEPATH_MIGRATED` (egyszeri, CR2.F)
+
+**`SCOPE_VIOLATION` bejegyzés** (US-222 AC5): az `AuthorizationBehaviour` (CR2.D.4) cross-tenant kísérlet detektálásakor `ForbiddenException` előtt egy audit-bejegyzést készít, amely tartalmazza:
+
+- felhasználó (`UserId`, `Email`, `Audience`)
+- megkísérelt erőforrás (`HttpMethod`, `Path`, `Body` excerpt biztonsági redaktálással)
+- várt scope (`ExpectedOwnerId`, `ExpectedFoundationId`) vs. tényleges scope a JWT-ben
+- timestamp
+
+Ez a bejegyzés mindig a **platform-szintű naplóba** kerül (`OwnerId = NULL`, `FoundationId = NULL`), mert a cross-tenant kísérlet nem köthető egy konkrét Owner-hez.
+
+**Napló-lekérdezés bővítés** (a 11.3 szakasz CR2 utáni állapota):
+
+| Endpoint | Scope szűrés |
+|---|---|
+| `GET /api/v1/audit-logs` (Foundation kontextus) | `FoundationId = _scope.FoundationId` |
+| `GET /api/v1/owner/audit-logs` (Owner kontextus) | `OwnerId = _scope.OwnerId` (cross-foundation) |
+| `GET /api/v1/platform/audit-logs` (Platform kontextus) | Nincs scope-szűrés (`IgnoreQueryFilters()` whitelisted) |
+
+**Megőrzési politika és törlési tilalom** (US-205 AC5, US-216, US-233 AC5):
+
+| Réteg | Megvalósítás |
+|---|---|
+| **Adatbázis** | `AuditLog` táblán nincs `DELETE` permission; az `AppDbContext.SaveChangesAsync` override detektálja `EntityState.Deleted` állapotot `AuditLog` típusra és `InvalidOperationException`-t dob |
+| **API** | Egyetlen `[HttpDelete]` endpoint sem létezik az `AuditLogsController`, `PlatformAuditLogsController`, `OwnerAuditLogsController` controllerekben — explicit dokumentált hiány |
+| **Architecture teszt** | NetArchTest szabály: `AuditLog` típusra nem hivatkozik `Remove()` vagy `RemoveRange()` hívás |
+| **Megőrzés** | `AuditLogRetentionJob` (Hangfire napi recurring): a 5 évnél régebbi rekordokat `AuditLogsArchive` táblába mozgatja (INSERT + DELETE tranzakcióban). A művelet maga `AUDIT_ARCHIVED` bejegyzést készít. Az archív tábla read-only, csak Platform-szintű olvasásra elérhető (`GET /api/v1/platform/audit-logs?includeArchive=true`) |
+
+**CSV export jogosultság:** `GET /api/v1/platform/audit-logs/export.csv` → `CanReadPlatform`; `GET /api/v1/owner/audit-logs/export.csv` → `CanReadOwner`.
 
 ### CR2.H Új API-modul: Platform
 
@@ -1888,21 +2030,73 @@ A 11.3 napló-lekérdezés bővül: a `GET /api/v1/audit-logs` mostantól implic
 | `/api/v1/platform/audit-logs` | GET | `CanReadPlatform` | Platform audit napló |
 | `/api/v1/platform/break-glass` | POST | `CanIssueBreakGlass` | Break-glass grant kiállítása |
 | `/api/v1/platform/break-glass/{id}/revoke` | POST | `CanIssueBreakGlass` | Break-glass visszavonása |
-| `/api/v1/platform/settings` | GET, PATCH | `IsPlatformAdmin` | Platform technikai beállítások |
+| `/api/v1/platform/settings` | GET, PATCH | `IsPlatformAdmin` | Platform technikai beállítások (a `PlatformSettings` aggregátumon, lásd `domain-model.md` CR2.2.6) |
+| `/api/v1/platform/invitations` | GET, POST | `IsPlatformAdmin` | Platform- és Owner-szintű meghívók (Scope alapján szűrt) |
+| `/api/v1/platform/invitations/{id}/revoke` | POST | `IsPlatformAdmin` | Meghívó visszavonása (US-165 AC4+AC7) |
+| `/api/v1/platform/invitations/{id}/resend` | POST | `IsPlatformAdmin` | Meghívó újraküldés (US-165 AC5+AC7) |
 
 ### CR2.I Új API-modul: Owner
 
 | Endpoint | Method | Auth | Leírás |
 |---|---|---|---|
-| `/api/v1/owner/foundations` | GET, POST | `IsOwnerAdmin` | Alapítványok listázása / létrehozása |
+| `/api/v1/owner/foundations` | GET, POST | `IsOwnerAdmin` (POST), `CanReadOwner` (GET) | Alapítványok listázása / létrehozása (opcionális `templateFoundationId` paraméter NK-15-höz) |
 | `/api/v1/owner/foundations/{id}` | GET, PATCH | `IsOwnerAdmin` | Alapítvány részletek / módosítás |
-| `/api/v1/owner/foundations/{id}/archive` | POST | `IsOwnerAdmin` | Alapítvány archiválása |
+| `/api/v1/owner/foundations/{id}/archive` | POST | `IsOwnerAdmin` | Alapítvány archiválása (kaszkád: hozzárendelések inaktiválódnak) |
+| `/api/v1/owner/foundations/{id}/logo` | GET, POST | `IsOwnerAdmin` (POST), bárki saját scope-ban (GET) | Foundation logó (lásd CR2.F upload pipeline) |
 | `/api/v1/owner/foundations/{id}/admins` | POST | `IsOwnerAdmin` | FoundationAdmin kinevezése |
-| `/api/v1/owner/users` | GET, POST | `IsOwnerAdmin` | Owner-szintű felhasználói lista, meghívás |
+| `/api/v1/owner/users` | GET, POST | `IsOwnerAdmin` | Owner-szintű felhasználói lista, meghívás (Owner-scope `Invitation`) |
 | `/api/v1/owner/users/{id}/assignments` | POST, DELETE | `IsOwnerAdmin` | Foundation-szintű hozzárendelések |
 | `/api/v1/owner/code-list-templates` | GET, POST, PATCH | `IsOwnerAdmin` | Kódszótár-sablonok |
-| `/api/v1/owner/reports/dashboard` | GET | `CanReadOwner` | Cross-foundation dashboard |
+| `/api/v1/owner/code-list-templates/{id}/apply-to-foundation` | POST | `IsOwnerAdmin` | `OwnerCodeListTemplate.ApplyToExistingFoundation()` merge művelet (US-214 AC4) |
+| `/api/v1/owner/settings` | GET, PATCH | `IsOwnerAdmin` | Owner-szintű snapshot beállítások felülbírálása |
+| `/api/v1/owner/reports/dashboard` | GET | `CanReadOwner` | Cross-foundation dashboard (5 perces cache, lásd CR2.I.1) |
 | `/api/v1/owner/audit-logs` | GET | `CanReadOwner` | Owner-szintű audit napló |
+
+#### CR2.I.1 Cross-foundation dashboard caching (US-215 AC3)
+
+A `/owner/reports/dashboard` aggregátum-projekciója aggregált adatokat ad vissza minden saját Foundation-ról (állapot-megoszlás, nyert összeg, elszámolatlan keret). Az aggregáció költséges (több JOIN, GROUP BY több táblán), ezért **per-Owner cache** védi:
+
+| Aspektus | Megvalósítás |
+|---|---|
+| Cache provider | `IMemoryCache` (in-process; multi-instance deployment esetén Redis-re cserélhető, lásd ADR-12) |
+| Cache kulcs | `dashboard:owner:{ownerId}` |
+| TTL | 5 perc (US-215 AC3) |
+| Lifecycle | `IDashboardCacheService` interfész + `MemoryDashboardCacheService` implementáció (Infrastructure rétegben) |
+| Cache invalidáció | Domain event handler invalidálja a cache-t a következő eseményekre: `ApplicationSubmitted`, `ApplicationWon`, `ApplicationLost`, `SettlementApproved`, `FoundationCreated`, `FoundationArchived` |
+| Hit/miss metrika | Logged via Serilog `dashboard_cache_hit` / `dashboard_cache_miss` esemény, observability dashboardra |
+| Cold path | Cache miss esetén az aggregáció max 800 ms (NF cél); ha túllépi, alert |
+
+A cache **csak az olvasási projekcióra** vonatkozik; a domain modell és az audit napló mindig real-time adatot szolgáltat.
+
+**Olvasási projekció modell:**
+
+```csharp
+public record OwnerDashboardProjection(
+    Guid OwnerId,
+    DateTimeOffset GeneratedAt,
+    IReadOnlyList<FoundationDashboardSummary> Foundations,
+    OverallSummary Overall
+);
+
+public record FoundationDashboardSummary(
+    Guid FoundationId,
+    string Name,
+    int InProgressCount,
+    int SubmittedCount,
+    int WonCount,
+    int LostCount,
+    decimal TotalAwardedAmount,
+    decimal UnsettledAmount
+);
+
+public record OverallSummary(
+    int TotalApplications,
+    decimal TotalAwardedAmount,
+    decimal TotalUnsettledAmount
+);
+```
+
+A `GeneratedAt` mező lehetővé teszi a UI-nak a „X perccel ezelőtt frissítve" jelzés megjelenítését (US-215 olvashatóság).
 
 ### CR2.J Új API-végpont: foundation switcher
 
@@ -1958,7 +2152,12 @@ A meglévő 17. fejezet tesztelési stratégia kiegészül négy új teszt-kateg
 | **Scope-claim manipuláció biztonsági teszt** | A JWT-claim-ek hamisítása 401/403 választ ad. | xUnit + WebApplicationFactory + módosított token |
 | **Architecture teszt: query filter** | Minden gyökéraggregátum `DbSet`-en kötelező a global query filter. | NetArchTest + reflection |
 | **Architecture teszt: IgnoreQueryFilters whitelist** | `IgnoreQueryFilters` csak engedélyezett callsite-okon hívódik. | NetArchTest + Roslyn analyzer |
+| **Architecture teszt: AuditLog DELETE tilalom** | `AuditLog` típusra nem hivatkozik `Remove()`, `RemoveRange()` vagy `[HttpDelete]`. | NetArchTest |
 | **Break-glass workflow teszt** | Grant kiállítás → hozzáférés → audit → lejárat → automatikus visszavonás. | xUnit integráció |
+| **Migráció idempotencia teszt** | A CR2 migráció kétszeri futtatása ugyanazt a végállapotot adja, hiba nélkül. | xUnit + Testcontainers + diff snapshot |
+| **UserRole cutover gate teszt** | Fázis 3 release előtt: minden `AppUser`-en pontosan egy érvényes CR2 szerepkör-kombináció. | xUnit smoke teszt |
+| **Dashboard cache hit/miss teszt** | Cache hit ≤ 30 ms; invalidáció `ApplicationWon` után. | xUnit integráció |
+| **Foundation logo upload biztonsági teszt** | SVG sanitizer eltávolítja `<script>`, `onload` attribútumokat; nagy file → 413. | xUnit + Playwright |
 
 ### CR2.N Architektúrális kockázatok kiegészítése
 
@@ -1979,6 +2178,11 @@ A meglévő 17. fejezet tesztelési stratégia kiegészül négy új teszt-kateg
 | ADR-09 | JWT „audience" szétválasztás (business/owner/platform) | Vertikális escalation védelem, tisztább policy-felépítés, könnyebb monitorozás. | Egyetlen JWT minden scope-pal (elutasítva: nehezebb auditálni) |
 | ADR-10 | Break-glass aggregátumként, nem session flag-ként | Lifecycle, lejárat, visszavonás explicit; audit-trail tiszta. | Session-flag + audit log (elutasítva) |
 | ADR-11 | OwnerCodeListTemplate snapshot (másolás), nem referencia | Egyszerűbb adatmodell, alapítvány-szintű felülírás természetes. | Owner-szintű kódszótár felülírható alapítvány-szinten (elutasítva: nehezebb mentális modell) |
+| ADR-12 | Dashboard `IMemoryCache` per-Owner kulcsolva, 5 perces TTL | MVP egy backend instance; Redis bevezetés multi-instance deployment esetén lesz szükséges. | Redis from day-1 (elutasítva: idő előtti optimalizáció) / közvetlen aggregáció minden kérésre (elutasítva: 800 ms cél nem tartható) |
+| ADR-13 | Egységes `Invitation` aggregátum minden hatókörre (PLATFORM/OWNER/FOUNDATION) | Egyetlen állapotgép, egységes Token + lejárat-kezelés, kevesebb duplikált handler. | Külön `PlatformInvitation`/`OwnerInvitation`/`FoundationInvitation` aggregátumok (elutasítva: 3-szoros kódszorzó) |
+| ADR-14 | `UserRole` deprecation 3 release-en át (Fázis 1 → 3) | Production-adat migráció biztonságos, fokozatos rollout-tal a régi és új JWT-k egyszerre érvényesek. | Big-bang csere (elutasítva: élő telepítésen kockázatos) |
+| ADR-15 | Break-glass külön endpoint-on, NEM `/scope-switch`-en keresztül | Audit-trail tiszta, RBAC policy elkülönített, break-glass JWT „nem hosszabbítható" tulajdonság betartható. | `/scope-switch` extra `breakGlass: true` paraméterrel (elutasítva: keveredik a normál hatókör-váltással) |
+| ADR-16 | Audit napló 5 éves megőrzés + archív tábla | Compliance (GDPR audit-trail), de a live tábla mérete kezelhető marad. Archív tábla csak Platform-szinten olvasható. | Korlátlan megőrzés (elutasítva: tábla méret) / 1 éves megőrzés (elutasítva: nem compliance-megfelelő) |
 
 ### CR2.P Mapping az FS CR2-szakaszaira
 
@@ -1987,19 +2191,25 @@ A meglévő 17. fejezet tesztelési stratégia kiegészül négy új teszt-kateg
 | FS 4.1 Platform-szintű szerepkörök | CR2.D.2 audience + CR2.H Platform API |
 | FS 4.2 Owner-szintű szerepkörök | CR2.D.2 audience + CR2.I Owner API |
 | FS 4.3 Foundation-szintű szerepkörök | CR2.D.3 policies + meglévő üzleti API |
-| FS 4.4 Felhasználó-hozzárendelés | CR2.D.1 claim-ek (`foundation_roles`) |
+| FS 4.4 Felhasználó-hozzárendelés | CR2.D.1 claim-ek (`foundation_roles`) + CR2.D.2 audience algoritmus |
 | FS 5.1–5.3 mátrixok | CR2.D.3 policies |
 | FS 5.4 hatókör-izoláció | CR2.E.1 query filterek + CR2.D.4 scope-check |
-| FS 5.5 utolsó admin / break-glass | CR2.H break-glass endpointok + CR2.K job |
+| FS 5.5 utolsó admin / break-glass | CR2.H break-glass endpointok + CR2.K job + CR2.D.5 flow |
 | FS 26.1 Platform admin | CR2.H Platform API |
+| FS 26.1.3 Platform technikai beállítások | CR2.H `/platform/settings` + `domain-model.md` CR2.2.6 |
+| FS 26.1.4 Platform audit napló | CR2.G + CR2.H `/platform/audit-logs` |
+| FS 26.1.5 break-glass | CR2.D.5 flow, CR2.H endpointok, CR2.K job |
 | FS 26.2 Owner admin | CR2.I Owner API |
+| FS 26.2.1 Foundation lifecycle | CR2.I + CR2.F logó-upload pipeline |
+| FS 26.2.4 Cross-foundation dashboard | CR2.I.1 caching |
+| FS 26.2.5 Owner audit napló | CR2.G + CR2.I `/owner/audit-logs` |
 | FS 26.3 Foundation admin | meglévő üzleti API (változatlan struktúrával, scope-olva) |
+| FS 26.3.2 Hatókör-tudatos meghívás | CR2.D.3 invitation policies + CR2.H Platform Invitations + `domain-model.md` CR2.2.5 |
 | FS 26.4 Foundation switcher | CR2.J scope-switch endpoint |
-| FS 26.1.5 break-glass | CR2.D.5 scope, CR2.K job |
-| FS 29. audit | CR2.G audit naplózás |
+| FS 29. audit | CR2.G audit naplózás + megőrzési politika |
 | FS 31.2 jogosultság | CR2.D.4 scope-check + CR2.E query filterek |
 | FS 32.1 multi-tenant | CR2.B stratégia |
-| FS 32.3 fájltároló | CR2.F útvonal |
+| FS 32.3 fájltároló | CR2.F útvonal + Foundation logó pipeline |
 
 ---
 

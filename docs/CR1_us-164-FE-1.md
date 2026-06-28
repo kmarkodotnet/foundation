@@ -117,7 +117,8 @@ Az Admin Felhasználók oldal fejlécébe „Új meghívó küldése" gomb hozz�
 | Üres form, Küldés kattintás | Validációs hibák megjelennek, kérés nem megy el |
 | Érvénytelen email | Email validációs hiba |
 | Sikeres küldés | Dialog bezárul, snackbar: „Meghívó elküldve: [email]" |
-| 409 – már van meghívó | Form-szintű hiba: „Erre az email-re már van függőben lévő meghívó." |
+| 409 – már van **aktív (PENDING)** meghívó | A dialog egy másodlagos megerősítő dialog-ra vált: „Erre az email-re már van függőben lévő meghívó. Szeretnéd újraküldeni?" — két gomb: „Újraküldés" (`POST /api/v1/invitations/{id}/resend` hívása, US-165 endpoint) és „Mégse". Sikeres újraküldés → snackbar: „Meghívó újraküldve: [email]". |
+| 409 – létezett már accepted user | Form-szintű hiba: „Erre az email-re már van aktív felhasználó." |
 | Mégse gomb | Dialog bezárul, nem kerül küldésre meghívó |
 
 ---
@@ -143,6 +144,6 @@ Az Admin Felhasználók oldal fejlécébe „Új meghívó küldése" gomb hozz�
 - [ ] AC2: A gombra kattintva dialog nyílik meg email + szerepkör mezőkkel.
 - [ ] AC3: Érvénytelen email esetén validációs hibaüzenet jelenik meg, a küldés nem indul el.
 - [ ] AC4: Sikeres küldés után snackbar visszajelzés: „Meghívó elküldve: [email]".
-- [ ] AC5: Ha az email-hez már van függőben lévő meghívó (409), a form-on hibaüzenet jelenik meg.
+- [ ] **AC4 + AC5**: Ha az adott e-mail címhez már létezik aktív (`PENDING`) meghívó (409 a backend-től), a UI **figyelmezteti** az Admint és **felajánlja az újraküldést** egy másodlagos megerősítő dialog-on keresztül (lásd UX táblázat). Az újraküldés a US-165 `POST /api/v1/invitations/{id}/resend` végpontot hívja.
 - [ ] AC6: A Mégse gombbal a dialog bezárható meghívó küldése nélkül.
 - [ ] AC7: A küldés gomb loading állapotban van az API hívás ideje alatt.

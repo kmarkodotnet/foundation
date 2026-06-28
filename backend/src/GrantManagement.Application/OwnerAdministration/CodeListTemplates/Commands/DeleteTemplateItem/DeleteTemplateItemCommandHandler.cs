@@ -37,7 +37,7 @@ public sealed class DeleteTemplateItemCommandHandler : IRequestHandler<DeleteTem
         _db.AuditLogs.Add(AuditLog.Record(
             entityType: "OwnerCodeListTemplate",
             entityId: template.Id,
-            action: AuditAction.OwnerCodeListTemplateModified,
+            action: AuditAction.OwnerCodeListTemplateUpdated,
             userId: _currentUser.UserId,
             ipAddress: _currentUser.IpAddress,
             ownerId: ownerId));

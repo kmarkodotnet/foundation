@@ -78,7 +78,7 @@ public sealed class InviteOwnerUserCommandHandler : IRequestHandler<InviteOwnerU
         _db.AuditLogs.Add(AuditLog.Record(
             entityType: "Invitation",
             entityId: invitation.Id,
-            action: AuditAction.OwnerUserInvited,
+            action: AuditAction.InvitationIssued,
             userId: _currentUser.UserId,
             ipAddress: _currentUser.IpAddress,
             ownerId: ownerId));

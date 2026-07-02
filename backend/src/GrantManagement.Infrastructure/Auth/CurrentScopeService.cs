@@ -62,10 +62,20 @@ public sealed class CurrentScopeService : ICurrentScopeService
                 return new Dictionary<Guid, FoundationRole>();
             try
             {
-                return JsonSerializer.Deserialize<Dictionary<Guid, FoundationRole>>(raw)
-                    ?? new Dictionary<Guid, FoundationRole>();
+                // A JwtService a szerepköröket enum-névként serializálja, ezért
+                // string-ként olvassuk vissza és utána parse-oljuk.
+                var rawMap = JsonSerializer.Deserialize<Dictionary<Guid, string>>(raw)
+                    ?? new Dictionary<Guid, string>();
+
+                var result = new Dictionary<Guid, FoundationRole>(rawMap.Count);
+                foreach (var (foundationId, roleName) in rawMap)
+                {
+                    if (Enum.TryParse<FoundationRole>(roleName, ignoreCase: true, out var role))
+                        result[foundationId] = role;
+                }
+                return result;
             }
-            catch
+            catch (JsonException)
             {
                 return new Dictionary<Guid, FoundationRole>();
             }

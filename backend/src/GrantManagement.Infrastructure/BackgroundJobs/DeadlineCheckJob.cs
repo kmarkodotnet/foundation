@@ -40,7 +40,9 @@ public class DeadlineCheckJob
         var warningCutoff = now.AddDays(7);
         var missedCutoff = now.AddDays(-1);
 
+        // Whitelistelt cross-tenant háttérjob (architecture-plan CR2.E.2/3. eset)
         var applications = await _context.Applications
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(a => !a.IsArchived
                 && (a.Status == ApplicationStatus.Draft || a.Status == ApplicationStatus.InProgress)
@@ -73,6 +75,7 @@ public class DeadlineCheckJob
                 : NotificationType.SubmissionDeadlineMissed;
 
             var existingToday = await _context.Notifications
+                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .AnyAsync(n =>
                     n.RelatedEntityId == app.Id
@@ -127,7 +130,9 @@ public class DeadlineCheckJob
         var todayStart = new DateTimeOffset(now.Date, TimeSpan.Zero);
         var warningCutoff = now.AddDays(14);
 
+        // Whitelistelt cross-tenant háttérjob (architecture-plan CR2.E.2/3. eset)
         var applications = await _context.Applications
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(a => !a.IsArchived
                 && a.Status == ApplicationStatus.Won
@@ -159,6 +164,7 @@ public class DeadlineCheckJob
             if (!isApproaching) continue;
 
             var existingToday = await _context.Notifications
+                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .AnyAsync(n =>
                     n.RelatedEntityId == app.Id

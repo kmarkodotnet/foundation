@@ -12,5 +12,5 @@ public record OwnerListItemResponse(
     string Name,
     string ContactEmail,
     string Status,
-    int FoundationsCount,
+    int ActiveFoundationsCount,
     DateTimeOffset CreatedAt);

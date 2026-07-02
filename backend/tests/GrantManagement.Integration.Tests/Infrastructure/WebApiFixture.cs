@@ -8,6 +8,7 @@ using GrantManagement.Application.Common.Scope;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Domain.Interfaces;
 using GrantManagement.Domain.Interfaces.Services;
+using GrantManagement.Domain.Tenancy;
 using GrantManagement.Domain.Tenancy.Enums;
 using GrantManagement.Infrastructure.FileStorage;
 using GrantManagement.Infrastructure.Persistence;
@@ -61,6 +62,10 @@ public sealed class WebApiFixture : IAsyncLifetime
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
+
+                // A teljes app (DbContext + Hangfire storage) a Testcontainers
+                // adatbázisra mutasson, ne a fejlesztői/éles szerverre.
+                builder.UseSetting("ConnectionStrings:DefaultConnection", ConnectionString);
 
                 builder.ConfigureTestServices(services =>
                 {
@@ -140,14 +145,18 @@ public sealed class WebApiFixture : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(ConnectionString)
             .Options;
-        return new AppDbContext(options, new NoOpCurrentScopeService());
+        return new AppDbContext(options, new DefaultTenantScopeService());
     }
 
-    private sealed class NoOpCurrentScopeService : ICurrentScopeService
+    /// <summary>
+    /// A tesztek a default tenant (US-230 backfill) hatókörében futnak,
+    /// összhangban a fail-safe query filterekkel.
+    /// </summary>
+    private sealed class DefaultTenantScopeService : ICurrentScopeService
     {
         public string Audience => "business";
-        public Guid? OwnerId => null;
-        public Guid? FoundationId => null;
+        public Guid? OwnerId => TenancyDefaults.OwnerId;
+        public Guid? FoundationId => TenancyDefaults.FoundationId;
         public PlatformRole? PlatformRole => null;
         public OwnerRole? OwnerRole => null;
         public IReadOnlyDictionary<Guid, FoundationRole> FoundationRoles =>
@@ -165,7 +174,10 @@ public sealed class WebApiFixture : IAsyncLifetime
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Name, "Test User"),
             new("role", role.ToString()),
-            new("userId", userId.ToString())
+            new("userId", userId.ToString()),
+            new("scope", "business"),
+            new("owner_id", TenancyDefaults.OwnerId.ToString()),
+            new("foundation_id", TenancyDefaults.FoundationId.ToString())
         ];
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret));

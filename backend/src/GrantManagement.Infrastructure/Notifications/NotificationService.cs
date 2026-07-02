@@ -4,6 +4,7 @@ using GrantManagement.Domain.Entities;
 using GrantManagement.Domain.Enums;
 using GrantManagement.Infrastructure.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace GrantManagement.Infrastructure.Notifications;
@@ -33,7 +34,17 @@ public class NotificationService : INotificationService
         string? relatedEntityType = null,
         CancellationToken cancellationToken = default)
     {
-        var notification = Notification.Create(userId, type, title, body, relatedEntityId, relatedEntityType);
+        // A címzett Owner-scope-ját kapja az értesítés, hogy háttérjobból küldve is
+        // átmenjen a címzett tenant-szűrőjén.
+        var recipientOwnerId = await _context.AppUsers
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.OwnerId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var notification = Notification.Create(
+            userId, type, title, body, relatedEntityId, relatedEntityType,
+            ownerId: recipientOwnerId ?? Guid.Empty);
         _context.Notifications.Add(notification);
         await _context.SaveChangesAsync(cancellationToken);
 

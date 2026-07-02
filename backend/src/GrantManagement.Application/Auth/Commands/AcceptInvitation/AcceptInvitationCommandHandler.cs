@@ -76,8 +76,15 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
                     appUser.AssignPlatformRole(invitation.PlatformRole.Value);
                 break;
             case GrantManagement.Domain.Tenancy.Enums.AssignmentScope.Owner:
-                if (invitation.OwnerId.HasValue && invitation.OwnerRole.HasValue)
-                    appUser.AssignOwnerRole(invitation.OwnerId.Value, invitation.OwnerRole.Value);
+                if (invitation.OwnerId.HasValue)
+                {
+                    // NK-13: Owner-kötés szerepkörtől függetlenül; OwnerRole csak akkor,
+                    // ha a meghívó kifejezetten Owner-szintű adminjogot ad.
+                    if (invitation.OwnerRole.HasValue)
+                        appUser.AssignOwnerRole(invitation.OwnerId.Value, invitation.OwnerRole.Value);
+                    else
+                        appUser.BindToOwner(invitation.OwnerId.Value);
+                }
                 if (!string.IsNullOrEmpty(invitation.FoundationAssignmentsJson))
                 {
                     var assignments = JsonSerializer.Deserialize<List<FoundationRoleAssignment>>(
@@ -90,7 +97,19 @@ public class AcceptInvitationCommandHandler : IRequestHandler<AcceptInvitationCo
                 break;
             case GrantManagement.Domain.Tenancy.Enums.AssignmentScope.Foundation:
                 if (invitation.FoundationId.HasValue && invitation.FoundationRole.HasValue)
+                {
+                    // A Foundation Owner-ének kötése nélkül a scope-os query filterek
+                    // (owner_id claim) kizárnák a felhasználót a saját adataiból.
+                    var foundationOwnerId = await _context.Foundations
+                        .AsNoTracking()
+                        .Where(f => f.Id == invitation.FoundationId.Value)
+                        .Select(f => (Guid?)f.OwnerId)
+                        .FirstOrDefaultAsync(cancellationToken);
+                    if (foundationOwnerId.HasValue)
+                        appUser.BindToOwner(foundationOwnerId.Value);
+
                     appUser.AssignToFoundation(invitation.FoundationId.Value, invitation.FoundationRole.Value, appUser.Id);
+                }
                 break;
         }
 

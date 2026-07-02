@@ -18,17 +18,20 @@ public sealed class InviteOwnerUserCommandHandler : IRequestHandler<InviteOwnerU
     private readonly ICurrentScopeService _scope;
     private readonly ICurrentUserService _currentUser;
     private readonly IEmailService _emailService;
+    private readonly IInvitationLinkBuilder _linkBuilder;
 
     public InviteOwnerUserCommandHandler(
         IApplicationDbContext db,
         ICurrentScopeService scope,
         ICurrentUserService currentUser,
-        IEmailService emailService)
+        IEmailService emailService,
+        IInvitationLinkBuilder linkBuilder)
     {
         _db = db;
         _scope = scope;
         _currentUser = currentUser;
         _emailService = emailService;
+        _linkBuilder = linkBuilder;
     }
 
     public async Task<InviteOwnerUserResponse> Handle(InviteOwnerUserCommand request, CancellationToken cancellationToken)
@@ -65,12 +68,18 @@ public sealed class InviteOwnerUserCommandHandler : IRequestHandler<InviteOwnerU
 
         var assignmentsJson = JsonSerializer.Serialize(request.FoundationAssignments);
 
+        var settings = await _db.PlatformSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // A meghívott alapítvány-szintű szerepköröket kap (FoundationAssignments);
+        // Owner-szintű adminjogot ez a folyamat nem oszt ki.
         var invitation = Invitation.CreateForScope(
             email: normalizedEmail,
             scope: AssignmentScope.Owner,
-            expiryHours: 72,
+            expiryHours: settings?.InvitationExpiryHours ?? 72,
             ownerId: ownerId,
-            ownerRole: OwnerRole.OwnerAdmin,
+            ownerRole: null,
             foundationAssignmentsJson: assignmentsJson);
 
         _db.Invitations.Add(invitation);
@@ -85,7 +94,10 @@ public sealed class InviteOwnerUserCommandHandler : IRequestHandler<InviteOwnerU
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        await _emailService.SendInvitationAsync(normalizedEmail, invitation.Token, cancellationToken);
+        await _emailService.SendInvitationAsync(
+            normalizedEmail,
+            _linkBuilder.BuildAcceptUrl(invitation.Token),
+            cancellationToken);
 
         return new InviteOwnerUserResponse(invitation.Id);
     }

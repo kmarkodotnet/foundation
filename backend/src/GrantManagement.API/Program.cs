@@ -38,7 +38,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = false,
+            // US-223 AC2: minden token pontosan egy audience-szel érvényes.
+            ValidateAudience = true,
+            ValidAudiences = new[] { "platform", "owner", "business" },
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings["Issuer"],

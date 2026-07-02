@@ -63,32 +63,57 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EmailRecord>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<CodeListItem>().HasQueryFilter(i => !i.IsDeleted);
 
-        // Tenant-aware query filters
+        // Tenant-aware query filters — hatókör-fail-safe (architecture-plan CR2.E.1):
+        // scope nélküli kontextus (pl. hiányzó owner_id claim, háttér-job) semmit nem lát;
+        // cross-tenant hozzáférés csak whitelistelt IgnoreQueryFilters() hívással lehetséges.
         modelBuilder.Entity<GrantApp>().HasQueryFilter(a =>
             !a.IsArchived
-            && (_scope.OwnerId == null || a.OwnerId == _scope.OwnerId)
+            && a.OwnerId == _scope.OwnerId
             && (_scope.FoundationId == null || a.FoundationId == _scope.FoundationId));
 
         modelBuilder.Entity<Granter>().HasQueryFilter(g =>
-            (_scope.OwnerId == null || g.OwnerId == _scope.OwnerId)
+            g.OwnerId == _scope.OwnerId
             && (_scope.FoundationId == null || g.FoundationId == _scope.FoundationId));
 
         modelBuilder.Entity<Vendor>().HasQueryFilter(v =>
-            (_scope.OwnerId == null || v.OwnerId == _scope.OwnerId)
+            v.OwnerId == _scope.OwnerId
             && (_scope.FoundationId == null || v.FoundationId == _scope.FoundationId));
 
         modelBuilder.Entity<CodeList>().HasQueryFilter(cl =>
             !cl.IsDeleted
-            && (cl.IsSystem || (_scope.OwnerId == null || cl.OwnerId == _scope.OwnerId))
-            && (cl.IsSystem || (_scope.FoundationId == null || cl.FoundationId == _scope.FoundationId)));
+            && (cl.IsSystem
+                || (cl.OwnerId == _scope.OwnerId
+                    && (_scope.FoundationId == null || cl.FoundationId == _scope.FoundationId))));
 
+        // Az értesítés felhasználóhoz kötött (UserId), ezért Owner-szintű izoláció elegendő:
+        // foundation-váltás után is látszódnia kell a felhasználó saját értesítéseinek.
         modelBuilder.Entity<Notification>().HasQueryFilter(n =>
-            (_scope.OwnerId == null || n.OwnerId == _scope.OwnerId)
-            && (_scope.FoundationId == null || n.FoundationId == _scope.FoundationId));
+            n.OwnerId == _scope.OwnerId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // Audit napló append-only: törlés semmilyen szinten nem engedélyezett (US-233 AC5).
+        if (ChangeTracker.Entries<AuditLog>().Any(e => e.State == EntityState.Deleted))
+            throw new InvalidOperationException("Az audit napló bejegyzései nem törölhetők.");
+
+        // Save-time scope-injection (architecture-plan CR2.E.3): az explicit scope nélkül
+        // létrehozott aggregátumok az aktuális hatókört kapják; eltérő scope hiba.
+        foreach (var entry in ChangeTracker.Entries<IOwnedEntity>())
+        {
+            if (entry.State != EntityState.Added)
+                continue;
+
+            if (entry.Entity.OwnerId == Guid.Empty && _scope.OwnerId.HasValue)
+                entry.Property(nameof(IOwnedEntity.OwnerId)).CurrentValue = _scope.OwnerId.Value;
+            else if (entry.Entity.OwnerId != Guid.Empty && _scope.OwnerId.HasValue && entry.Entity.OwnerId != _scope.OwnerId.Value)
+                throw new InvalidOperationException(
+                    $"Scope-inkonzisztencia: az aggregátum OwnerId-je ({entry.Entity.OwnerId}) eltér az aktuális hatókörtől ({_scope.OwnerId}).");
+
+            if (entry.Entity.FoundationId == Guid.Empty && _scope.FoundationId.HasValue)
+                entry.Property(nameof(IOwnedEntity.FoundationId)).CurrentValue = _scope.FoundationId.Value;
+        }
+
         var now = DateTimeOffset.UtcNow;
         foreach (var entry in ChangeTracker.Entries<BaseEntity<Guid>>())
         {

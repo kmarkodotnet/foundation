@@ -13,11 +13,16 @@ public sealed class InvitePlatformUserCommandHandler : IRequestHandler<InvitePla
 {
     private readonly IApplicationDbContext _db;
     private readonly IEmailService _emailService;
+    private readonly IInvitationLinkBuilder _linkBuilder;
 
-    public InvitePlatformUserCommandHandler(IApplicationDbContext db, IEmailService emailService)
+    public InvitePlatformUserCommandHandler(
+        IApplicationDbContext db,
+        IEmailService emailService,
+        IInvitationLinkBuilder linkBuilder)
     {
         _db = db;
         _emailService = emailService;
+        _linkBuilder = linkBuilder;
     }
 
     public async Task<Unit> Handle(InvitePlatformUserCommand request, CancellationToken cancellationToken)
@@ -36,16 +41,23 @@ public sealed class InvitePlatformUserCommandHandler : IRequestHandler<InvitePla
         if (existingPending)
             throw new DomainException("Erre az e-mail-re már van PENDING platform meghívó.");
 
+        var settings = await _db.PlatformSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
         var invitation = Invitation.CreateForScope(
             email: email,
             scope: AssignmentScope.Platform,
             platformRole: request.Role,
-            expiryHours: 72);
+            expiryHours: settings?.InvitationExpiryHours ?? 72);
 
         _db.Invitations.Add(invitation);
         await _db.SaveChangesAsync(cancellationToken);
 
-        await _emailService.SendInvitationAsync(email, invitation.Token, cancellationToken);
+        await _emailService.SendInvitationAsync(
+            email,
+            _linkBuilder.BuildAcceptUrl(invitation.Token),
+            cancellationToken);
 
         return Unit.Value;
     }

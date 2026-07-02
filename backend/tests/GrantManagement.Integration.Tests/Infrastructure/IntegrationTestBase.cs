@@ -1,4 +1,5 @@
 using GrantManagement.Application.Common.Scope;
+using GrantManagement.Domain.Tenancy;
 using GrantManagement.Domain.Tenancy.Enums;
 using GrantManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -47,14 +48,18 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_connectionString)
             .Options;
-        return new AppDbContext(options, new NoOpCurrentScopeService());
+        return new AppDbContext(options, new DefaultTenantScopeService());
     }
 
-    private sealed class NoOpCurrentScopeService : ICurrentScopeService
+    /// <summary>
+    /// A tesztek a default tenant (US-230 backfill) hatókörében futnak,
+    /// összhangban a fail-safe query filterekkel.
+    /// </summary>
+    private sealed class DefaultTenantScopeService : ICurrentScopeService
     {
         public string Audience => "business";
-        public Guid? OwnerId => null;
-        public Guid? FoundationId => null;
+        public Guid? OwnerId => TenancyDefaults.OwnerId;
+        public Guid? FoundationId => TenancyDefaults.FoundationId;
         public PlatformRole? PlatformRole => null;
         public OwnerRole? OwnerRole => null;
         public IReadOnlyDictionary<Guid, FoundationRole> FoundationRoles =>

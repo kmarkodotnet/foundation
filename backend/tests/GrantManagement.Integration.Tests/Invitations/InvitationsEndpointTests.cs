@@ -147,7 +147,7 @@ public class InvitationsEndpointTests
     }
 
     [SkippableFact]
-    public async Task CreateInvitation_DuplicatePending_Returns400()
+    public async Task CreateInvitation_DuplicatePending_Returns409()
     {
         _fx.SkipIfDockerUnavailable();
 
@@ -170,7 +170,8 @@ public class InvitationsEndpointTests
 
         var response = await _fx.Client.SendAsync(req);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // CR1_us-164-BE-1 AC4: PENDING meghívóra újabb küldés → 409
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     [SkippableFact]

@@ -2,6 +2,7 @@ using GrantManagement.Application.Platform.Owners.Commands.ProvisionOwner;
 using GrantManagement.Application.Platform.Owners.Commands.SuspendOwner;
 using GrantManagement.Application.Platform.Owners.Commands.ReactivateOwner;
 using GrantManagement.Application.Platform.Owners.Commands.ArchiveOwner;
+using GrantManagement.Application.Platform.Owners.Queries.GetOwnerDetails;
 using GrantManagement.Application.Platform.Owners.Queries.GetOwnersList;
 using GrantManagement.API.Common;
 using MediatR;
@@ -19,6 +20,13 @@ public class OwnersController(ISender sender) : ApiControllerBase(sender)
     public async Task<IActionResult> GetOwners([FromQuery] GetOwnersListQuery query)
         => Ok(await Sender.Send(query));
 
+    [HttpGet("{id:guid}")]
+    [Authorize(Policy = "CanReadPlatform")]
+    [ProducesResponseType(typeof(OwnerDetailsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetOwner(Guid id)
+        => Ok(await Sender.Send(new GetOwnerDetailsQuery(id)));
+
     [HttpPost]
     [Authorize(Policy = "IsPlatformAdmin")]
     [ProducesResponseType(typeof(ProvisionOwnerResponse), StatusCodes.Status201Created)]
@@ -27,7 +35,7 @@ public class OwnersController(ISender sender) : ApiControllerBase(sender)
     public async Task<IActionResult> ProvisionOwner([FromBody] ProvisionOwnerCommand command)
     {
         var result = await Sender.Send(command);
-        return CreatedAtAction(nameof(GetOwners), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(GetOwner), new { id = result.Id }, result);
     }
 
     [HttpPost("{id:guid}/suspend")]

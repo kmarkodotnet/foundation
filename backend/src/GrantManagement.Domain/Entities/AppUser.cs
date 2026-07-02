@@ -109,13 +109,23 @@ public class AppUser : AggregateRoot<Guid>
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void AssignOwnerRole(Guid ownerId, OwnerRole role)
+    /// <summary>
+    /// A felhasználó Owner-höz kötése szerepkör kiosztása nélkül (NK-13: egy e-mail
+    /// legfeljebb egy Owner-hez tartozhat). Foundation-szintű meghívottnál is kötelező.
+    /// </summary>
+    public void BindToOwner(Guid ownerId)
     {
         if (PlatformRole.HasValue)
-            throw new DomainException("Platform-szerepkörrel rendelkező felhasználónak nem adható Owner-szerepkör.");
+            throw new DomainException("Platform-szerepkörrel rendelkező felhasználó nem köthető Owner-hez.");
         if (OwnerId.HasValue && OwnerId != ownerId)
             throw new DomainException("A felhasználó már egy másik Owner-hez tartozik (NK-13).");
         OwnerId = ownerId;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void AssignOwnerRole(Guid ownerId, OwnerRole role)
+    {
+        BindToOwner(ownerId);
         OwnerRole = role;
         UpdatedAt = DateTimeOffset.UtcNow;
     }

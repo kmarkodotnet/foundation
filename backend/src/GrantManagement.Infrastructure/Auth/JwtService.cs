@@ -35,10 +35,21 @@ public sealed class JwtService : IJwtService
 
     public string GenerateToken(AppUser user)
     {
-        var claims = BuildClaims(user);
-        var signingCredentials = BuildSigningCredentials();
-        var token = BuildTokenInternal(claims, signingCredentials, null);
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // US-223 AC4: az audience a szerepkörökből automatikusan határozódik meg.
+        if (user.PlatformRole.HasValue)
+            return GenerateTokenForScope(user, "platform");
+
+        if (user.OwnerRole.HasValue)
+            return GenerateTokenForScope(user, "owner", user.OwnerId);
+
+        // Egyalapítványos felhasználó automatikus "home" foundation-t kap;
+        // több hozzárendelésnél a frontend foundation-választóra visz (foundation_id nélkül).
+        var activeAssignments = user.FoundationAssignments.Where(a => a.IsActive).ToList();
+        Guid? homeFoundationId = activeAssignments.Count == 1
+            ? activeAssignments[0].FoundationId
+            : null;
+
+        return GenerateTokenForScope(user, "business", user.OwnerId, homeFoundationId);
     }
 
     public string GenerateTokenForScope(
@@ -75,34 +86,6 @@ public sealed class JwtService : IJwtService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static IEnumerable<Claim> BuildClaims(AppUser user)
-    {
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.GoogleId),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new(JwtRegisteredClaimNames.Name, user.Name),
-            new("role", user.Role.ToString()),
-            new(ClaimTypeUserId, user.Id.ToString())
-        };
-
-        if (user.PlatformRole.HasValue)
-        {
-            claims.Add(new Claim("platform_role", user.PlatformRole.Value.ToString()));
-            claims.Add(new Claim("scope", "platform"));
-            claims.Add(new Claim("aud", "platform"));
-        }
-        else if (user.OwnerRole.HasValue && user.OwnerId.HasValue)
-        {
-            claims.Add(new Claim("owner_role", user.OwnerRole.Value.ToString()));
-            claims.Add(new Claim("scope", "owner"));
-            claims.Add(new Claim("aud", "owner"));
-            claims.Add(new Claim("owner_id", user.OwnerId.Value.ToString()));
-        }
-
-        return claims;
-    }
-
     private static IEnumerable<Claim> BuildScopeClaims(
         AppUser user,
         string audience,
@@ -114,6 +97,8 @@ public sealed class JwtService : IJwtService
             new(JwtRegisteredClaimNames.Sub, user.GoogleId),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(JwtRegisteredClaimNames.Name, user.Name),
+            // UserRole cutover 1. fázis: a legacy role-alapú policy-k scope-os tokennel is működnek.
+            new("role", user.Role.ToString()),
             new(ClaimTypeUserId, user.Id.ToString()),
             new("scope", audience),
             new("aud", audience)

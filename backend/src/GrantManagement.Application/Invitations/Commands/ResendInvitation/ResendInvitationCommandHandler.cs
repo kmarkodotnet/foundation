@@ -51,7 +51,7 @@ public class ResendInvitationCommandHandler : IRequestHandler<ResendInvitationCo
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        var invitationUrl = $"{request.FrontendBaseUrl.TrimEnd('/')}/invite/{invitation.Token}";
+        var invitationUrl = $"{request.FrontendBaseUrl.TrimEnd('/')}/auth/accept?token={Uri.EscapeDataString(invitation.Token)}";
         await _emailService.SendInvitationAsync(invitation.Email, invitationUrl, cancellationToken);
 
         return CreateInvitationCommandHandler.ToResponse(invitation);

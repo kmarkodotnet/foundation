@@ -40,6 +40,7 @@ public sealed class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginComma
             cancellationToken);
 
         var appUser = await _context.AppUsers
+            .Include(u => u.FoundationAssignments)
             .FirstOrDefaultAsync(u => u.Email == googleUser.Email, cancellationToken);
 
         if (appUser is null)
